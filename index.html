@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mounjaro Tracker</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MounjaroRx">
+<meta name="theme-color" content="#1B4B43">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #FAF7F1;
+  --card: #FFFFFF;
+  --ink: #2A2A26;
+  --ink-soft: #6B6B62;
+  --teal: #1B4B43;
+  --teal-mid: #2E7A6F;
+  --teal-tint: #E5EEEC;
+  --coral: #D9714E;
+  --coral-tint: #FBE9E2;
+  --sage: #8FA998;
+  --line: #E5E1D8;
+  --in: #3D7A5C;
+  --out: #C25B3E;
+  --radius: 14px;
+  --nav-h: 68px;
+  --header-h: 60px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { height: 100%; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  height: 100%;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── LOADING ── */
+#loading {
+  position: fixed; inset: 0;
+  background: var(--teal);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 1000;
+  gap: 16px;
+  transition: opacity 0.4s;
+}
+#loading.hide { opacity: 0; pointer-events: none; }
+.loader-cross {
+  width: 56px; height: 56px;
+  position: relative;
+}
+.loader-cross::before, .loader-cross::after {
+  content: ''; position: absolute;
+  background: white; border-radius: 4px;
+}
+.loader-cross::before { width: 12px; height: 48px; left: 22px; top: 4px; }
+.loader-cross::after  { width: 48px; height: 12px; left: 4px; top: 22px; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.loader-cross { animation: pulse 1.4s infinite; }
+#loading p { color: rgba(255,255,255,0.8); font-size: 14px; }
+
+/* ── SYNC MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: flex-end;
+  z-index: 900;
+}
+.modal-overlay.hidden { display: none; }
+.modal-sheet {
+  background: var(--card);
+  border-radius: 24px 24px 0 0;
+  padding: 24px 24px calc(24px + var(--safe-bottom));
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-handle {
+  width: 40px; height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin: 0 auto 20px;
+}
+.modal-title { font-size: 20px; font-weight: 700; color: var(--teal); margin-bottom: 8px; }
+.modal-sub { font-size: 14px; color: var(--ink-soft); margin-bottom: 20px; line-height: 1.5; }
+.sync-id-display {
+  background: var(--teal-tint);
+  border: 1px solid var(--teal);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--teal);
+  word-break: break-all;
+  margin-bottom: 12px;
+  letter-spacing: 0.03em;
+}
+.modal-input {
+  width: 100%;
+  padding: 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  background: #FCFBF9;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+.modal-input:focus { outline: none; border-color: var(--teal); }
+
+/* ── APP SHELL ── */
+#app {
+  display: flex; flex-direction: column;
+  height: 100%;
+  padding-top: var(--safe-top);
+}
+
+/* ── HEADER ── */
+#app-header {
+  height: var(--header-h);
+  background: var(--teal);
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+.header-left { display: flex; align-items: center; gap: 10px; }
+.header-icon {
+  width: 32px; height: 32px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.header-title { color: white; font-weight: 700; font-size: 16px; line-height: 1.2; }
+.header-sub { color: rgba(255,255,255,0.7); font-size: 11px; }
+.header-right { display: flex; gap: 8px; }
+.icon-btn {
+  background: rgba(255,255,255,0.12);
+  border: none; border-radius: 8px;
+  color: white; font-size: 15px;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.icon-btn:active { background: rgba(255,255,255,0.25); }
+
+/* ── MAIN SCROLL AREA ── */
+#app-main {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(var(--nav-h) + var(--safe-bottom));
+  position: relative;
+}
+
+/* ── VIEWS ── */
+.view { display: none; padding: 16px; }
+.view.active { display: block; }
+
+/* ── BOTTOM NAV ── */
+#bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: calc(var(--nav-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  display: flex;
+  z-index: 100;
+}
+.nav-item {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px;
+  border: none; background: none;
+  color: var(--ink-soft);
+  font-size: 10px; font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 4px;
+  transition: color 0.15s;
+}
+.nav-item.active { color: var(--teal); }
+.nav-item svg { width: 22px; height: 22px; }
+
+/* ── STAT GRID ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.stat-card.wide { grid-column: 1 / -1; }
+.sc-label {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+.sc-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 22px; font-weight: 600; color: var(--ink);
+  line-height: 1.1;
+}
+.sc-value.big { font-size: 28px; color: var(--teal); }
+.sc-sub { font-size: 11px; color: var(--sage); margin-top: 3px; }
+.sc-sub.warn { color: var(--coral); }
+.sc-sub.good { color: var(--in); }
+
+/* ── DOSE TIMELINE ── */
+.timeline-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.timeline-title {
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-soft); margin-bottom: 10px;
+}
+.timeline-row { display: flex; gap: 6px; }
+.timeline-phase {
+  flex: 1; text-align: center;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1.5px solid var(--line);
+  background: #FCFBF9;
+  font-size: 10px; color: var(--ink-soft);
+  transition: all 0.2s;
+}
+.timeline-phase.done { background: var(--teal-tint); border-color: var(--teal); color: var(--teal); }
+.timeline-phase.current { background: var(--teal); border-color: var(--teal); color: white; font-weight: 700; }
+.timeline-phase .ph-dose { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+
+/* ── LOG FORM ── */
+.form-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.form-section-title {
+  font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-soft); margin-bottom: 12px;
+}
+.field { margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+.field label {
+  display: block; font-size: 12px;
+  color: var(--ink-soft); margin-bottom: 5px;
+}
+.field input, .field select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  background: #FCFBF9;
+  color: var(--ink);
+  appearance: none;
+}
+.field input:focus, .field select:focus {
+  outline: none; border-color: var(--teal);
+}
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.check-field {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: #FCFBF9;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+}
+.check-field input[type=checkbox] {
+  width: 20px; height: 20px;
+  accent-color: var(--teal);
+  flex-shrink: 0;
+}
+.check-field label { font-size: 14px; color: var(--ink); margin: 0; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: flex; align-items: center; justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 14px;
+  border: none; border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn:active { opacity: 0.8; }
+.btn-primary { background: var(--teal); color: white; }
+.btn-secondary { background: var(--teal-tint); color: var(--teal); }
+.btn-ghost { background: transparent; color: var(--ink-soft); border: 1.5px solid var(--line); }
+.btn-danger { background: var(--coral-tint); color: var(--out); }
+.btn-sm { padding: 10px 14px; font-size: 13px; border-radius: 8px; width: auto; }
+.save-msg { text-align: center; font-size: 13px; color: var(--in); height: 20px; margin-top: 8px; opacity: 0; transition: opacity 0.3s; }
+.save-msg.show { opacity: 1; }
+
+/* ── HISTORY TABLE ── */
+.history-search {
+  display: flex;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.history-search input {
+  flex: 1; border: none; background: none;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px; color: var(--ink);
+}
+.history-search input:focus { outline: none; }
+.entry-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.entry-card-header {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.entry-date { font-weight: 600; font-size: 14px; color: var(--teal); }
+.entry-badge {
+  font-size: 10px; font-weight: 600;
+  padding: 2px 8px; border-radius: 20px;
+  background: var(--teal-tint); color: var(--teal);
+}
+.entry-badge.injection { background: var(--coral-tint); color: var(--coral); }
+.entry-metrics {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 6px;
+}
+.metric-pill {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: #FCFBF9;
+}
+.metric-pill.in-range { background: #E4F0E9; border-color: var(--in); color: var(--in); }
+.metric-pill.out-range { background: var(--coral-tint); border-color: var(--out); color: var(--out); }
+.metric-pill.neutral { color: var(--ink-soft); }
+.entry-notes { font-size: 12px; color: var(--ink-soft); }
+.entry-del {
+  background: none; border: none;
+  color: var(--line); font-size: 18px;
+  cursor: pointer; padding: 2px 4px;
+}
+.entry-del:active { color: var(--out); }
+.empty-state {
+  text-align: center; padding: 48px 20px;
+  color: var(--ink-soft); font-size: 14px;
+}
+.empty-state .icon { font-size: 36px; margin-bottom: 12px; }
+
+/* ── CHARTS ── */
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.chart-title {
+  font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-soft); margin-bottom: 12px;
+}
+.chart-wrap { height: 220px; position: relative; }
+.chart-legend {
+  font-size: 11px; color: var(--ink-soft); margin-top: 8px;
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.legend-dot {
+  display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; margin-right: 4px;
+  position: relative; top: -1px;
+}
+
+/* ── SETTINGS ── */
+.settings-section { margin-bottom: 20px; }
+.settings-title {
+  font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-soft); margin-bottom: 10px;
+  padding-left: 4px;
+}
+.settings-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.settings-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  gap: 12px;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { font-size: 14px; font-weight: 500; }
+.settings-row-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+.sync-id-pill {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; color: var(--teal);
+  background: var(--teal-tint);
+  padding: 4px 8px; border-radius: 6px;
+  cursor: pointer; max-width: 120px;
+  overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── QUICK TAGS ── */
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.chip {
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--line);
+  background: #FCFBF9;
+  font-size: 13px; color: var(--ink-soft);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s;
+}
+.chip.on { background: var(--teal); border-color: var(--teal); color: white; font-weight: 600; }
+.tag-pill {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--teal-tint);
+  color: var(--teal);
+  border: 1px solid rgba(27,75,67,0.2);
+}
+.entry-edit {
+  background: none; border: none;
+  color: var(--sage); font-size: 15px;
+  cursor: pointer; padding: 2px 4px;
+}
+.entry-edit:active { color: var(--teal); }
+.lab-list { margin-top: 10px; }
+.lab-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 4px;
+  border-bottom: 1px solid #F0EDE6;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+}
+.lab-row:last-child { border-bottom: none; }
+.lab-row .lab-val { color: var(--teal); font-weight: 600; }
+
+/* ── PRINT ── */
+@media print {
+  #bottom-nav, #app-header, #view-log, #view-history, #view-settings { display: none !important; }
+  .view#view-dashboard, .view#view-charts { display: block !important; padding: 0; }
+  #app-main { overflow: visible; padding-bottom: 0; }
+  body { overflow: auto; }
+  .print-header { display: block !important; }
+}
+.print-header {
+  display: none;
+  font-size: 12px; color: var(--ink-soft);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px; margin-bottom: 16px;
+}
+.print-header strong { font-size: 16px; color: var(--teal); display: block; margin-bottom: 2px; }
+
+/* ── DESKTOP ── */
+@media (min-width: 768px) {
+  body { overflow: auto; }
+  #app { height: auto; flex-direction: column; overflow: visible; }
+  #app-main {
+    overflow: visible;
+    padding-bottom: 40px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .view { display: none !important; }
+  .view.active { display: block !important; }
+  #bottom-nav { position: relative; height: auto; padding-bottom: 0; border-top: none; border-bottom: 1px solid var(--line); background: var(--card); }
+  #bottom-nav .nav-item { flex-direction: row; gap: 6px; font-size: 13px; padding: 12px 16px; }
+  .stat-grid { grid-template-columns: repeat(3, 1fr); }
+  .timeline-row { flex-wrap: nowrap; }
+  .field-row { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── LOADING ── -->
+<div id="loading">
+  <div class="loader-cross"></div>
+  <p>Loading Mounjaro Tracker…</p>
+</div>
+
+<!-- ── SYNC MODAL ── -->
+<div class="modal-overlay hidden" id="syncModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">Welcome, Mike</div>
+    <div class="modal-sub" id="modalSub">Your Sync ID lets you access your data on any device — iPhone, computer, or tablet. Save it somewhere safe.</div>
+
+    <div id="modalNewSection">
+      <div class="sync-id-display" id="newSyncIdDisplay">Generating…</div>
+      <button class="btn btn-secondary" style="margin-bottom:10px" id="copySyncIdBtn">📋 Copy Sync ID</button>
+      <button class="btn btn-primary" id="useNewIdBtn">Use This ID & Start</button>
+      <div style="text-align:center;margin:14px 0;color:var(--ink-soft);font-size:13px">— or —</div>
+      <button class="btn btn-ghost" id="showExistingBtn">I already have a Sync ID</button>
+    </div>
+
+    <div id="modalExistingSection" style="display:none">
+      <input class="modal-input" id="existingIdInput" placeholder="Paste your Sync ID here" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="btn btn-primary" id="useExistingBtn">Connect to Existing Data</button>
+      <div style="height:10px"></div>
+      <button class="btn btn-ghost" id="backToNewBtn">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
+
+  <!-- Header -->
+  <header id="app-header">
+    <div class="header-left">
+      <div class="header-icon">💊</div>
+      <div>
+        <div class="header-title">Mounjaro Tracker</div>
+        <div class="header-sub" id="headerSub">Loading…</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" id="printBtn" title="Print for doctor">🖨️</button>
+      <button class="icon-btn" id="settingsNavBtn" title="Settings">⚙️</button>
+    </div>
+  </header>
+
+  <!-- Bottom Nav -->
+  <nav id="bottom-nav">
+    <button class="nav-item active" data-view="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+      </svg>
+      Dashboard
+    </button>
+    <button class="nav-item" data-view="log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+      </svg>
+      Log
+    </button>
+    <button class="nav-item" data-view="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>
+      </svg>
+      History
+    </button>
+    <button class="nav-item" data-view="charts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+      </svg>
+      Charts
+    </button>
+  </nav>
+
+  <!-- ── MAIN ── -->
+  <main id="app-main">
+
+    <!-- Dashboard -->
+    <div class="view active" id="view-dashboard">
+      <div class="print-header" id="printHeader">
+        <strong>Mike Sloskey — Mounjaro Treatment Log</strong>
+        <span id="printDate"></span>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="sc-label">Treatment Day</div>
+          <div class="sc-value big" id="scDay">—</div>
+          <div class="sc-sub" id="scDaySub">starts Jul 18</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-label">Current Dose</div>
+          <div class="sc-value" id="scDose">2.5 mg</div>
+          <div class="sc-sub" id="scDoseSub">starts Jul 18</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-label">Current Weight</div>
+          <div class="sc-value" id="scWeight">242 lbs</div>
+          <div class="sc-sub" id="scWeightSub">baseline</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-label">Total Lost</div>
+          <div class="sc-value" id="scChange">0 lbs</div>
+          <div class="sc-sub" id="scChangeSub">goal: −45 lbs</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-label">7-Day Fasting Avg</div>
+          <div class="sc-value" id="scGlucose">—</div>
+          <div class="sc-sub" id="scGlucoseSub">target: under 130</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-label">7-Day Post-Meal Avg</div>
+          <div class="sc-value" id="scGlucose2hr">—</div>
+          <div class="sc-sub" id="scGlucose2hrSub">target: under 180</div>
+        </div>
+      </div>
+
+      <div class="timeline-card">
+        <div class="timeline-title">Dose Timeline</div>
+        <div class="timeline-row" id="timelineRow">
+          <div class="timeline-phase" id="tp1"><div class="ph-dose">2.5mg</div><div>Wk 1–4</div></div>
+          <div class="timeline-phase" id="tp2"><div class="ph-dose">5mg</div><div>Wk 5–8</div></div>
+          <div class="timeline-phase" id="tp3"><div class="ph-dose">10mg</div><div>Wk 9–12</div></div>
+          <div class="timeline-phase" id="tp4"><div class="ph-dose">15mg</div><div>Wk 13+</div></div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="quickLogBtn" style="margin-bottom:16px">+ Log Today's Reading</button>
+    </div>
+
+    <!-- Log -->
+    <div class="view" id="view-log">
+      <div class="form-card">
+        <div class="form-section-title">Glucose Readings</div>
+        <div class="field-row">
+          <div class="field">
+            <label for="fDate">Date</label>
+            <input type="date" id="fDate">
+          </div>
+          <div style="display:flex;align-items:flex-end">
+            <div class="field" style="width:100%">
+              <label>&nbsp;</label>
+              <label class="check-field">
+                <input type="checkbox" id="fInjection">
+                <span>Injection day</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="fGlucose">Fasting glucose (mg/dL)</label>
+            <input type="number" id="fGlucose" inputmode="numeric" placeholder="e.g. 128">
+          </div>
+          <div class="field">
+            <label for="fGlucose2hr">2hr post-meal (mg/dL)</label>
+            <input type="number" id="fGlucose2hr" inputmode="numeric" placeholder="e.g. 165">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-section-title">Weight & Dose</div>
+        <div class="field-row">
+          <div class="field">
+            <label for="fWeight">Weight (lbs)</label>
+            <input type="number" id="fWeight" step="0.1" inputmode="decimal" placeholder="e.g. 238.5">
+          </div>
+          <div class="field">
+            <label for="fDose">Dose this week</label>
+            <select id="fDose">
+              <option value="">— select —</option>
+              <option value="2.5">2.5 mg</option>
+              <option value="5">5 mg</option>
+              <option value="7.5">7.5 mg</option>
+              <option value="10">10 mg</option>
+              <option value="12.5">12.5 mg</option>
+              <option value="15">15 mg</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-section-title">Side Effects — tap all that apply</div>
+        <div class="chip-row" id="chipRow">
+          <div class="chip" data-tag="Nausea">Nausea</div>
+          <div class="chip" data-tag="Fatigue">Fatigue</div>
+          <div class="chip" data-tag="Constipation">Constipation</div>
+          <div class="chip" data-tag="Diarrhea">Diarrhea</div>
+          <div class="chip" data-tag="Heartburn">Heartburn</div>
+          <div class="chip" data-tag="Headache">Headache</div>
+          <div class="chip" data-tag="Dizziness">Dizziness</div>
+          <div class="chip" data-tag="Low appetite">Low appetite</div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-section-title">Notes</div>
+        <div class="field">
+          <label for="fNotes">Anything else worth recording</label>
+          <input type="text" id="fNotes" placeholder="e.g. skipped lunch, slept poorly">
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="saveBtn">Save Entry</button>
+      <div class="save-msg" id="saveMsg">✓ Saved and synced</div>
+      <div style="height:8px"></div>
+      <button class="btn btn-ghost" id="clearBtn">Clear Form</button>
+
+      <div style="height:20px"></div>
+      <div class="form-card">
+        <div class="form-section-title">Lab Results — quarterly A1C</div>
+        <div class="field-row">
+          <div class="field">
+            <label for="labDate">Lab date</label>
+            <input type="date" id="labDate">
+          </div>
+          <div class="field">
+            <label for="labA1c">A1C (%)</label>
+            <input type="number" id="labA1c" step="0.1" inputmode="decimal" placeholder="e.g. 6.4">
+          </div>
+        </div>
+        <button class="btn btn-secondary" id="saveLabBtn">Save Lab Result</button>
+        <div class="save-msg" id="labSaveMsg">✓ Lab saved</div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="view" id="view-history">
+      <div class="history-search">
+        <span style="color:var(--ink-soft)">🔍</span>
+        <input type="text" id="historySearch" placeholder="Search notes…">
+      </div>
+      <div id="historyList"></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="view" id="view-charts">
+      <div class="chart-card">
+        <div class="chart-title">Glucose Trend</div>
+        <div class="chart-wrap"><canvas id="glucoseChart"></canvas></div>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:#1B4B43"></span>Fasting (target &lt;130)</span>
+          <span><span class="legend-dot" style="background:#D9714E"></span>2hr Post-Meal (target &lt;180)</span>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Weight Trend</div>
+        <div class="chart-wrap"><canvas id="weightChart"></canvas></div>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:#1B4B43"></span>Weight</span>
+          <span><span class="legend-dot" style="background:#D9714E"></span>Goal (<span id="legendGoal">197</span> lbs)</span>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">A1C Progress</div>
+        <div class="chart-wrap"><canvas id="a1cChart"></canvas></div>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:#1B4B43"></span>A1C</span>
+          <span><span class="legend-dot" style="background:#8FA998"></span>6.5 — out of diabetic range</span>
+          <span><span class="legend-dot" style="background:#D9714E"></span>5.7 — normal</span>
+        </div>
+        <div class="lab-list" id="labList"></div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="view" id="view-settings">
+      <div class="settings-section">
+        <div class="settings-title">Your Data</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Sync ID</div>
+              <div class="settings-row-sub">Tap to copy — use on other devices to access your data</div>
+            </div>
+            <div class="sync-id-pill" id="syncIdPill">Loading…</div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Switch Account</div>
+              <div class="settings-row-sub">Connect to a different Sync ID</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="switchIdBtn">Switch</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">Data Export</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Export All Data (CSV)</div>
+              <div class="settings-row-sub">Entries + labs — opens in Excel, backs up your data</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="exportCsvBtn">Export</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">Print</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Print for Doctor</div>
+              <div class="settings-row-sub">Dashboard + charts — formatted for appointments</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="printBtnSettings">Print</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">About</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Treatment Start</div>
+              <div class="settings-row-sub">Titration began</div>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--teal)">Jul 18, 2026</div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Baseline Weight</div>
+              <div class="settings-row-sub">Your starting point — used for "Total Lost"</div>
+            </div>
+            <input type="number" step="0.1" inputmode="decimal" id="setBaseline"
+              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:14px;background:#FCFBF9;color:var(--teal);text-align:right">
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Goal Weight</div>
+              <div class="settings-row-sub">12-month target — shown on weight chart</div>
+            </div>
+            <input type="number" step="0.1" inputmode="decimal" id="setGoal"
+              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:14px;background:#FCFBF9;color:var(--in);text-align:right">
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label"></div>
+              <div class="settings-row-sub" id="setSaveMsg"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="saveSettingsBtn">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script type="module">
+import { initializeApp }        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, enableIndexedDbPersistence }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ── FIREBASE ──
+const firebaseConfig = {
+  apiKey: "AIzaSyCGcge7Y1yrW90ggMNgs7C426BjALT98jM",
+  authDomain: "mounjaro-tracker-a6f44.firebaseapp.com",
+  projectId: "mounjaro-tracker-a6f44",
+  storageBucket: "mounjaro-tracker-a6f44.firebasestorage.app",
+  messagingSenderId: "556380020203",
+  appId: "1:556380020203:web:b734402883e4152a5c8dae"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+enableIndexedDbPersistence(db).catch(() => {});
+
+// ── CONSTANTS ──
+const TREATMENT_START  = new Date(2026, 6, 18);
+let baselineWeight     = 242;   // editable in Settings, synced to Firestore
+let goalWeight         = 197;   // editable in Settings, synced to Firestore
+const GLUCOSE_TARGET   = 130;
+const GLUCOSE_2HR_TARGET = 180;
+
+// ── STATE ──
+let syncId       = null;
+let entries      = [];
+let labs         = [];
+let unsub        = null;
+let unsubSettings = null;
+let unsubLabs    = null;
+let editingLoaded = false;
+let glucoseChart = null;
+let weightChart  = null;
+let a1cChart     = null;
+
+// ── UTILS ──
+function genUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function fmtDate(s) {
+  const d = new Date(s + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+
+function fmtDateFull(s) {
+  const d = new Date(s + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+}
+
+function daysSinceStart() {
+  const now  = new Date(); now.setHours(0,0,0,0);
+  const start = new Date(TREATMENT_START); start.setHours(0,0,0,0);
+  return Math.round((now - start) / 86400000);
+}
+
+function scheduledDose(daysIn) {
+  if (daysIn < 0)  return null;
+  const week = Math.floor(daysIn / 7) + 1;
+  if (week <= 4)  return 2.5;
+  if (week <= 8)  return 5;
+  if (week <= 12) return 10;
+  return 15;
+}
+
+// ── SYNC ID SETUP ──
+function initSyncId() {
+  syncId = localStorage.getItem('mounjaro-sync-id');
+  if (!syncId) {
+    hideLoading();
+    showSyncModal(true);
+  } else {
+    startListening();
+  }
+}
+
+function showSyncModal(isNew) {
+  const modal = document.getElementById('syncModal');
+  modal.classList.remove('hidden');
+  if (isNew) {
+    const newId = genUUID();
+    document.getElementById('newSyncIdDisplay').textContent = newId;
+    document.getElementById('modalNewSection').style.display = '';
+    document.getElementById('modalExistingSection').style.display = 'none';
+    document.getElementById('modalTitle').textContent = 'Welcome, Mike';
+    document.getElementById('modalSub').textContent = 'Your Sync ID lets you access your data on any device. Save it somewhere safe — you\'ll need it to connect other devices.';
+    document.getElementById('useNewIdBtn').onclick = () => {
+      localStorage.setItem('mounjaro-sync-id', newId);
+      syncId = newId;
+      modal.classList.add('hidden');
+      startListening();
+    };
+    document.getElementById('copySyncIdBtn').onclick = () => {
+      navigator.clipboard?.writeText(newId).then(() => {
+        document.getElementById('copySyncIdBtn').textContent = '✓ Copied!';
+        setTimeout(() => document.getElementById('copySyncIdBtn').textContent = '📋 Copy Sync ID', 2000);
+      });
+    };
+  } else {
+    document.getElementById('modalTitle').textContent = 'Switch Sync ID';
+    document.getElementById('modalSub').textContent = 'Enter a different Sync ID to connect to existing data on another account.';
+    document.getElementById('modalNewSection').style.display = 'none';
+    document.getElementById('modalExistingSection').style.display = '';
+  }
+}
+
+document.getElementById('showExistingBtn').onclick = () => {
+  document.getElementById('modalNewSection').style.display = 'none';
+  document.getElementById('modalExistingSection').style.display = '';
+  document.getElementById('modalTitle').textContent = 'Use Existing Sync ID';
+  document.getElementById('modalSub').textContent = 'Paste the Sync ID from your other device to access your data.';
+};
+
+document.getElementById('backToNewBtn').onclick = () => {
+  document.getElementById('modalNewSection').style.display = '';
+  document.getElementById('modalExistingSection').style.display = 'none';
+  document.getElementById('modalTitle').textContent = 'Welcome, Mike';
+  document.getElementById('modalSub').textContent = 'Your Sync ID lets you access your data on any device. Save it somewhere safe.';
+};
+
+document.getElementById('useExistingBtn').onclick = () => {
+  const val = document.getElementById('existingIdInput').value.trim();
+  if (!val) { alert('Please enter a Sync ID'); return; }
+  localStorage.setItem('mounjaro-sync-id', val);
+  syncId = val;
+  document.getElementById('syncModal').classList.add('hidden');
+  if (unsub) unsub();
+  startListening();
+};
+
+// ── FIRESTORE LISTENER ──
+function startListening() {
+  if (unsub) unsub();
+  if (unsubSettings) unsubSettings();
+  if (unsubLabs) unsubLabs();
+
+  const entriesRef = collection(db, 'trackers', syncId, 'entries');
+  const q = query(entriesRef, orderBy('date', 'asc'));
+  unsub = onSnapshot(q,
+    snap => {
+      entries = snap.docs.map(d => d.data());
+      renderAll();
+      hideLoading();
+    },
+    err => {
+      console.error(err);
+      hideLoading();
+    }
+  );
+
+  const labsRef = collection(db, 'trackers', syncId, 'labs');
+  const lq = query(labsRef, orderBy('date', 'asc'));
+  unsubLabs = onSnapshot(lq, snap => {
+    labs = snap.docs.map(d => d.data());
+    renderLabs();
+    renderCharts();
+  });
+
+  const settingsRef = doc(db, 'trackers', syncId, 'meta', 'settings');
+  unsubSettings = onSnapshot(settingsRef, snap => {
+    if (snap.exists()) {
+      const s = snap.data();
+      if (s.baselineWeight != null) baselineWeight = parseFloat(s.baselineWeight);
+      if (s.goalWeight != null)     goalWeight     = parseFloat(s.goalWeight);
+    }
+    syncSettingsInputs();
+    renderAll();
+  });
+}
+
+function syncSettingsInputs() {
+  const b = document.getElementById('setBaseline');
+  const g = document.getElementById('setGoal');
+  if (document.activeElement !== b) b.value = baselineWeight;
+  if (document.activeElement !== g) g.value = goalWeight;
+}
+
+function hideLoading() {
+  const el = document.getElementById('loading');
+  el.classList.add('hide');
+  setTimeout(() => el.style.display = 'none', 500);
+}
+
+// ── SAVE / DELETE ──
+async function deleteEntry(date) {
+  if (!confirm(`Delete entry for ${fmtDateFull(date)}?`)) return;
+  const ref = doc(db, 'trackers', syncId, 'entries', date);
+  await deleteDoc(ref);
+}
+
+// ── RENDER ALL ──
+function renderAll() {
+  updateHeader();
+  updateStats();
+  updateTimeline();
+  renderHistory();
+  renderCharts();
+  document.getElementById('syncIdPill').textContent = syncId ? syncId.slice(0,8) + '…' : '—';
+  document.getElementById('scChangeSub').textContent = 'goal: −' + Math.round(baselineWeight - goalWeight) + ' lbs';
+  document.getElementById('legendGoal').textContent = goalWeight;
+}
+
+// ── HEADER ──
+function updateHeader() {
+  const diff = daysSinceStart();
+  const sub  = document.getElementById('headerSub');
+  if (diff < 0) {
+    sub.textContent = `Starts in ${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''}`;
+  } else {
+    sub.textContent = `Treatment day ${diff + 1}`;
+  }
+}
+
+// ── STATS ──
+function updateStats() {
+  const diff = daysSinceStart();
+
+  // Day counter
+  const dayEl  = document.getElementById('scDay');
+  const daySubEl = document.getElementById('scDaySub');
+  if (diff < 0) {
+    dayEl.textContent  = Math.abs(diff);
+    daySubEl.textContent = 'days until start';
+    daySubEl.className = 'sc-sub';
+  } else {
+    dayEl.textContent  = diff + 1;
+    daySubEl.textContent = 'started Jul 18';
+    daySubEl.className = 'sc-sub good';
+  }
+
+  // Dose
+  const doseEntries = entries.filter(e => e.dose);
+  const doseEl = document.getElementById('scDose');
+  const doseSub = document.getElementById('scDoseSub');
+  if (doseEntries.length) {
+    const last = doseEntries[doseEntries.length - 1];
+    doseEl.textContent = last.dose + ' mg';
+    doseSub.textContent = 'last logged';
+  } else {
+    const sched = scheduledDose(diff);
+    doseEl.textContent = sched ? sched + ' mg' : '—';
+    doseSub.textContent = sched ? 'scheduled' : 'not started';
+  }
+
+  // Weight
+  const weightEntries = entries.filter(e => e.weight != null && e.weight !== '');
+  const weightEl  = document.getElementById('scWeight');
+  const weightSub = document.getElementById('scWeightSub');
+  const changeEl  = document.getElementById('scChange');
+  if (weightEntries.length) {
+    const latest = parseFloat(weightEntries[weightEntries.length - 1].weight);
+    weightEl.textContent  = latest.toFixed(1) + ' lbs';
+    weightSub.textContent = 'as of ' + fmtDate(weightEntries[weightEntries.length - 1].date);
+    const chg = latest - baselineWeight;
+    changeEl.textContent = (chg <= 0 ? '' : '+') + chg.toFixed(1) + ' lbs';
+    changeEl.style.color  = chg <= 0 ? 'var(--in)' : 'var(--out)';
+  } else {
+    weightEl.textContent  = baselineWeight + ' lbs';
+    weightSub.textContent = 'baseline';
+    changeEl.textContent  = '0 lbs';
+  }
+
+  // Fasting glucose 7-day avg
+  const gEntries = entries.filter(e => e.glucose != null && e.glucose !== '');
+  const last7g = gEntries.slice(-7);
+  const gEl    = document.getElementById('scGlucose');
+  const gSub   = document.getElementById('scGlucoseSub');
+  if (last7g.length) {
+    const avg = last7g.reduce((s, e) => s + parseFloat(e.glucose), 0) / last7g.length;
+    gEl.textContent  = Math.round(avg) + ' mg/dL';
+    gSub.textContent = avg < GLUCOSE_TARGET ? 'in target range ✓' : 'above target (130)';
+    gSub.className   = avg < GLUCOSE_TARGET ? 'sc-sub good' : 'sc-sub warn';
+  } else { gEl.textContent = '—'; gSub.textContent = 'target: under 130'; gSub.className = 'sc-sub'; }
+
+  // Post-meal 7-day avg
+  const g2Entries = entries.filter(e => e.glucose2hr != null && e.glucose2hr !== '');
+  const last7g2 = g2Entries.slice(-7);
+  const g2El    = document.getElementById('scGlucose2hr');
+  const g2Sub   = document.getElementById('scGlucose2hrSub');
+  if (last7g2.length) {
+    const avg2 = last7g2.reduce((s, e) => s + parseFloat(e.glucose2hr), 0) / last7g2.length;
+    g2El.textContent  = Math.round(avg2) + ' mg/dL';
+    g2Sub.textContent = avg2 < GLUCOSE_2HR_TARGET ? 'in target range ✓' : 'above target (180)';
+    g2Sub.className   = avg2 < GLUCOSE_2HR_TARGET ? 'sc-sub good' : 'sc-sub warn';
+  } else { g2El.textContent = '—'; g2Sub.textContent = 'target: under 180'; g2Sub.className = 'sc-sub'; }
+}
+
+// ── TIMELINE ──
+function updateTimeline() {
+  const diff  = daysSinceStart();
+  const week  = diff < 0 ? 0 : Math.floor(diff / 7) + 1;
+  const phases = [
+    { id:'tp1', weeks:'1–4',  start:1,  end:4  },
+    { id:'tp2', weeks:'5–8',  start:5,  end:8  },
+    { id:'tp3', weeks:'9–12', start:9,  end:12 },
+    { id:'tp4', weeks:'13+',  start:13, end:999 }
+  ];
+  phases.forEach(p => {
+    const el = document.getElementById(p.id);
+    el.classList.remove('done','current');
+    if (week > p.end) el.classList.add('done');
+    else if (week >= p.start) el.classList.add('current');
+  });
+}
+
+// ── HISTORY ──
+function renderHistory() {
+  const search = (document.getElementById('historySearch')?.value || '').toLowerCase();
+  const list   = document.getElementById('historyList');
+  const sorted = [...entries].sort((a,b) => b.date.localeCompare(a.date));
+  const filtered = search ? sorted.filter(e => (e.notes||'').toLowerCase().includes(search)) : sorted;
+
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">📋</div>${search ? 'No entries match your search.' : 'No entries yet. Log your first reading in the Log tab.'}</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(e => {
+    const gVal = e.glucose ? parseFloat(e.glucose) : null;
+    const g2Val = e.glucose2hr ? parseFloat(e.glucose2hr) : null;
+    const wVal  = e.weight  ? parseFloat(e.weight)  : null;
+
+    let metrics = '';
+    if (gVal != null)  metrics += `<span class="metric-pill ${gVal < GLUCOSE_TARGET ? 'in-range' : 'out-range'}">🩸 ${gVal} mg/dL</span>`;
+    if (g2Val != null) metrics += `<span class="metric-pill ${g2Val < GLUCOSE_2HR_TARGET ? 'in-range' : 'out-range'}">2hr ${g2Val} mg/dL</span>`;
+    if (wVal != null)  metrics += `<span class="metric-pill neutral">⚖️ ${wVal.toFixed(1)} lbs</span>`;
+    if (e.dose)        metrics += `<span class="metric-pill neutral">💉 ${e.dose}mg</span>`;
+    if (e.tags && e.tags.length) metrics += e.tags.map(t => `<span class="tag-pill">${t}</span>`).join('');
+
+    const badge = e.injection ? '<span class="entry-badge injection">💉 Injection day</span>' : (e.dose ? `<span class="entry-badge">${e.dose}mg</span>` : '');
+
+    return `<div class="entry-card">
+      <div class="entry-card-header">
+        <div class="entry-date">${fmtDateFull(e.date)}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${badge}
+          <button class="entry-edit" data-date="${e.date}" title="Edit entry">✎</button>
+          <button class="entry-del" data-date="${e.date}">✕</button>
+        </div>
+      </div>
+      ${metrics ? `<div class="entry-metrics">${metrics}</div>` : ''}
+      ${e.notes ? `<div class="entry-notes">${e.notes}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.entry-del').forEach(btn => {
+    btn.addEventListener('click', () => deleteEntry(btn.dataset.date));
+  });
+  list.querySelectorAll('.entry-edit').forEach(btn => {
+    btn.addEventListener('click', () => editEntry(btn.dataset.date));
+  });
+}
+
+// ── EDIT ENTRY ──
+function editEntry(date) {
+  const e = entries.find(x => x.date === date);
+  if (!e) return;
+  document.getElementById('fDate').value       = e.date;
+  document.getElementById('fGlucose').value    = e.glucose    || '';
+  document.getElementById('fGlucose2hr').value = e.glucose2hr || '';
+  document.getElementById('fWeight').value     = e.weight     || '';
+  document.getElementById('fDose').value       = e.dose       || '';
+  document.getElementById('fInjection').checked = !!e.injection;
+  document.getElementById('fNotes').value      = e.notes      || '';
+  setChips(e.tags || []);
+  editingLoaded = true;
+  showView('log');
+  window.scrollTo(0, 0);
+  document.getElementById('app-main').scrollTo(0, 0);
+}
+
+// ── CHIPS ──
+function getChips() {
+  return [...document.querySelectorAll('#chipRow .chip.on')].map(c => c.dataset.tag);
+}
+function setChips(tags) {
+  document.querySelectorAll('#chipRow .chip').forEach(c => {
+    c.classList.toggle('on', tags.includes(c.dataset.tag));
+  });
+}
+document.querySelectorAll('#chipRow .chip').forEach(c => {
+  c.addEventListener('click', () => c.classList.toggle('on'));
+});
+
+// ── CHARTS ──
+function renderCharts() {
+  const gEntries  = entries.filter(e => e.glucose != null && e.glucose !== '');
+  const g2Entries = entries.filter(e => e.glucose2hr != null && e.glucose2hr !== '');
+  const wEntries  = entries.filter(e => e.weight != null && e.weight !== '');
+
+  const allGDates = [...new Set([...gEntries.map(e=>e.date), ...g2Entries.map(e=>e.date)])].sort();
+
+  const gCtx = document.getElementById('glucoseChart').getContext('2d');
+  const wCtx = document.getElementById('weightChart').getContext('2d');
+  if (glucoseChart) glucoseChart.destroy();
+  if (weightChart)  weightChart.destroy();
+
+  const chartDefaults = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    elements: { point: { radius: 4, hoverRadius: 6 } }
+  };
+
+  glucoseChart = new Chart(gCtx, {
+    type: 'line',
+    data: {
+      labels: allGDates.map(fmtDate),
+      datasets: [
+        {
+          label: 'Fasting',
+          data: allGDates.map(d => { const e = gEntries.find(x=>x.date===d); return e ? parseFloat(e.glucose) : null; }),
+          borderColor: '#1B4B43', backgroundColor: 'rgba(27,75,67,0.08)',
+          pointBackgroundColor: allGDates.map(d => {
+            const e = gEntries.find(x=>x.date===d);
+            return e ? (parseFloat(e.glucose) < GLUCOSE_TARGET ? '#3D7A5C' : '#C25B3E') : 'transparent';
+          }),
+          pointRadius: allGDates.map(d => gEntries.find(x=>x.date===d) ? 4 : 0),
+          tension: 0.3, spanGaps: false, fill: false
+        },
+        {
+          label: '2hr Post-Meal',
+          data: allGDates.map(d => { const e = g2Entries.find(x=>x.date===d); return e ? parseFloat(e.glucose2hr) : null; }),
+          borderColor: '#D9714E', backgroundColor: 'rgba(217,113,78,0.08)',
+          borderDash: [4, 2],
+          pointBackgroundColor: allGDates.map(d => {
+            const e = g2Entries.find(x=>x.date===d);
+            return e ? (parseFloat(e.glucose2hr) < GLUCOSE_2HR_TARGET ? '#3D7A5C' : '#C25B3E') : 'transparent';
+          }),
+          pointRadius: allGDates.map(d => g2Entries.find(x=>x.date===d) ? 4 : 0),
+          tension: 0.3, spanGaps: false, fill: false
+        },
+        { label: 'Fast target', data: allGDates.map(()=>GLUCOSE_TARGET), borderColor:'rgba(143,169,152,0.4)', borderDash:[4,4], pointRadius:0, fill:false },
+        { label: 'Meal target', data: allGDates.map(()=>GLUCOSE_2HR_TARGET), borderColor:'rgba(217,113,78,0.3)', borderDash:[4,4], pointRadius:0, fill:false }
+      ]
+    },
+    options: { ...chartDefaults, scales: {
+      y: { beginAtZero:false, grid:{color:'#F0EDE6'}, ticks:{font:{family:'IBM Plex Mono',size:10}} },
+      x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10}, maxRotation:0} }
+    }}
+  });
+
+  weightChart = new Chart(wCtx, {
+    type: 'line',
+    data: {
+      labels: wEntries.map(e => fmtDate(e.date)),
+      datasets: [
+        { label:'Weight', data: wEntries.map(e=>parseFloat(e.weight)), borderColor:'#1B4B43', backgroundColor:'rgba(27,75,67,0.08)', pointBackgroundColor:'#1B4B43', tension:0.3, fill:true },
+        { label:'Goal', data: wEntries.map(()=>goalWeight), borderColor:'rgba(217,113,78,0.6)', borderDash:[4,4], pointRadius:0, fill:false }
+      ]
+    },
+    options: { ...chartDefaults, scales: {
+      y: { grid:{color:'#F0EDE6'}, ticks:{font:{family:'IBM Plex Mono',size:10}} },
+      x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10}, maxRotation:0} }
+    }}
+  });
+
+  // A1C chart
+  const aCtxEl = document.getElementById('a1cChart');
+  if (aCtxEl) {
+    const aCtx = aCtxEl.getContext('2d');
+    if (a1cChart) a1cChart.destroy();
+    const sortedLabs = [...labs].sort((a,b) => a.date.localeCompare(b.date));
+    a1cChart = new Chart(aCtx, {
+      type: 'line',
+      data: {
+        labels: sortedLabs.map(l => fmtDate(l.date)),
+        datasets: [
+          { label:'A1C', data: sortedLabs.map(l => l.a1c), borderColor:'#1B4B43', backgroundColor:'rgba(27,75,67,0.08)',
+            pointBackgroundColor: sortedLabs.map(l => l.a1c < 5.7 ? '#3D7A5C' : (l.a1c < 6.5 ? '#8FA998' : '#C25B3E')),
+            pointRadius: 5, tension: 0.3, fill: true },
+          { label:'Diabetic threshold', data: sortedLabs.map(() => 6.5), borderColor:'rgba(143,169,152,0.5)', borderDash:[4,4], pointRadius:0, fill:false },
+          { label:'Normal', data: sortedLabs.map(() => 5.7), borderColor:'rgba(217,113,78,0.4)', borderDash:[4,4], pointRadius:0, fill:false }
+        ]
+      },
+      options: { ...chartDefaults, scales: {
+        y: { min: 4.5, max: 8, grid:{color:'#F0EDE6'}, ticks:{font:{family:'IBM Plex Mono',size:10}} },
+        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10}, maxRotation:0} }
+      }}
+    });
+  }
+}
+
+// ── NAVIGATION ──
+const views   = document.querySelectorAll('.view');
+const navItems = document.querySelectorAll('.nav-item');
+
+function showView(name) {
+  views.forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+  navItems.forEach(n => n.classList.toggle('active', n.dataset.view === name));
+  if (name === 'charts') setTimeout(renderCharts, 50);
+  if (name === 'history') renderHistory();
+}
+
+navItems.forEach(n => n.addEventListener('click', () => showView(n.dataset.view)));
+document.getElementById('quickLogBtn').addEventListener('click', () => showView('log'));
+document.getElementById('settingsNavBtn').addEventListener('click', () => showView('settings'));
+
+// ── LOG FORM ──
+function todayDefault() {
+  document.getElementById('fDate').value = todayStr();
+}
+
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const date = document.getElementById('fDate').value;
+  if (!date) { alert('Please select a date.'); return; }
+
+  const gRaw  = document.getElementById('fGlucose').value;
+  const g2Raw = document.getElementById('fGlucose2hr').value;
+  const wRaw  = document.getElementById('fWeight').value;
+
+  // ── Sanity checks ──
+  const warnings = [];
+  if (gRaw && (parseFloat(gRaw) < 40 || parseFloat(gRaw) > 400))
+    warnings.push(`Fasting glucose of ${gRaw} looks unusual (expected 40–400).`);
+  if (g2Raw && (parseFloat(g2Raw) < 40 || parseFloat(g2Raw) > 400))
+    warnings.push(`Post-meal glucose of ${g2Raw} looks unusual (expected 40–400).`);
+  if (wRaw) {
+    const w = parseFloat(wRaw);
+    if (w < 75 || w > 500) {
+      warnings.push(`Weight of ${wRaw} lbs looks unusual.`);
+    } else {
+      const prevW = entries.filter(e => e.weight && e.date !== date).slice(-1)[0];
+      if (prevW && Math.abs(w - parseFloat(prevW.weight)) > 10)
+        warnings.push(`Weight changed ${Math.abs(w - parseFloat(prevW.weight)).toFixed(1)} lbs since your last weigh-in — double-check for a typo.`);
+    }
+  }
+  if (warnings.length && !confirm(warnings.join('\n') + '\n\nSave anyway?')) return;
+
+  const entry = {
+    date,
+    glucose:    gRaw  || null,
+    glucose2hr: g2Raw || null,
+    weight:     wRaw  || null,
+    dose:       document.getElementById('fDose').value || null,
+    injection:  document.getElementById('fInjection').checked,
+    notes:      document.getElementById('fNotes').value || '',
+    tags:       getChips()
+  };
+
+  // Remove nulls / empty (keep tags array + injection flag as-is when editing)
+  Object.keys(entry).forEach(k => {
+    if (entry[k] === null || entry[k] === '') delete entry[k];
+  });
+  if (!entry.tags || !entry.tags.length) delete entry.tags;
+  entry.date = date;
+
+  const ref = doc(db, 'trackers', syncId, 'entries', date);
+  if (editingLoaded) {
+    // Full replace — the form represents the complete entry
+    await setDoc(ref, entry);
+  } else {
+    await setDoc(ref, entry, { merge: true });
+  }
+  editingLoaded = false;
+
+  const msg = document.getElementById('saveMsg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 2000);
+  clearLogForm();
+});
+
+function clearLogForm() {
+  document.getElementById('fGlucose').value = '';
+  document.getElementById('fGlucose2hr').value = '';
+  document.getElementById('fWeight').value = '';
+  document.getElementById('fDose').value = '';
+  document.getElementById('fInjection').checked = false;
+  document.getElementById('fNotes').value = '';
+  setChips([]);
+  editingLoaded = false;
+  todayDefault();
+}
+
+document.getElementById('clearBtn').addEventListener('click', clearLogForm);
+
+// ── LABS ──
+document.getElementById('saveLabBtn').addEventListener('click', async () => {
+  const date = document.getElementById('labDate').value;
+  const a1c  = parseFloat(document.getElementById('labA1c').value);
+  if (!date) { alert('Please select the lab date.'); return; }
+  if (!a1c || a1c < 3 || a1c > 20) { alert('Please enter a valid A1C (3–20%).'); return; }
+  const ref = doc(db, 'trackers', syncId, 'labs', date);
+  await setDoc(ref, { date, a1c }, { merge: true });
+  const msg = document.getElementById('labSaveMsg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 2000);
+  document.getElementById('labDate').value = '';
+  document.getElementById('labA1c').value = '';
+});
+
+async function deleteLab(date) {
+  if (!confirm(`Delete lab result from ${fmtDateFull(date)}?`)) return;
+  await deleteDoc(doc(db, 'trackers', syncId, 'labs', date));
+}
+
+function renderLabs() {
+  const list = document.getElementById('labList');
+  if (!labs.length) {
+    list.innerHTML = '<div style="text-align:center;padding:12px;color:var(--ink-soft);font-size:12px">No lab results yet — log your quarterly A1C in the Log tab.</div>';
+    return;
+  }
+  const sorted = [...labs].sort((a,b) => b.date.localeCompare(a.date));
+  list.innerHTML = sorted.map(l => `
+    <div class="lab-row">
+      <span>${fmtDateFull(l.date)}</span>
+      <span style="display:flex;align-items:center;gap:10px">
+        <span class="lab-val">${l.a1c}%</span>
+        <button class="entry-del" data-labdate="${l.date}">✕</button>
+      </span>
+    </div>`).join('');
+  list.querySelectorAll('[data-labdate]').forEach(btn => {
+    btn.addEventListener('click', () => deleteLab(btn.dataset.labdate));
+  });
+}
+
+// ── CSV EXPORT ──
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  const esc = v => {
+    if (v == null) return '';
+    const s = String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  let csv = 'type,date,fasting_glucose,post_meal_glucose,weight_lbs,dose_mg,injection_day,side_effects,notes,a1c_pct\n';
+  [...entries].sort((a,b) => a.date.localeCompare(b.date)).forEach(e => {
+    csv += ['entry', e.date, e.glucose||'', e.glucose2hr||'', e.weight||'', e.dose||'',
+            e.injection ? 'yes' : '', (e.tags||[]).join('; '), e.notes||'', ''].map(esc).join(',') + '\n';
+  });
+  [...labs].sort((a,b) => a.date.localeCompare(b.date)).forEach(l => {
+    csv += ['lab', l.date, '', '', '', '', '', '', '', l.a1c].map(esc).join(',') + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mounjaro-tracker-export-${todayStr()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// ── HISTORY SEARCH ──
+document.getElementById('historySearch').addEventListener('input', renderHistory);
+
+// ── SETTINGS ──
+document.getElementById('switchIdBtn').addEventListener('click', () => {
+  document.getElementById('existingIdInput').value = '';
+  showSyncModal(false);
+});
+
+document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+  const b = parseFloat(document.getElementById('setBaseline').value);
+  const g = parseFloat(document.getElementById('setGoal').value);
+  if (!b || b < 50 || b > 700) { alert('Please enter a valid baseline weight.'); return; }
+  if (!g || g < 50 || g > 700) { alert('Please enter a valid goal weight.'); return; }
+  const settingsRef = doc(db, 'trackers', syncId, 'meta', 'settings');
+  await setDoc(settingsRef, { baselineWeight: b, goalWeight: g }, { merge: true });
+  const msg = document.getElementById('setSaveMsg');
+  msg.textContent = '✓ Saved and synced';
+  msg.style.color = 'var(--in)';
+  setTimeout(() => msg.textContent = '', 2500);
+});
+
+document.getElementById('syncIdPill').addEventListener('click', () => {
+  if (!syncId) return;
+  navigator.clipboard?.writeText(syncId).then(() => {
+    document.getElementById('syncIdPill').textContent = '✓ Copied!';
+    setTimeout(() => document.getElementById('syncIdPill').textContent = syncId.slice(0,8)+'…', 2000);
+  });
+});
+
+// ── PRINT ──
+function doPrint() {
+  document.getElementById('printDate').textContent = 'Printed ' + new Date().toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+  showView('dashboard');
+  setTimeout(() => window.print(), 200);
+}
+document.getElementById('printBtn').addEventListener('click', doPrint);
+document.getElementById('printBtnSettings').addEventListener('click', doPrint);
+
+// ── SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// ── BOOT ──
+todayDefault();
+initSyncId();
+// Failsafe: never leave the loading screen up more than 6s
+setTimeout(hideLoading, 6000);
+</script>
+</body>
+</html>
