@@ -1,4 +1,4 @@
-const CACHE = 'mounjaro-v6';
+const CACHE = 'mounjaro-v7';
 const SHELL = [
   './',
   './manifest.json',

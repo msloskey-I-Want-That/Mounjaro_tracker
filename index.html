@@ -647,6 +647,11 @@ body {
           <div class="sc-value" id="scGlucose2hr">—</div>
           <div class="sc-sub" id="scGlucose2hrSub">target: under 180</div>
         </div>
+        <div class="stat-card wide">
+          <div class="sc-label">Protein Today</div>
+          <div class="sc-value" id="scProtein">—</div>
+          <div class="sc-sub" id="scProteinSub">target: 100–120g daily</div>
+        </div>
       </div>
 
       <div class="timeline-card">
@@ -712,6 +717,24 @@ body {
               <option value="15">15 mg</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-section-title">Food & Protein</div>
+        <div class="field-row">
+          <div class="field">
+            <label for="fProtein">Protein today (g)</label>
+            <input type="number" id="fProtein" inputmode="numeric" placeholder="e.g. 105">
+          </div>
+          <div class="field">
+            <label for="fCalories">Calories (optional)</label>
+            <input type="number" id="fCalories" inputmode="numeric" placeholder="e.g. 1850">
+          </div>
+        </div>
+        <div class="field">
+          <label for="fFood">What you ate</label>
+          <input type="text" id="fFood" placeholder="e.g. eggs, protein shake, chicken + rice">
         </div>
       </div>
 
@@ -785,6 +808,14 @@ body {
         <div class="chart-legend">
           <span><span class="legend-dot" style="background:#1B4B43"></span>Weight</span>
           <span><span class="legend-dot" style="background:#D9714E"></span>Goal (<span id="legendGoal">197</span> lbs)</span>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Daily Protein</div>
+        <div class="chart-wrap"><canvas id="proteinChart"></canvas></div>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:#1B4B43"></span>Protein (g)</span>
+          <span><span class="legend-dot" style="background:#8FA998"></span>100g minimum target</span>
         </div>
       </div>
       <div class="chart-card">
@@ -923,6 +954,7 @@ let editingLoaded = false;
 let glucoseChart = null;
 let weightChart  = null;
 let a1cChart     = null;
+let proteinChart = null;
 
 // ── UTILS ──
 function genUUID() {
@@ -1184,6 +1216,21 @@ function updateStats() {
     g2Sub.textContent = avg2 < GLUCOSE_2HR_TARGET ? 'in target range ✓' : 'above target (180)';
     g2Sub.className   = avg2 < GLUCOSE_2HR_TARGET ? 'sc-sub good' : 'sc-sub warn';
   } else { g2El.textContent = '—'; g2Sub.textContent = 'target: under 180'; g2Sub.className = 'sc-sub'; }
+
+  // Protein today
+  const todayEntry = entries.find(e => e.date === todayStr());
+  const pEl  = document.getElementById('scProtein');
+  const pSub = document.getElementById('scProteinSub');
+  if (todayEntry && todayEntry.protein) {
+    const p = parseFloat(todayEntry.protein);
+    pEl.textContent = p + ' g';
+    if (p >= 100) { pSub.textContent = 'target hit ✓'; pSub.className = 'sc-sub good'; }
+    else { pSub.textContent = (100 - p) + 'g to go — target: 100–120g'; pSub.className = 'sc-sub'; }
+  } else {
+    pEl.textContent = '—';
+    pSub.textContent = 'target: 100–120g daily';
+    pSub.className = 'sc-sub';
+  }
 }
 
 // ── TIMELINE ──
@@ -1211,6 +1258,7 @@ function renderHistory() {
   const sorted = [...entries].sort((a,b) => b.date.localeCompare(a.date));
   const filtered = search ? sorted.filter(e =>
     (e.notes||'').toLowerCase().includes(search) ||
+    (e.food||'').toLowerCase().includes(search) ||
     (e.tags||[]).some(t => t.toLowerCase().includes(search))
   ) : sorted;
 
@@ -1229,6 +1277,8 @@ function renderHistory() {
     if (g2Val != null) metrics += `<span class="metric-pill ${g2Val < GLUCOSE_2HR_TARGET ? 'in-range' : 'out-range'}">2hr ${g2Val} mg/dL</span>`;
     if (wVal != null)  metrics += `<span class="metric-pill neutral">⚖️ ${wVal.toFixed(1)} lbs</span>`;
     if (e.dose)        metrics += `<span class="metric-pill neutral">💉 ${e.dose}mg</span>`;
+    if (e.protein)     metrics += `<span class="metric-pill ${parseFloat(e.protein) >= 100 ? 'in-range' : 'neutral'}">🥩 ${e.protein}g protein</span>`;
+    if (e.calories)    metrics += `<span class="metric-pill neutral">🔥 ${e.calories} cal</span>`;
     if (e.tags && e.tags.length) metrics += e.tags.map(t => `<span class="tag-pill">${t}</span>`).join('');
 
     const badge = e.injection ? '<span class="entry-badge injection">💉 Injection day</span>' : (e.dose ? `<span class="entry-badge">${e.dose}mg</span>` : '');
@@ -1243,6 +1293,7 @@ function renderHistory() {
         </div>
       </div>
       ${metrics ? `<div class="entry-metrics">${metrics}</div>` : ''}
+      ${e.food ? `<div class="entry-notes">🍽 ${e.food}</div>` : ''}
       ${e.notes ? `<div class="entry-notes">${e.notes}</div>` : ''}
     </div>`;
   }).join('');
@@ -1266,6 +1317,9 @@ function editEntry(date) {
   document.getElementById('fDose').value       = e.dose       || '';
   document.getElementById('fInjection').checked = !!e.injection;
   document.getElementById('fNotes').value      = e.notes      || '';
+  document.getElementById('fProtein').value    = e.protein    || '';
+  document.getElementById('fCalories').value   = e.calories   || '';
+  document.getElementById('fFood').value       = e.food       || '';
   setChips(e.tags || []);
   editingLoaded = true;
   showView('log');
@@ -1358,6 +1412,31 @@ function renderCharts() {
     }}
   });
 
+  // Protein chart
+  const pCtxEl = document.getElementById('proteinChart');
+  if (pCtxEl) {
+    const pCtx = pCtxEl.getContext('2d');
+    if (proteinChart) proteinChart.destroy();
+    const pEntries = entries.filter(e => e.protein != null && e.protein !== '');
+    proteinChart = new Chart(pCtx, {
+      type: 'bar',
+      data: {
+        labels: pEntries.map(e => fmtDate(e.date)),
+        datasets: [
+          { label:'Protein', data: pEntries.map(e => parseFloat(e.protein)),
+            backgroundColor: pEntries.map(e => parseFloat(e.protein) >= 100 ? 'rgba(27,75,67,0.75)' : 'rgba(143,169,152,0.5)'),
+            borderRadius: 4 },
+          { label:'Min target', type:'line', data: pEntries.map(() => 100),
+            borderColor:'rgba(143,169,152,0.6)', borderDash:[4,4], pointRadius:0, fill:false }
+        ]
+      },
+      options: { ...chartDefaults, scales: {
+        y: { beginAtZero: true, grid:{color:'#F0EDE6'}, ticks:{font:{family:'IBM Plex Mono',size:10}} },
+        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10}, maxRotation:0} }
+      }}
+    });
+  }
+
   // A1C chart
   const aCtxEl = document.getElementById('a1cChart');
   if (aCtxEl) {
@@ -1432,6 +1511,9 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         warnings.push(`Weight changed ${Math.abs(w - parseFloat(prevW.weight)).toFixed(1)} lbs since your last weigh-in — double-check for a typo.`);
     }
   }
+  const pRaw = document.getElementById('fProtein').value;
+  if (pRaw && (parseFloat(pRaw) < 0 || parseFloat(pRaw) > 400))
+    warnings.push(`Protein of ${pRaw}g looks unusual (expected 0–400).`);
   if (warnings.length && !confirm(warnings.join('\n') + '\n\nSave anyway?')) return;
 
   const entry = {
@@ -1442,6 +1524,9 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     dose:       document.getElementById('fDose').value || null,
     injection:  document.getElementById('fInjection').checked,
     notes:      document.getElementById('fNotes').value || '',
+    protein:    document.getElementById('fProtein').value || null,
+    calories:   document.getElementById('fCalories').value || null,
+    food:       document.getElementById('fFood').value || '',
     tags:       getChips()
   };
 
@@ -1474,6 +1559,9 @@ function clearLogForm() {
   document.getElementById('fDose').value = '';
   document.getElementById('fInjection').checked = false;
   document.getElementById('fNotes').value = '';
+  document.getElementById('fProtein').value = '';
+  document.getElementById('fCalories').value = '';
+  document.getElementById('fFood').value = '';
   setChips([]);
   editingLoaded = false;
   todayDefault();
@@ -1528,13 +1616,14 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
     const s = String(v);
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
-  let csv = 'type,date,fasting_glucose,post_meal_glucose,weight_lbs,dose_mg,injection_day,side_effects,notes,a1c_pct\n';
+  let csv = 'type,date,fasting_glucose,post_meal_glucose,weight_lbs,dose_mg,injection_day,protein_g,calories,food,side_effects,notes,a1c_pct\n';
   [...entries].sort((a,b) => a.date.localeCompare(b.date)).forEach(e => {
     csv += ['entry', e.date, e.glucose||'', e.glucose2hr||'', e.weight||'', e.dose||'',
-            e.injection ? 'yes' : '', (e.tags||[]).join('; '), e.notes||'', ''].map(esc).join(',') + '\n';
+            e.injection ? 'yes' : '', e.protein||'', e.calories||'', e.food||'',
+            (e.tags||[]).join('; '), e.notes||'', ''].map(esc).join(',') + '\n';
   });
   [...labs].sort((a,b) => a.date.localeCompare(b.date)).forEach(l => {
-    csv += ['lab', l.date, '', '', '', '', '', '', '', l.a1c].map(esc).join(',') + '\n';
+    csv += ['lab', l.date, '', '', '', '', '', '', '', '', '', '', l.a1c].map(esc).join(',') + '\n';
   });
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
