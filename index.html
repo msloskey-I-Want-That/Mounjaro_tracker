@@ -884,7 +884,7 @@ body {
 </div>
 
 <!-- ── REST TIMER POPUP (workout sets) ── -->
-<div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="restTimerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.35);z-index:600"></div>
+<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="restTimerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.35);z-index:600"></div>
 <div id="restTimerWrap" style="display:none;flex-direction:column;align-items:center;gap:8px;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1.5px solid var(--teal);border-radius:18px;padding:24px 30px;box-shadow:0 14px 44px rgba(0,0,0,0.32);z-index:601;min-width:190px;text-align:center">
   <span id="restTimerLabel" style="font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em">⏱ Rest</span>
   <span id="restTimerDisplay" style="font-family:'IBM Plex Mono',monospace;font-size:42px;font-weight:700;color:var(--teal);line-height:1.1">2:00</span>
@@ -1289,7 +1289,7 @@ body {
 
       <div class="log-subpanel" id="logSub-meds" style="display:none">
         <div class="form-card">
-          <div class="form-section-title" id="medFormTitle">Add Medication</div>
+          <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span id="medFormTitle">Add Medication</span><span id="addMedChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
           <div class="field-row">
             <div class="field">
               <label for="medName">Medication</label>
@@ -6970,7 +6970,7 @@ let lastAutoFilledMin = null; // so auto-fill never overwrites a value you typed
 let restTimerEndTime = null;
 let restTimerInterval = null;
 let restTimerAutoHideTimer = null; let restTimerContext = null;
-let workoutStartedAt = null; let workoutModalOpen = false; let workoutCardHomeParent = null; let workoutCardHomeNext = null; let exerciseModalOpen = false; let exerciseCardHomeParent = null; let exerciseCardHomeNext = null; // in-memory only, same as workoutSessionState — resets on reload
+let workoutStartedAt = null; let workoutModalOpen = false; let workoutCardHomeParent = null; let workoutCardHomeNext = null; let exerciseModalOpen = false; let exerciseCardHomeParent = null; let exerciseCardHomeNext = null; let entryPopupCard = null; let entryPopupHomeParent = null; let entryPopupHomeNext = null; // in-memory only, same as workoutSessionState — resets on reload
 // User-added/removed exercises per plan ('A', 'B', or 'fullbody'), synced to
 // Firestore so they stick around instead of resetting every session.
 let customWorkoutExercises = { A: [], B: [], fullbody: [] };
@@ -7105,7 +7105,7 @@ function computeAutoWorkoutDuration() {
 // Fills the Minutes field live as you check off sets — but only while
 // it's still empty or still showing a value we auto-filled ourselves,
 // so it never overwrites something you typed in on purpose.
-function setWorkoutFullscreen(open) { workoutModalOpen = open; const card = document.getElementById('workoutPlanCard'); const closeBtn = document.getElementById('workoutFullscreenCloseBtn'); const wBackdrop = document.getElementById('workoutFullscreenBackdrop'); if (card) { card.classList.toggle('workout-fullscreen', open); if (wBackdrop) wBackdrop.style.display = open ? 'block' : 'none'; if (open) { workoutCardHomeParent = card.parentNode; workoutCardHomeNext = card.nextSibling; document.body.appendChild(card); } else if (workoutCardHomeParent) { if (workoutCardHomeNext && workoutCardHomeNext.parentNode === workoutCardHomeParent) { workoutCardHomeParent.insertBefore(card, workoutCardHomeNext); } else { workoutCardHomeParent.appendChild(card); } } } if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open && card) card.scrollTop = 0; } function autoFillWorkoutDuration() {
+function openPopupCard(card) { if (!card || entryPopupCard === card) return; if (entryPopupCard) closePopupCard(); entryPopupCard = card; entryPopupHomeParent = card.parentNode; entryPopupHomeNext = card.nextSibling; document.body.appendChild(card); card.classList.add('workout-fullscreen'); const bd = document.getElementById('entryPopupBackdrop'); if (bd) bd.style.display = 'block'; card.scrollTop = 0; } function closePopupCard() { if (!entryPopupCard) return; const card = entryPopupCard; card.classList.remove('workout-fullscreen'); if (entryPopupHomeNext && entryPopupHomeNext.parentNode === entryPopupHomeParent) { entryPopupHomeParent.insertBefore(card, entryPopupHomeNext); } else if (entryPopupHomeParent) { entryPopupHomeParent.appendChild(card); } const bd = document.getElementById('entryPopupBackdrop'); if (bd) bd.style.display = 'none'; entryPopupCard = null; entryPopupHomeParent = null; entryPopupHomeNext = null; } function setWorkoutFullscreen(open) { workoutModalOpen = open; const card = document.getElementById('workoutPlanCard'); const closeBtn = document.getElementById('workoutFullscreenCloseBtn'); const wBackdrop = document.getElementById('workoutFullscreenBackdrop'); if (card) { card.classList.toggle('workout-fullscreen', open); if (wBackdrop) wBackdrop.style.display = open ? 'block' : 'none'; if (open) { workoutCardHomeParent = card.parentNode; workoutCardHomeNext = card.nextSibling; document.body.appendChild(card); } else if (workoutCardHomeParent) { if (workoutCardHomeNext && workoutCardHomeNext.parentNode === workoutCardHomeParent) { workoutCardHomeParent.insertBefore(card, workoutCardHomeNext); } else { workoutCardHomeParent.appendChild(card); } } } if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open && card) card.scrollTop = 0; } function autoFillWorkoutDuration() {
   const auto = computeAutoWorkoutDuration();
   if (!auto) return;
   const minInput = document.getElementById('exMin');
@@ -7313,7 +7313,7 @@ document.getElementById('restTimerSkipBtn').addEventListener('click', () => {
   hideRestTimerPopup();
 });
 document.getElementById('restTimerBackdrop').addEventListener('click', () => {
-  document.getElementById('restTimerSkipBtn').click(); document.getElementById('workoutFullscreenCloseBtn').addEventListener('click', () => setWorkoutFullscreen(false)); document.getElementById('workoutFullscreenBackdrop').addEventListener('click', () => setWorkoutFullscreen(false));
+  document.getElementById('restTimerSkipBtn').click(); document.getElementById('workoutFullscreenCloseBtn').addEventListener('click', () => setWorkoutFullscreen(false)); document.getElementById('workoutFullscreenBackdrop').addEventListener('click', () => setWorkoutFullscreen(false)); document.getElementById('entryPopupBackdrop').addEventListener('click', () => { if (entryPopupCard) { const t = entryPopupCard.querySelector('.form-section-title'); if (t) t.click(); } });
 });
 
 function currentPlanKey() {
@@ -8842,7 +8842,7 @@ let ringSearchResults = {};
 // for screen space even though most people only use a couple regularly.
 // "Add Food" and "Review & Add" default open since they're the core flow;
 // the three AI methods default closed since they're used more occasionally.
-function makeFoodCardCollapsible(cardId, chevronId, storageKey, defaultExpanded) {
+function makeFoodCardCollapsible(cardId, chevronId, storageKey, defaultExpanded, popupOnExpand) {
   const card = document.getElementById(cardId);
   const chevron = document.getElementById(chevronId);
   if (!card || !chevron) return null;
@@ -8866,16 +8866,16 @@ function makeFoodCardCollapsible(cardId, chevronId, storageKey, defaultExpanded)
     const isExpanded = content.style.display !== 'none';
     content.style.display = isExpanded ? 'none' : '';
     chevron.textContent = isExpanded ? '▶' : '▼';
-    localStorage.setItem(storageKey, String(!isExpanded));
+    localStorage.setItem(storageKey, String(!isExpanded)); if (popupOnExpand) { if (!isExpanded) { openPopupCard(card); } else { closePopupCard(); } }
   });
 
   return content;
 }
 
-makeFoodCardCollapsible('addFoodCard', 'addFoodChevron', 'mounjaro-foodcard-addfood', true);
-makeFoodCardCollapsible('photoEstimateCard', 'photoEstimateChevron', 'mounjaro-foodcard-photo', false);
-makeFoodCardCollapsible('labelScanCard', 'labelScanChevron', 'mounjaro-foodcard-label', false);
-makeFoodCardCollapsible('recipeEstimateCard', 'recipeEstimateChevron', 'mounjaro-foodcard-recipe', false);
+makeFoodCardCollapsible('addFoodCard', 'addFoodChevron', 'mounjaro-foodcard-addfood', true, true);
+makeFoodCardCollapsible('photoEstimateCard', 'photoEstimateChevron', 'mounjaro-foodcard-photo', false, true);
+makeFoodCardCollapsible('labelScanCard', 'labelScanChevron', 'mounjaro-foodcard-label', false, true);
+makeFoodCardCollapsible('recipeEstimateCard', 'recipeEstimateChevron', 'mounjaro-foodcard-recipe', false, true);
 makeFoodCardCollapsible('reviewAddCard', 'reviewAddChevron', 'mounjaro-foodcard-review', true);
 makeFoodCardCollapsible('workoutPlanCard', 'workoutPlanChevron', 'mounjaro-workoutplan-expanded', true);
 makeFoodCardCollapsible('measurementsCard', 'measurementsChevron', 'mounjaro-measurements-expanded', false);
@@ -8883,7 +8883,7 @@ makeFoodCardCollapsible('measurementsCard', 'measurementsChevron', 'mounjaro-mea
 // Daily Log's two cards — Quick Log stays open (it's the daily-use one),
 // Full Log starts collapsed (it's the once-a-week pass).
 makeFoodCardCollapsible('quickLogCard', 'quickLogChevron', 'mounjaro-quicklog-expanded', true);
-makeFoodCardCollapsible('fullLogCard', 'fullLogChevron', 'mounjaro-fulllog-expanded', false);
+makeFoodCardCollapsible('fullLogCard', 'fullLogChevron', 'mounjaro-fulllog-expanded', false, true);
 
 // Log tab sub-sections — Medications / Results / Daily Log. Folded in here
 // instead of new bottom-nav items so the nav bar doesn't keep growing as
@@ -9816,7 +9816,7 @@ async function scanLabReport(file) {
     // it starts collapsed, and a fill you can't see is easy to miss entirely.
     const panelContent = document.getElementById('labPanelCardContent');
     const panelChevron = document.getElementById('labPanelChevron');
-    if (panelContent) { panelContent.style.display = ''; if (panelChevron) panelChevron.textContent = '▼'; }
+    if (panelContent) { panelContent.style.display = ''; if (panelChevron) panelChevron.textContent = '▼'; openPopupCard(document.getElementById('labPanelCard')); }
     box.innerHTML = `<div class="lookup-status">Filled in ${filled} value${filled !== 1 ? 's' : ''} below — review them, then tap Save Lab Panel.</div>`;
   } catch (err) {
     console.error(err);
@@ -9825,7 +9825,7 @@ async function scanLabReport(file) {
 }
 
 makeFoodCardCollapsible('labScanCard', 'labScanChevron', 'mounjaro-labscan-expanded', false);
-makeFoodCardCollapsible('labPanelCard', 'labPanelChevron', 'mounjaro-labpanel-expanded', false);
+makeFoodCardCollapsible('labPanelCard', 'labPanelChevron', 'mounjaro-labpanel-expanded', false, true); (function(){ const t = document.getElementById('medFormTitle'); const c = t && t.closest('.form-card'); if (c) c.id = 'addMedCard'; })(); makeFoodCardCollapsible('addMedCard', 'addMedChevron', 'mounjaro-addmed-expanded', true, true);
 
 // ── MEDICATIONS ──
 // A simple reference list of current medications (name/dose/frequency/
