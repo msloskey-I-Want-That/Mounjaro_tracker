@@ -6969,7 +6969,7 @@ let workoutSessionState = {}; // { exerciseName: [{weight, reps, done, checkedAt
 let lastAutoFilledMin = null; // so auto-fill never overwrites a value you typed yourself
 let restTimerEndTime = null;
 let restTimerInterval = null;
-let restTimerAutoHideTimer = null;
+let restTimerAutoHideTimer = null; let restTimerContext = null;
 let workoutStartedAt = null; // in-memory only, same as workoutSessionState — resets on reload
 // User-added/removed exercises per plan ('A', 'B', or 'fullbody'), synced to
 // Firestore so they stick around instead of resetting every session.
@@ -7160,7 +7160,7 @@ function updateRestTimerDisplay() {
     if (restTimerInterval) { clearInterval(restTimerInterval); restTimerInterval = null; }
     restTimerEndTime = null;
     playRestEndAlert();
-    showRestTimerDone();
+    showRestTimerDone(); focusNextSetInput();
   }
 }
 
@@ -7213,7 +7213,7 @@ function showRestTimerDone() {
   restTimerAutoHideTimer = setTimeout(hideRestTimerPopup, 8000);
 }
 
-function workoutNudgeHtml() {
+function focusNextSetInput() { if (!restTimerContext) return; const ctx = restTimerContext; restTimerContext = null; const names = Object.keys(workoutSessionState); let tName = null, tIdx = -1; const sets = workoutSessionState[ctx.exerciseName] || []; tIdx = sets.findIndex((s, i) => i > ctx.setIdx && !s.done); if (tIdx !== -1) { tName = ctx.exerciseName; } else { const exIdx = names.indexOf(ctx.exerciseName); for (let i = exIdx + 1; i < names.length; i++) { const firstUndone = workoutSessionState[names[i]].findIndex(s => !s.done); if (firstUndone !== -1) { tName = names[i]; tIdx = firstUndone; break; } } } if (!tName) return; const row = document.querySelector('.set-row[data-exercise="' + CSS.escape(tName) + '"][data-set-idx="' + tIdx + '"]'); const wIn = row && row.querySelector('.set-weight-input'); if (wIn) { wIn.focus(); wIn.select(); } } function workoutNudgeHtml() {
   const days = daysSinceLastWorkout();
   let text, color;
   if (days === null) { text = 'No strength workouts logged yet — let\'s start the streak today.'; color = 'var(--ink-soft)'; }
@@ -7270,7 +7270,7 @@ function wireWorkoutPlanEvents() {
       workoutSessionState[exName][idx].done = !wasDone;
       if (!wasDone) {
         workoutSessionState[exName][idx].checkedAt = Date.now();
-        startRestTimer(getExerciseRestSeconds(exName));
+        restTimerContext = { exerciseName: exName, setIdx: idx }; startRestTimer(getExerciseRestSeconds(exName));
         autoFillWorkoutDuration();
       } else {
         delete workoutSessionState[exName][idx].checkedAt;
