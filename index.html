@@ -7508,7 +7508,7 @@ function renderExList() {
   }
   const sleepInput = document.getElementById('exSleepInput');
   if (sleepInput && document.activeElement !== sleepInput) {
-    sleepInput.value = de && de.sleepHrs ? de.sleepHrs : '';
+    sleepInput.value = de && de.sleepHrs ? parseFloat(de.sleepHrs).toFixed(2) : '';
   }
   // Sleep score display for the selected date
   const sleepScoreEl = document.getElementById('exViewSleepScore');
@@ -7517,7 +7517,7 @@ function renderExList() {
   }
   const sleepScoreInput = document.getElementById('exSleepScoreInput');
   if (sleepScoreInput && document.activeElement !== sleepScoreInput) {
-    sleepScoreInput.value = de && de.sleepScore ? de.sleepScore : '';
+    sleepScoreInput.value = de && de.sleepScore ? Math.round(parseFloat(de.sleepScore)) : '';
   }
   // Active energy display for the selected date
   const activeCalEl = document.getElementById('exViewActiveCal');
@@ -7526,7 +7526,7 @@ function renderExList() {
   }
   const activeCalInput = document.getElementById('exActiveCalInput');
   if (activeCalInput && document.activeElement !== activeCalInput) {
-    activeCalInput.value = de && de.activeCal ? de.activeCal : '';
+    activeCalInput.value = de && de.activeCal ? Math.round(parseFloat(de.activeCal)) : '';
   }
   // Distance display for the selected date
   const distanceEl = document.getElementById('exViewDistance');
@@ -7535,7 +7535,7 @@ function renderExList() {
   }
   const distanceInput = document.getElementById('exDistanceInput');
   if (distanceInput && document.activeElement !== distanceInput) {
-    distanceInput.value = de && de.distanceMi ? de.distanceMi : '';
+    distanceInput.value = de && de.distanceMi ? parseFloat(de.distanceMi).toFixed(2) : '';
   }
   // HRV display for the selected date
   const hrvEl = document.getElementById('exViewHrv');
