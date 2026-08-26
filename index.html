@@ -9565,10 +9565,10 @@ function renderMealList() {
   const cIn = document.getElementById('fCalories');
   const cbIn = document.getElementById('fCarbs');
   const ftIn = document.getElementById('fFat');
-  if (document.activeElement !== pIn && totals.protein != null)  pIn.value = totals.protein;
-  if (document.activeElement !== cIn && totals.calories != null) cIn.value = totals.calories;
-  if (document.activeElement !== cbIn && totals.carbs != null)   cbIn.value = totals.carbs;
-  if (document.activeElement !== ftIn && totals.fat != null)     ftIn.value = totals.fat;
+  if (document.activeElement !== pIn) pIn.value = totals.protein != null ? totals.protein : '';
+  if (document.activeElement !== cIn) cIn.value = totals.calories != null ? totals.calories : '';
+  if (document.activeElement !== cbIn) cbIn.value = totals.carbs != null ? totals.carbs : '';
+  if (document.activeElement !== ftIn) ftIn.value = totals.fat != null ? totals.fat : '';
 }
 
 document.getElementById('foodDate').addEventListener('change', () => { renderMealList(); renderWater(); });
