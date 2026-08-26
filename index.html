@@ -6984,7 +6984,7 @@ function parseSetCount(setsStr) {
 
 function getOrInitSetState(exerciseName, setCount) {
   if (!workoutSessionState[exerciseName]) {
-    workoutSessionState[exerciseName] = Array.from({ length: setCount }, () => ({ weight: '', reps: '', done: false, warmup: false }));
+    const prev = previousSetsFor(exerciseName); workoutSessionState[exerciseName] = Array.from({ length: setCount }, (_, i) => ({ weight: (prev && prev[i]) ? prev[i].weight : '', reps: (prev && prev[i]) ? prev[i].reps : '', done: false, warmup: false }));
   }
   while (workoutSessionState[exerciseName].length < setCount) {
     workoutSessionState[exerciseName].push({ weight: '', reps: '', done: false, warmup: false });
