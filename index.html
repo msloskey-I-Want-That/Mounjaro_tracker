@@ -413,7 +413,7 @@ body {
   margin-bottom: 14px;
   box-shadow: var(--shadow-card);
 }
-.form-section-title {
+#workoutPlanCard.workout-fullscreen { position: fixed; inset: 0; z-index: 500; margin: 0; border: none; border-radius: 0; padding: calc(16px + var(--safe-top)) 16px 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg); } .form-section-title {
   font-size: 12px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ink-soft); margin-bottom: 12px;
@@ -2095,7 +2095,7 @@ body {
       <div class="form-card" id="workoutPlanCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
           <span>Workout Plan · Planet Fitness, 2-3x/week</span>
-          <span id="workoutPlanChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
+          <button type="button" id="workoutFullscreenCloseBtn" title="Minimize — workout keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px;margin-right:8px">✕</button><span id="workoutPlanChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
         </div>
         <div id="workoutPlanBody"></div>
         <button class="btn btn-secondary btn-sm" id="suggestProgressionBtn" style="width:100%;margin-top:10px">✨ Suggest Progression</button>
@@ -6970,7 +6970,7 @@ let lastAutoFilledMin = null; // so auto-fill never overwrites a value you typed
 let restTimerEndTime = null;
 let restTimerInterval = null;
 let restTimerAutoHideTimer = null; let restTimerContext = null;
-let workoutStartedAt = null; // in-memory only, same as workoutSessionState — resets on reload
+let workoutStartedAt = null; let workoutModalOpen = false; // in-memory only, same as workoutSessionState — resets on reload
 // User-added/removed exercises per plan ('A', 'B', or 'fullbody'), synced to
 // Firestore so they stick around instead of resetting every session.
 let customWorkoutExercises = { A: [], B: [], fullbody: [] };
@@ -7105,7 +7105,7 @@ function computeAutoWorkoutDuration() {
 // Fills the Minutes field live as you check off sets — but only while
 // it's still empty or still showing a value we auto-filled ourselves,
 // so it never overwrites something you typed in on purpose.
-function autoFillWorkoutDuration() {
+function setWorkoutFullscreen(open) { workoutModalOpen = open; const card = document.getElementById('workoutPlanCard'); const closeBtn = document.getElementById('workoutFullscreenCloseBtn'); if (card) card.classList.toggle('workout-fullscreen', open); if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open) card.scrollTop = 0; } function autoFillWorkoutDuration() {
   const auto = computeAutoWorkoutDuration();
   if (!auto) return;
   const minInput = document.getElementById('exMin');
@@ -7299,7 +7299,7 @@ function wireWorkoutPlanEvents() {
   const cancelAddBtn = document.getElementById('cancelNewExerciseBtn');
   if (cancelAddBtn) cancelAddBtn.addEventListener('click', renderWorkoutPlan);
   const saveAddBtn = document.getElementById('saveNewExerciseBtn');
-  if (saveAddBtn) saveAddBtn.addEventListener('click', saveNewWorkoutExercise);
+  if (saveAddBtn) saveAddBtn.addEventListener('click', saveNewWorkoutExercise); const resumeInd = document.getElementById('resumeWorkoutIndicator'); if (resumeInd) resumeInd.addEventListener('click', () => setWorkoutFullscreen(true));
 }
 
 // One-time wiring for the rest-timer popup — it now lives outside
@@ -7313,7 +7313,7 @@ document.getElementById('restTimerSkipBtn').addEventListener('click', () => {
   hideRestTimerPopup();
 });
 document.getElementById('restTimerBackdrop').addEventListener('click', () => {
-  document.getElementById('restTimerSkipBtn').click();
+  document.getElementById('restTimerSkipBtn').click(); document.getElementById('workoutFullscreenCloseBtn').addEventListener('click', () => setWorkoutFullscreen(false));
 });
 
 function currentPlanKey() {
@@ -7436,7 +7436,7 @@ function renderWorkoutPlan() {
       </div>
     </div>
     ${workoutStartedAt
-      ? `<div style="font-size:11.5px;color:var(--teal);font-weight:600;margin-top:10px;text-align:center">⏱ In progress — started ${new Date(workoutStartedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+      ? `<div id="resumeWorkoutIndicator" style="font-size:11.5px;color:var(--teal);font-weight:600;margin-top:10px;text-align:center;cursor:pointer" title="Tap to resume full screen">⏱ In progress — started ${new Date(workoutStartedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
          <button type="button" class="btn btn-primary btn-sm" id="finishPlanBtn" style="margin-top:6px;width:100%">Finish Workout</button>`
       : `<button type="button" class="btn btn-secondary btn-sm" id="startPlanBtn" style="margin-top:10px;width:100%">Start this workout</button>`
     }
@@ -7451,7 +7451,7 @@ function renderWorkoutPlan() {
   if (startBtn) {
     startBtn.addEventListener('click', () => {
       setExType('Strength');
-      workoutStartedAt = Date.now();
+      workoutStartedAt = Date.now(); setWorkoutFullscreen(true);
       renderWorkoutPlan();
       const firstSetInput = document.querySelector('.set-weight-input');
       if (firstSetInput) {
@@ -7471,7 +7471,7 @@ function renderWorkoutPlan() {
         const minInput = document.getElementById('exMin');
         if (minInput) { minInput.value = minutes; lastAutoFilledMin = minutes; }
       }
-      workoutStartedAt = null;
+      workoutStartedAt = null; setWorkoutFullscreen(false);
       renderWorkoutPlan();
       const addBtn = document.getElementById('addExBtn');
       if (addBtn) addBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
