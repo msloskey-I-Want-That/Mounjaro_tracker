@@ -413,7 +413,7 @@ body {
   margin-bottom: 14px;
   box-shadow: var(--shadow-card);
 }
-.workout-fullscreen { position: fixed; inset: 0; z-index: 500; margin: 0; border: none; border-radius: 0; padding: calc(16px + var(--safe-top)) 16px 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg); } .form-section-title {
+.workout-fullscreen { position: fixed; inset: 0; z-index: 500; margin: 0; border: none; border-radius: 0; padding: calc(16px + var(--safe-top)) 16px 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg); } .exercise-fullscreen { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 501; width: min(92vw, 440px); max-height: 82vh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-shadow: 0 14px 44px rgba(0,0,0,0.32); } .form-section-title {
   font-size: 12px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ink-soft); margin-bottom: 12px;
@@ -884,7 +884,7 @@ body {
 </div>
 
 <!-- ── REST TIMER POPUP (workout sets) ── -->
-<div id="restTimerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.35);z-index:600"></div>
+<div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="restTimerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.35);z-index:600"></div>
 <div id="restTimerWrap" style="display:none;flex-direction:column;align-items:center;gap:8px;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1.5px solid var(--teal);border-radius:18px;padding:24px 30px;box-shadow:0 14px 44px rgba(0,0,0,0.32);z-index:601;min-width:190px;text-align:center">
   <span id="restTimerLabel" style="font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em">⏱ Rest</span>
   <span id="restTimerDisplay" style="font-family:'IBM Plex Mono',monospace;font-size:42px;font-weight:700;color:var(--teal);line-height:1.1">2:00</span>
@@ -2103,7 +2103,7 @@ body {
       </div>
       <div class="form-card">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Exercise</span><button type="button" id="exerciseFullscreenCloseBtn" title="Minimize — timer keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px">✕</button></div>
-        <div style="margin-bottom:12px">
+        <div id="workoutDescBlock" style="margin-bottom:12px">
           <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px">✨ Describe your workout <span style="font-weight:400">(optional)</span></label>
           <div style="display:flex;gap:8px">
             <input type="text" id="workoutDescInput" placeholder="e.g. did the elliptical for 35 min, felt strong" style="flex:1">
@@ -2119,7 +2119,7 @@ body {
           <div class="chip ex-chip" data-ex="Strength">Strength</div>
           <div class="chip ex-chip" data-ex="Other">Other</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;border:1.5px solid var(--teal);border-radius:10px">
+        <div id="exTimerBar" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;border:1.5px solid var(--teal);border-radius:10px">
           <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--teal);min-width:64px" id="exTimerDisplay">0:00</div>
           <button class="btn btn-primary btn-sm" id="exTimerStartBtn" style="flex:1">⏱ Start Timer</button>
           <button class="btn btn-secondary btn-sm" id="exTimerStopBtn" style="flex:1;display:none">⏹ Stop &amp; Log</button>
@@ -6787,7 +6787,7 @@ document.getElementById('addExBtn').addEventListener('click', async () => {
 // timer keeps counting correctly even if the app gets closed and reopened
 // mid-workout — elapsed time is always recomputed from that timestamp,
 // never from a running counter, so backgrounding the phone can't throw it off.
-let exTimerInterval = null; function setExerciseFullscreen(open) { exerciseModalOpen = open; const startBtnEl = document.getElementById('exTimerStartBtn'); const card = startBtnEl ? startBtnEl.closest('.form-card') : null; const closeBtn = document.getElementById('exerciseFullscreenCloseBtn'); if (card) { card.classList.toggle('workout-fullscreen', open); if (open) { exerciseCardHomeParent = card.parentNode; exerciseCardHomeNext = card.nextSibling; document.body.appendChild(card); } else if (exerciseCardHomeParent) { if (exerciseCardHomeNext && exerciseCardHomeNext.parentNode === exerciseCardHomeParent) { exerciseCardHomeParent.insertBefore(card, exerciseCardHomeNext); } else { exerciseCardHomeParent.appendChild(card); } } } if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open && card) card.scrollTop = 0; }
+let exTimerInterval = null; function setExerciseFullscreen(open) { exerciseModalOpen = open; const startBtnEl = document.getElementById('exTimerStartBtn'); const card = startBtnEl ? startBtnEl.closest('.form-card') : null; const closeBtn = document.getElementById('exerciseFullscreenCloseBtn'); const exBackdrop = document.getElementById('exerciseFullscreenBackdrop'); if (card) { card.classList.toggle('exercise-fullscreen', open); if (exBackdrop) exBackdrop.style.display = open ? 'block' : 'none'; if (open) { exerciseCardHomeParent = card.parentNode; exerciseCardHomeNext = card.nextSibling; document.body.appendChild(card); } else if (exerciseCardHomeParent) { if (exerciseCardHomeNext && exerciseCardHomeNext.parentNode === exerciseCardHomeParent) { exerciseCardHomeParent.insertBefore(card, exerciseCardHomeNext); } else { exerciseCardHomeParent.appendChild(card); } } } if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open && card) card.scrollTop = 0; }
 
 function exTimerFormat(ms) {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
@@ -6858,8 +6858,8 @@ function resumeExTimerIfRunning() {
 }
 
 document.getElementById('exTimerStartBtn').addEventListener('click', startExTimer);
-document.getElementById('exTimerStopBtn').addEventListener('click', stopExTimer); document.getElementById('exerciseFullscreenCloseBtn').addEventListener('click', () => setExerciseFullscreen(false)); document.getElementById('exTimerDisplay').addEventListener('click', () => setExerciseFullscreen(true));
-resumeExTimerIfRunning();
+document.getElementById('exTimerStopBtn').addEventListener('click', stopExTimer); document.getElementById('exerciseFullscreenCloseBtn').addEventListener('click', () => setExerciseFullscreen(false)); document.getElementById('exTimerDisplay').addEventListener('click', () => setExerciseFullscreen(true)); document.getElementById('exerciseFullscreenBackdrop').addEventListener('click', () => setExerciseFullscreen(false));
+resumeExTimerIfRunning(); (function(){ const chipRow = document.getElementById('exTypeRow'); const timerBar = document.getElementById('exTimerBar'); const descBlock = document.getElementById('workoutDescBlock'); const parent = chipRow ? chipRow.closest('.form-card') : null; if (parent && timerBar && descBlock) { parent.insertBefore(chipRow, descBlock); parent.insertBefore(timerBar, descBlock); } })();
 
 async function deleteEx(date, ts) {
   const ex = exForDate(date);
