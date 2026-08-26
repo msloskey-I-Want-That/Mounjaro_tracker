@@ -413,7 +413,7 @@ body {
   margin-bottom: 14px;
   box-shadow: var(--shadow-card);
 }
-#workoutPlanCard.workout-fullscreen { position: fixed; inset: 0; z-index: 500; margin: 0; border: none; border-radius: 0; padding: calc(16px + var(--safe-top)) 16px 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg); } .form-section-title {
+.workout-fullscreen { position: fixed; inset: 0; z-index: 500; margin: 0; border: none; border-radius: 0; padding: calc(16px + var(--safe-top)) 16px 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg); } .form-section-title {
   font-size: 12px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ink-soft); margin-bottom: 12px;
@@ -2102,7 +2102,7 @@ body {
         <div id="progressionResults" style="font-size:13px;color:var(--ink);margin-top:8px;line-height:1.5"></div>
       </div>
       <div class="form-card">
-        <div class="form-section-title">Exercise</div>
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Exercise</span><button type="button" id="exerciseFullscreenCloseBtn" title="Minimize — timer keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px">✕</button></div>
         <div style="margin-bottom:12px">
           <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px">✨ Describe your workout <span style="font-weight:400">(optional)</span></label>
           <div style="display:flex;gap:8px">
@@ -6787,7 +6787,7 @@ document.getElementById('addExBtn').addEventListener('click', async () => {
 // timer keeps counting correctly even if the app gets closed and reopened
 // mid-workout — elapsed time is always recomputed from that timestamp,
 // never from a running counter, so backgrounding the phone can't throw it off.
-let exTimerInterval = null;
+let exTimerInterval = null; function setExerciseFullscreen(open) { exerciseModalOpen = open; const startBtnEl = document.getElementById('exTimerStartBtn'); const card = startBtnEl ? startBtnEl.closest('.form-card') : null; const closeBtn = document.getElementById('exerciseFullscreenCloseBtn'); if (card) { card.classList.toggle('workout-fullscreen', open); if (open) { exerciseCardHomeParent = card.parentNode; exerciseCardHomeNext = card.nextSibling; document.body.appendChild(card); } else if (exerciseCardHomeParent) { if (exerciseCardHomeNext && exerciseCardHomeNext.parentNode === exerciseCardHomeParent) { exerciseCardHomeParent.insertBefore(card, exerciseCardHomeNext); } else { exerciseCardHomeParent.appendChild(card); } } } if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open && card) card.scrollTop = 0; }
 
 function exTimerFormat(ms) {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
@@ -6808,7 +6808,7 @@ function exTimerTick() {
 
 function startExTimer() {
   localStorage.setItem('mounjaro-ex-timer-start', String(Date.now()));
-  localStorage.setItem('mounjaro-ex-timer-type', selectedExType());
+  localStorage.setItem('mounjaro-ex-timer-type', selectedExType()); setExerciseFullscreen(true);
   document.getElementById('exTimerStartBtn').style.display = 'none';
   document.getElementById('exTimerStopBtn').style.display = '';
   clearInterval(exTimerInterval);
@@ -6825,7 +6825,7 @@ async function stopExTimer() {
   localStorage.removeItem('mounjaro-ex-timer-type');
   document.getElementById('exTimerStartBtn').style.display = '';
   document.getElementById('exTimerStopBtn').style.display = 'none';
-  document.getElementById('exTimerDisplay').textContent = '0:00';
+  document.getElementById('exTimerDisplay').textContent = '0:00'; setExerciseFullscreen(false);
   if (!start) return;
   const minutes = Math.max(1, Math.round((Date.now() - start) / 60000));
   const distRaw = document.getElementById('exDist').value;
@@ -6850,7 +6850,7 @@ async function stopExTimer() {
 }
 
 function resumeExTimerIfRunning() {
-  if (!localStorage.getItem('mounjaro-ex-timer-start')) return;
+  if (!localStorage.getItem('mounjaro-ex-timer-start')) return; setExerciseFullscreen(true);
   document.getElementById('exTimerStartBtn').style.display = 'none';
   document.getElementById('exTimerStopBtn').style.display = '';
   exTimerTick();
@@ -6858,7 +6858,7 @@ function resumeExTimerIfRunning() {
 }
 
 document.getElementById('exTimerStartBtn').addEventListener('click', startExTimer);
-document.getElementById('exTimerStopBtn').addEventListener('click', stopExTimer);
+document.getElementById('exTimerStopBtn').addEventListener('click', stopExTimer); document.getElementById('exerciseFullscreenCloseBtn').addEventListener('click', () => setExerciseFullscreen(false)); document.getElementById('exTimerDisplay').addEventListener('click', () => setExerciseFullscreen(true));
 resumeExTimerIfRunning();
 
 async function deleteEx(date, ts) {
@@ -6970,7 +6970,7 @@ let lastAutoFilledMin = null; // so auto-fill never overwrites a value you typed
 let restTimerEndTime = null;
 let restTimerInterval = null;
 let restTimerAutoHideTimer = null; let restTimerContext = null;
-let workoutStartedAt = null; let workoutModalOpen = false; let workoutCardHomeParent = null; let workoutCardHomeNext = null; // in-memory only, same as workoutSessionState — resets on reload
+let workoutStartedAt = null; let workoutModalOpen = false; let workoutCardHomeParent = null; let workoutCardHomeNext = null; let exerciseModalOpen = false; let exerciseCardHomeParent = null; let exerciseCardHomeNext = null; // in-memory only, same as workoutSessionState — resets on reload
 // User-added/removed exercises per plan ('A', 'B', or 'fullbody'), synced to
 // Firestore so they stick around instead of resetting every session.
 let customWorkoutExercises = { A: [], B: [], fullbody: [] };
