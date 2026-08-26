@@ -3063,7 +3063,7 @@ let stepGoalOverride   = 0;          // 0 = auto-ramp by treatment phase
 function currentStepGoal() {
   if (stepGoalOverride > 0) return stepGoalOverride;
   const diff = daysSinceStart();
-  if (diff < 60)  return 5000;   // months 1–2: build the habit
+  let base = 5000; if (diff >= 60) base = 7500; if (diff >= 180) base = 10000; const recentSteps = entries.filter(e => e.steps != null && e.steps !== '').slice(-14).map(e => parseInt(e.steps)).filter(n => !isNaN(n)); if (recentSteps.length >= 5) { const avg = recentSteps.reduce((a, b) => a + b, 0) / recentSteps.length; const stretch = Math.min(20000, Math.round((avg * 1.1) / 250) * 250); if (stretch > base) base = stretch; } return base; // auto: phase floor, stretched above your recent 14-day average to keep pushing further
   if (diff < 180) return 7500;   // months 3–6: build intensity
   return 10000;                  // month 6+: optimize
 }
