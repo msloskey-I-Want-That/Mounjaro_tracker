@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+——<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -6970,7 +6970,7 @@ let lastAutoFilledMin = null; // so auto-fill never overwrites a value you typed
 let restTimerEndTime = null;
 let restTimerInterval = null;
 let restTimerAutoHideTimer = null; let restTimerContext = null;
-let workoutStartedAt = null; let workoutModalOpen = false; // in-memory only, same as workoutSessionState — resets on reload
+let workoutStartedAt = null; let workoutModalOpen = false; let workoutCardHomeParent = null; let workoutCardHomeNext = null; // in-memory only, same as workoutSessionState — resets on reload
 // User-added/removed exercises per plan ('A', 'B', or 'fullbody'), synced to
 // Firestore so they stick around instead of resetting every session.
 let customWorkoutExercises = { A: [], B: [], fullbody: [] };
@@ -7105,7 +7105,7 @@ function computeAutoWorkoutDuration() {
 // Fills the Minutes field live as you check off sets — but only while
 // it's still empty or still showing a value we auto-filled ourselves,
 // so it never overwrites something you typed in on purpose.
-function setWorkoutFullscreen(open) { workoutModalOpen = open; const card = document.getElementById('workoutPlanCard'); const closeBtn = document.getElementById('workoutFullscreenCloseBtn'); if (card) card.classList.toggle('workout-fullscreen', open); if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open) card.scrollTop = 0; } function autoFillWorkoutDuration() {
+function setWorkoutFullscreen(open) { workoutModalOpen = open; const card = document.getElementById('workoutPlanCard'); const closeBtn = document.getElementById('workoutFullscreenCloseBtn'); if (card) { card.classList.toggle('workout-fullscreen', open); if (open) { workoutCardHomeParent = card.parentNode; workoutCardHomeNext = card.nextSibling; document.body.appendChild(card); } else if (workoutCardHomeParent) { if (workoutCardHomeNext && workoutCardHomeNext.parentNode === workoutCardHomeParent) { workoutCardHomeParent.insertBefore(card, workoutCardHomeNext); } else { workoutCardHomeParent.appendChild(card); } } } if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open && card) card.scrollTop = 0; } function autoFillWorkoutDuration() {
   const auto = computeAutoWorkoutDuration();
   if (!auto) return;
   const minInput = document.getElementById('exMin');
@@ -7435,17 +7435,17 @@ function renderWorkoutPlan() {
         </div>
       </div>
     </div>
-    ${workoutStartedAt
+    <div id="workoutStartFinishBlock">${workoutStartedAt
       ? `<div id="resumeWorkoutIndicator" style="font-size:11.5px;color:var(--teal);font-weight:600;margin-top:10px;text-align:center;cursor:pointer" title="Tap to resume full screen">⏱ In progress — started ${new Date(workoutStartedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
          <button type="button" class="btn btn-primary btn-sm" id="finishPlanBtn" style="margin-top:6px;width:100%">Finish Workout</button>`
       : `<button type="button" class="btn btn-secondary btn-sm" id="startPlanBtn" style="margin-top:10px;width:100%">Start this workout</button>`
     }
-    <div style="font-size:11px;color:var(--ink-soft);margin-top:8px;text-align:center">
+    </div><div style="font-size:11px;color:var(--ink-soft);margin-top:8px;text-align:center">
       ${footerHtml}
     </div>
   `;
 
-  wireWorkoutPlanEvents();
+  const sfBlock = document.getElementById('workoutStartFinishBlock'); if (sfBlock && box.firstChild !== sfBlock) box.insertBefore(sfBlock, box.firstChild); wireWorkoutPlanEvents();
 
   const startBtn = document.getElementById('startPlanBtn');
   if (startBtn) {
