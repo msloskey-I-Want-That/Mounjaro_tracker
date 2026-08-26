@@ -413,7 +413,7 @@ body {
   margin-bottom: 14px;
   box-shadow: var(--shadow-card);
 }
-.workout-fullscreen { position: fixed; inset: 0; z-index: 500; margin: 0; border: none; border-radius: 0; padding: calc(16px + var(--safe-top)) 16px 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg); } .exercise-fullscreen { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 501; width: min(92vw, 440px); max-height: 82vh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-shadow: 0 14px 44px rgba(0,0,0,0.32); } .form-section-title {
+.workout-fullscreen, .exercise-fullscreen { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 501; width: min(92vw, 440px); max-height: 82vh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-shadow: 0 14px 44px rgba(0,0,0,0.32); } .form-section-title {
   font-size: 12px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ink-soft); margin-bottom: 12px;
@@ -884,7 +884,7 @@ body {
 </div>
 
 <!-- ── REST TIMER POPUP (workout sets) ── -->
-<div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="restTimerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.35);z-index:600"></div>
+<div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="restTimerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.35);z-index:600"></div>
 <div id="restTimerWrap" style="display:none;flex-direction:column;align-items:center;gap:8px;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1.5px solid var(--teal);border-radius:18px;padding:24px 30px;box-shadow:0 14px 44px rgba(0,0,0,0.32);z-index:601;min-width:190px;text-align:center">
   <span id="restTimerLabel" style="font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em">⏱ Rest</span>
   <span id="restTimerDisplay" style="font-family:'IBM Plex Mono',monospace;font-size:42px;font-weight:700;color:var(--teal);line-height:1.1">2:00</span>
@@ -7105,7 +7105,7 @@ function computeAutoWorkoutDuration() {
 // Fills the Minutes field live as you check off sets — but only while
 // it's still empty or still showing a value we auto-filled ourselves,
 // so it never overwrites something you typed in on purpose.
-function setWorkoutFullscreen(open) { workoutModalOpen = open; const card = document.getElementById('workoutPlanCard'); const closeBtn = document.getElementById('workoutFullscreenCloseBtn'); if (card) { card.classList.toggle('workout-fullscreen', open); if (open) { workoutCardHomeParent = card.parentNode; workoutCardHomeNext = card.nextSibling; document.body.appendChild(card); } else if (workoutCardHomeParent) { if (workoutCardHomeNext && workoutCardHomeNext.parentNode === workoutCardHomeParent) { workoutCardHomeParent.insertBefore(card, workoutCardHomeNext); } else { workoutCardHomeParent.appendChild(card); } } } if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open && card) card.scrollTop = 0; } function autoFillWorkoutDuration() {
+function setWorkoutFullscreen(open) { workoutModalOpen = open; const card = document.getElementById('workoutPlanCard'); const closeBtn = document.getElementById('workoutFullscreenCloseBtn'); const wBackdrop = document.getElementById('workoutFullscreenBackdrop'); if (card) { card.classList.toggle('workout-fullscreen', open); if (wBackdrop) wBackdrop.style.display = open ? 'block' : 'none'; if (open) { workoutCardHomeParent = card.parentNode; workoutCardHomeNext = card.nextSibling; document.body.appendChild(card); } else if (workoutCardHomeParent) { if (workoutCardHomeNext && workoutCardHomeNext.parentNode === workoutCardHomeParent) { workoutCardHomeParent.insertBefore(card, workoutCardHomeNext); } else { workoutCardHomeParent.appendChild(card); } } } if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open && card) card.scrollTop = 0; } function autoFillWorkoutDuration() {
   const auto = computeAutoWorkoutDuration();
   if (!auto) return;
   const minInput = document.getElementById('exMin');
@@ -7313,7 +7313,7 @@ document.getElementById('restTimerSkipBtn').addEventListener('click', () => {
   hideRestTimerPopup();
 });
 document.getElementById('restTimerBackdrop').addEventListener('click', () => {
-  document.getElementById('restTimerSkipBtn').click(); document.getElementById('workoutFullscreenCloseBtn').addEventListener('click', () => setWorkoutFullscreen(false));
+  document.getElementById('restTimerSkipBtn').click(); document.getElementById('workoutFullscreenCloseBtn').addEventListener('click', () => setWorkoutFullscreen(false)); document.getElementById('workoutFullscreenBackdrop').addEventListener('click', () => setWorkoutFullscreen(false));
 });
 
 function currentPlanKey() {
