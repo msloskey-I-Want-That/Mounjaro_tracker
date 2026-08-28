@@ -1912,13 +1912,13 @@ body {
           <span>Review &amp; Add</span>
           <span id="reviewAddChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
         </div>
-        <div id="lookupResults"></div>
+        <div id="lookupResults"></div> <div class="field" style="margin-bottom:10px"> <label for="mServings">Servings (macros above are per serving)</label> <div style="display:flex;align-items:center;gap:6px"> <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mServings" data-step="-0.5" style="padding:6px 12px">−</button> <input type="number" id="mServings" inputmode="decimal" step="any" placeholder="1" style="flex:1;min-width:0;text-align:center"> <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mServings" data-step="0.5" style="padding:6px 12px">+</button> </div> </div>
         <div class="field-row">
           <div class="field">
             <label for="mProtein">Protein (g)</label>
             <div style="display:flex;align-items:center;gap:6px">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mProtein" data-step="-1" style="padding:6px 12px">−</button>
-              <input type="number" id="mProtein" inputmode="numeric" placeholder="e.g. 30" style="flex:1;min-width:0;text-align:center">
+              <input type="number" id="mProtein" inputmode="decimal" step="any" placeholder="e.g. 30" style="flex:1;min-width:0;text-align:center">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mProtein" data-step="1" style="padding:6px 12px">+</button>
             </div>
           </div>
@@ -1926,7 +1926,7 @@ body {
             <label for="mCal">Calories (opt.)</label>
             <div style="display:flex;align-items:center;gap:6px">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mCal" data-step="-10" style="padding:6px 12px">−</button>
-              <input type="number" id="mCal" inputmode="numeric" placeholder="e.g. 220" style="flex:1;min-width:0;text-align:center">
+              <input type="number" id="mCal" inputmode="decimal" step="any" placeholder="e.g. 220" style="flex:1;min-width:0;text-align:center">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mCal" data-step="10" style="padding:6px 12px">+</button>
             </div>
           </div>
@@ -1936,7 +1936,7 @@ body {
             <label for="mCarbs">Carbs (g)</label>
             <div style="display:flex;align-items:center;gap:6px">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mCarbs" data-step="-1" style="padding:6px 12px">−</button>
-              <input type="number" id="mCarbs" inputmode="numeric" placeholder="e.g. 25" style="flex:1;min-width:0;text-align:center">
+              <input type="number" id="mCarbs" inputmode="decimal" step="any" placeholder="e.g. 25" style="flex:1;min-width:0;text-align:center">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mCarbs" data-step="1" style="padding:6px 12px">+</button>
             </div>
           </div>
@@ -1944,7 +1944,7 @@ body {
             <label for="mFat">Fat (g)</label>
             <div style="display:flex;align-items:center;gap:6px">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mFat" data-step="-1" style="padding:6px 12px">−</button>
-              <input type="number" id="mFat" inputmode="numeric" placeholder="e.g. 8" style="flex:1;min-width:0;text-align:center">
+              <input type="number" id="mFat" inputmode="decimal" step="any" placeholder="e.g. 8" style="flex:1;min-width:0;text-align:center">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mFat" data-step="1" style="padding:6px 12px">+</button>
             </div>
           </div>
@@ -9332,10 +9332,10 @@ document.getElementById('addMealBtn').addEventListener('click', async () => {
     const fields = {
       desc,
       mt: selectedMealType(),
-      protein: document.getElementById('mProtein').value || null,
-      cal:     document.getElementById('mCal').value || null,
-      carbs:   document.getElementById('mCarbs').value || null,
-      fat:     document.getElementById('mFat').value || null,
+      protein: (v => { const n = parseFloat(v); const s = parseFloat(document.getElementById('mServings').value) || 1; return (v !== '' && v != null && !isNaN(n)) ? String(Math.round(n * s * 100) / 100) : null; })(document.getElementById('mProtein').value),
+      cal:     (v => { const n = parseFloat(v); const s = parseFloat(document.getElementById('mServings').value) || 1; return (v !== '' && v != null && !isNaN(n)) ? String(Math.round(n * s * 100) / 100) : null; })(document.getElementById('mCal').value),
+      carbs:   (v => { const n = parseFloat(v); const s = parseFloat(document.getElementById('mServings').value) || 1; return (v !== '' && v != null && !isNaN(n)) ? String(Math.round(n * s * 100) / 100) : null; })(document.getElementById('mCarbs').value),
+      fat:     (v => { const n = parseFloat(v); const s = parseFloat(document.getElementById('mServings').value) || 1; return (v !== '' && v != null && !isNaN(n)) ? String(Math.round(n * s * 100) / 100) : null; })(document.getElementById('mFat').value),
     };
     if (lastLookupSource) fields.source = lastLookupSource;
     lastLookupSource = null; // consumed either way, so it never leaks into a later, unrelated entry
@@ -9365,7 +9365,7 @@ document.getElementById('addMealBtn').addEventListener('click', async () => {
     document.getElementById('mCarbs').value = '';
     document.getElementById('mFat').value = '';
     document.getElementById('lookupResults').innerHTML = '';
-    document.getElementById('myFoodResults').innerHTML = '';
+    document.getElementById('myFoodResults').innerHTML = ''; document.getElementById('mServings').value = '';
   } finally {
     btn.disabled = false;
   }
