@@ -1441,6 +1441,16 @@ body {
               <input type="text" id="medNotes" placeholder="e.g. with food">
             </div>
           </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="medFillDate">Last Filled (optional)</label>
+              <input type="date" id="medFillDate">
+            </div>
+            <div class="field">
+              <label for="medDaysSupply">Days Supply (optional)</label>
+              <input type="number" id="medDaysSupply" inputmode="numeric" placeholder="e.g. 30">
+            </div>
+          </div>
           <div style="display:flex;gap:10px;margin-top:8px">
             <button class="btn btn-secondary" id="saveMedBtn" style="flex:1">Add Medication</button>
             <button class="btn btn-secondary" id="cancelMedEditBtn" style="display:none">Cancel</button>
@@ -11721,21 +11731,46 @@ try { makeFoodCardCollapsible('addMedCard', 'addMedChevron', 'mounjaro-addmed-ex
 // notes) — not a daily checklist. Edited only when something actually
 // changes (new prescription, dose adjustment), same idea as the A1C
 // card: log it when it changes, not every day.
+// Refill status from a last-filled date + days supply — a plain
+// arithmetic countdown, not a scheduled reminder/notification (a PWA
+// can't reliably fire those in the background). Returns null when either
+// field is missing, so medications without this info just show nothing
+// extra, rather than a confusing "N/A".
+function computeRefillStatus(fillDate, daysSupply) {
+  if (!fillDate || !daysSupply) return null;
+  const supply = parseInt(daysSupply, 10);
+  if (!supply || supply <= 0) return null;
+  const refillDate = new Date(fillDate + 'T00:00:00');
+  refillDate.setDate(refillDate.getDate() + supply);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const daysUntil = Math.round((refillDate - today) / 86400000);
+  let label, color;
+  if (daysUntil < 0) { label = `Refill overdue by ${Math.abs(daysUntil)} day${Math.abs(daysUntil) === 1 ? '' : 's'}`; color = 'var(--coral)'; }
+  else if (daysUntil === 0) { label = 'Refill due today'; color = 'var(--coral)'; }
+  else if (daysUntil <= 7) { label = `Refill in ${daysUntil} day${daysUntil === 1 ? '' : 's'}`; color = '#FFB020'; }
+  else { label = `Refill in ${daysUntil} days`; color = 'var(--ink-soft)'; }
+  return { daysUntil, label, color };
+}
+
 function renderMedications() {
   const box = document.getElementById('medList');
   if (!box) return;
   if (!medications.length) { box.innerHTML = 'No medications added yet.'; return; }
-  box.innerHTML = medications.map(m => `
+  box.innerHTML = medications.map(m => {
+    const refill = computeRefillStatus(m.fillDate, m.daysSupply);
+    return `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--divider)">
       <div>
         <div style="font-weight:600;color:var(--ink)">${escapeHtml(m.name)}</div>
         <div style="font-size:11.5px;color:var(--ink-soft)">${escapeHtml(m.dose || '')}${m.frequency ? ' • ' + escapeHtml(m.frequency) : ''}${m.notes ? ' • ' + escapeHtml(m.notes) : ''}</div>
+        ${refill ? `<div style="font-size:11.5px;font-weight:600;color:${refill.color};margin-top:2px">${refill.label}</div>` : ''}
       </div>
       <div style="display:flex;gap:12px;flex-shrink:0;padding-left:10px">
         <span class="med-edit-btn" data-id="${m.id}" style="cursor:pointer;color:var(--ink-soft)">✎</span>
         <span class="med-delete-btn" data-id="${m.id}" style="cursor:pointer;color:var(--ink-soft)">✕</span>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   box.querySelectorAll('.med-edit-btn').forEach(el => el.addEventListener('click', () => startEditMedication(el.dataset.id)));
   box.querySelectorAll('.med-delete-btn').forEach(el => el.addEventListener('click', () => deleteMedication(el.dataset.id)));
 }
@@ -11752,6 +11787,8 @@ function startEditMedication(id) {
   document.getElementById('medDose').value = m.dose || '';
   document.getElementById('medFreq').value = m.frequency || '';
   document.getElementById('medNotes').value = m.notes || '';
+  document.getElementById('medFillDate').value = m.fillDate || '';
+  document.getElementById('medDaysSupply').value = m.daysSupply || '';
   document.getElementById('medFormTitle').textContent = 'Edit Medication';
   document.getElementById('saveMedBtn').textContent = 'Save Changes';
   document.getElementById('cancelMedEditBtn').style.display = '';
@@ -11764,6 +11801,8 @@ function resetMedForm() {
   document.getElementById('medDose').value = '';
   document.getElementById('medFreq').value = '';
   document.getElementById('medNotes').value = '';
+  document.getElementById('medFillDate').value = '';
+  document.getElementById('medDaysSupply').value = '';
   document.getElementById('medFormTitle').textContent = 'Add Medication';
   document.getElementById('saveMedBtn').textContent = 'Add Medication';
   document.getElementById('cancelMedEditBtn').style.display = 'none';
@@ -11776,11 +11815,13 @@ document.getElementById('saveMedBtn').addEventListener('click', async () => {
   const dose = document.getElementById('medDose').value.trim();
   const frequency = document.getElementById('medFreq').value.trim();
   const notes = document.getElementById('medNotes').value.trim();
+  const fillDate = document.getElementById('medFillDate').value;
+  const daysSupply = document.getElementById('medDaysSupply').value.trim();
   if (!name || !dose) { alert('Please enter at least a medication name and dose.'); return; }
   if (medEditingId != null) {
-    medications = medications.map(m => String(m.id) === String(medEditingId) ? { ...m, name, dose, frequency, notes } : m);
+    medications = medications.map(m => String(m.id) === String(medEditingId) ? { ...m, name, dose, frequency, notes, fillDate, daysSupply } : m);
   } else {
-    medications = [...medications, { id: medIdCounter(), name, dose, frequency, notes }];
+    medications = [...medications, { id: medIdCounter(), name, dose, frequency, notes, fillDate, daysSupply }];
   }
   await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { medications }, { merge: true });
   resetMedForm();
