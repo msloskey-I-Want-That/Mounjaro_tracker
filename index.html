@@ -2880,6 +2880,10 @@ body {
         <div class="form-section-title">Badges</div>
         <div id="badgeSummaryBody"></div>
       </div>
+      <div class="form-card" id="milestonesSummaryCard">
+        <div class="form-section-title">Milestones</div>
+        <div id="milestonesSummaryBody"></div>
+      </div>
       <div id="badgeSections"></div>
     </div>
 
@@ -4096,6 +4100,79 @@ function computeMilestonesReached() {
   return reached;
 }
 
+// The full browsable version of the same 4 milestone types above — this
+// is what actually closes the gap where a milestone celebration
+// disappears forever once dismissed. Shows both earned AND upcoming
+// tiers, the same "browse anytime" shape badges already have.
+function buildMilestoneCategories() {
+  const svg = (inner) => `<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em">${inner}</svg>`;
+  const treatmentDay = daysSinceStart() + 1;
+  let d = {};
+  try { d = computeBadgeData(); } catch (err) { d = {}; }
+
+  const weightEntries = entries.filter(e => e.weight != null && e.weight !== '');
+  const totalLost = weightEntries.length
+    ? Math.max(0, baselineWeight - parseFloat(weightEntries[weightEntries.length - 1].weight))
+    : 0;
+  // Show tiers up to whichever is further out: the user's own goal, or a
+  // couple steps past current progress — never emptily short right after
+  // a big loss, never absurdly long for someone with a small goal.
+  const lostRoundedUp = Math.ceil(totalLost / WEIGHT_LOSS_MILESTONE_STEP) * WEIGHT_LOSS_MILESTONE_STEP;
+  const goalLossTotal = Math.max(0, baselineWeight - goalWeight);
+  const goalRoundedUp = Math.ceil(goalLossTotal / WEIGHT_LOSS_MILESTONE_STEP) * WEIGHT_LOSS_MILESTONE_STEP;
+  const weightTierCap = Math.min(100, Math.max(lostRoundedUp + 20, goalRoundedUp, WEIGHT_LOSS_MILESTONE_STEP * 2));
+  const weightTiers = [];
+  for (let lbs = WEIGHT_LOSS_MILESTONE_STEP; lbs <= weightTierCap; lbs += WEIGHT_LOSS_MILESTONE_STEP) weightTiers.push(lbs);
+
+  return [
+    {
+      category: 'Treatment Day', color: '#FF9466',
+      icon: svg('<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'),
+      milestones: TREATMENT_DAY_MILESTONES.map(m => ({ id: `day_${m}`, title: `Day ${m}`, desc: `${m} days in treatment`, tier: m, value: treatmentDay }))
+    },
+    {
+      category: 'Weight Lost', color: '#A479E2',
+      icon: svg('<line x1="12" y1="3" x2="12" y2="21"/><line x1="5" y1="7" x2="19" y2="7"/><path d="M5 7 2 13a3 3 0 0 0 6 0z"/><path d="M19 7l-3 6a3 3 0 0 0 6 0z"/>'),
+      milestones: weightTiers.map(lbs => ({ id: `lost_${lbs}`, title: `${lbs} lbs`, desc: `Lose ${lbs} lbs total`, tier: lbs, value: totalLost }))
+    },
+    {
+      category: 'Workouts Logged', color: '#37C6FF',
+      icon: svg('<line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/>'),
+      milestones: WORKOUT_COUNT_MILESTONES.map(m => ({ id: `workout_count_${m}`, title: `${m} Workouts`, desc: `Log ${m} workout sessions total`, tier: m, value: d.strengthSessionCount || 0 }))
+    },
+    {
+      category: 'Personal Records', color: '#E2574C',
+      icon: svg('<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4"/><path d="M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/><path d="M8 21h8"/><path d="M12 17v4"/>'),
+      milestones: PR_COUNT_MILESTONES.map(m => ({ id: `pr_count_${m}`, title: `${m} PRs`, desc: `Set ${m} personal records total`, tier: m, value: d.totalPRs || 0 }))
+    }
+  ];
+}
+
+function renderMilestonesSummary() {
+  const body = document.getElementById('milestonesSummaryBody');
+  if (!body) return;
+  const categories = buildMilestoneCategories();
+  let total = 0, earned = 0;
+  let html = '';
+  categories.forEach(cat => {
+    html += `<div class="badge-category-title" style="--cat-color:${cat.color}"><span style="color:${cat.color}">${cat.icon}</span> ${cat.category}</div><div class="badge-grid">`;
+    cat.milestones.forEach(m => {
+      total++;
+      const isEarned = m.value >= m.tier;
+      if (isEarned) earned++;
+      const status = isEarned ? '✓ Reached' : `${round1(Math.max(0, m.value))}/${round1(m.tier)}`;
+      html += `
+        <div class="badge-tile${isEarned ? '' : ' locked'}" title="${m.desc}">
+          <div class="badge-icon-circle" style="${isEarned ? `background:radial-gradient(circle at 30% 25%, rgba(255,255,255,0.45), transparent 60%), ${cat.color};color:#fff;box-shadow:0 3px 8px ${cat.color}66` : ''}">${isEarned ? cat.icon : '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'}</div>
+          <div class="badge-title">${m.title}</div>
+          <div class="badge-status${isEarned ? ' earned' : ''}">${status}</div>
+        </div>`;
+    });
+    html += `</div>`;
+  });
+  body.innerHTML = html || '<div style="font-size:12px;color:var(--ink-soft)">Milestones will show up here as you log more.</div>';
+}
+
 // Single entry point for both badge and milestone celebrations. They
 // share a tab (Badges), so if both happen to have something new at the
 // same time — say, finishing a workout that both crosses a badge tier
@@ -4167,6 +4244,7 @@ function renderBadges() {
   const data = computeBadgeData();
   const categories = buildBadgeCategories(data);
   renderAchievementCelebrations(categories);
+  try { renderMilestonesSummary(); } catch (err) { console.error('Milestones summary render failed:', err); }
   let total = 0, earned = 0;
   let html = '';
   categories.forEach(cat => {
