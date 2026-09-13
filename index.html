@@ -2271,6 +2271,7 @@ body {
         </div>
         <div class="chip-row" id="exTypeRow" style="margin-bottom:12px">
           <div class="chip ex-chip" data-ex="Walk">Walk</div>
+          <div class="chip ex-chip" data-ex="Dog Walk">Dog Walk</div>
           <div class="chip ex-chip" data-ex="Hiking">Hiking</div>
           <div class="chip ex-chip" data-ex="Cardio">Cardio</div>
           <div class="chip ex-chip" data-ex="Treadmill">Treadmill</div>
@@ -5150,7 +5151,7 @@ document.getElementById('parseDayBtn').addEventListener('click', async () => {
   box.innerHTML = '<div class="lookup-status">Reading…</div>';
   try {
     const symptomList = ['Nausea','Fatigue','Constipation','Diarrhea','Heartburn','Headache','Dizziness','Low appetite'];
-    const exerciseTypes = ['Walk','Hiking','Cardio','Treadmill','Strength','Other'];
+    const exerciseTypes = ['Walk','Dog Walk','Hiking','Cardio','Treadmill','Strength','Other'];
     const promptText = `A person is describing their day for a GLP-1 (Mounjaro/tirzepatide) treatment tracking app. Their description: "${desc}"
 
 Extract ONLY what is clearly stated — never invent or assume anything not mentioned. Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format:
@@ -7351,7 +7352,7 @@ document.getElementById('parseWorkoutBtn').addEventListener('click', async () =>
   if (!anthropicKey) { box.innerHTML = '<div class="lookup-status">Add your Anthropic API key in Settings first to use this.</div>'; return; }
   box.innerHTML = '<div class="lookup-status">Reading…</div>';
   try {
-    const exerciseTypes = ['Walk','Hiking','Cardio','Treadmill','Strength','Other'];
+    const exerciseTypes = ['Walk','Dog Walk','Hiking','Cardio','Treadmill','Strength','Other'];
     const promptText = `A person is describing a workout they just did. Their description: "${desc}"
 
 Extract ONLY what is clearly stated — never invent or assume anything not mentioned. Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format:
@@ -7643,7 +7644,7 @@ function setExType(type) {
 // "View Trends" only makes sense for the cardio types that actually have
 // a trend to show — Strength has its own richer per-exercise history,
 // and "Other" is too much of a catch-all for a meaningful chart.
-const CARDIO_TYPES_WITH_TRENDS = ['Walk', 'Hiking', 'Cardio', 'Treadmill'];
+const CARDIO_TYPES_WITH_TRENDS = ['Walk', 'Dog Walk', 'Hiking', 'Cardio', 'Treadmill'];
 function updateCardioTrendsBtnVisibility() {
   const btn = document.getElementById('cardioTrendsBtn');
   if (!btn) return;
@@ -9566,7 +9567,7 @@ document.getElementById('exDate').addEventListener('change', renderExList);
 // ── ACTIVITY HISTORY ──
 // A Zepp-style rolling list of past workouts across every date, not just
 // the one currently selected above — icon, type, date, duration, distance.
-const ACTIVITY_ICONS = { Walk: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="1.8"/><path d="M12 6.5v6"/><path d="M12 9l4 2"/><path d="M12 9l-3 1"/><path d="M12 12.5l3 8"/><path d="M12 12.5l-4 8"/></svg>', Hiking: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20 L9 8 L13 15 L16 10 L21 20 Z"/></svg>', Cardio: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>', Treadmill: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>', Strength: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/></svg>', Other: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 11 14 9 22 21 10 13 10 13 2"/></svg>' };
+const ACTIVITY_ICONS = { Walk: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="1.8"/><path d="M12 6.5v6"/><path d="M12 9l4 2"/><path d="M12 9l-3 1"/><path d="M12 12.5l3 8"/><path d="M12 12.5l-4 8"/></svg>', 'Dog Walk': '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="1.8"/><path d="M12 6.5v6"/><path d="M12 9l4 2"/><path d="M12 9l-3 1"/><path d="M12 12.5l3 8"/><path d="M12 12.5l-4 8"/></svg>', Hiking: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20 L9 8 L13 15 L16 10 L21 20 Z"/></svg>', Cardio: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>', Treadmill: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>', Strength: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/></svg>', Other: '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 11 14 9 22 21 10 13 10 13 2"/></svg>' };
 function renderActivityHistory() {
   const box = document.getElementById('activityHistoryList');
   if (!box) return;
