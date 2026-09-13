@@ -4055,6 +4055,7 @@ function allEarnedBadgeIds(asOfDate) {
 // fly outward from the top of the banner and fade, removed from the DOM
 // once their animation finishes so nothing lingers behind.
 function spawnConfetti(container) {
+  playCelebrationSound();
   const colors = ['#FFFFFF', '#FFB020', '#FF6FA5', '#7A5C9E'];
   let html = '';
   for (let i = 0; i < 14; i++) {
@@ -8333,6 +8334,42 @@ function unlockAudioContext() {
     if (!sharedAudioCtx) sharedAudioCtx = new Ctx();
     if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
   } catch (err) { /* audio unavailable — the visual timer still works */ }
+}
+
+// Badge/milestone celebrations can appear the moment Home loads — before
+// any workout-specific tap (like a set checkmark) would have unlocked
+// audio. A one-time, app-wide tap listener catches this earlier, so the
+// celebration sound below has the best chance of actually playing.
+document.addEventListener('click', function unlockOnFirstTap() {
+  unlockAudioContext();
+  document.removeEventListener('click', unlockOnFirstTap);
+}, { once: true });
+
+// A brighter, ascending 3-note run for badge/milestone/PR celebrations —
+// deliberately distinct from the rest timer's flat double-beep above, so
+// the two never feel like the same kind of alert.
+function playCelebrationSound() {
+  try {
+    unlockAudioContext();
+    const ctx = sharedAudioCtx;
+    if (!ctx) return;
+    const beep = (freq, startOffset, dur) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + startOffset);
+      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + startOffset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startOffset + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + startOffset);
+      osc.stop(ctx.currentTime + startOffset + dur + 0.02);
+    };
+    beep(523.25, 0, 0.14);    // C5
+    beep(659.25, 0.11, 0.14); // E5
+    beep(783.99, 0.22, 0.22); // G5, held a touch longer
+  } catch (err) { /* audio unavailable — the visual celebration still shows */ }
 }
 let restTimerAutoHideTimer = null; let restTimerContext = null;
 let workoutStartedAt = null; let workoutTimerInterval = null; let workoutModalOpen = false; let workoutCardHomeParent = null; let workoutCardHomeNext = null; let entryPopupCard = null; let entryPopupHomeParent = null; let entryPopupHomeNext = null; // in-memory only, same as workoutSessionState — resets on reload
