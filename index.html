@@ -4513,6 +4513,9 @@ function startListening() {
       if (s.hiddenWorkoutExercises && typeof s.hiddenWorkoutExercises === 'object') {
         hiddenWorkoutExercises = { A: [], B: [], fullbody: [], ...s.hiddenWorkoutExercises };
       }
+      if (s.exerciseOrderOverride && typeof s.exerciseOrderOverride === 'object') {
+        exerciseOrderOverride = { ...s.exerciseOrderOverride };
+      }
     }
     renderMedications();
     syncSettingsInputs();
@@ -7827,7 +7830,7 @@ async function logExercise(type, min, dist, incline) {
     stopRestTimer();
     pplDayOverride = null;
     splitDayOverride = null;
-    zoomedExercise = null;
+    zoomedExercise = null; reorderingExercises = false;
   }
   return { date, ts: item.ts };
 }
@@ -8314,6 +8317,9 @@ let workoutStartedAt = null; let workoutTimerInterval = null; let workoutModalOp
 // Firestore so they stick around instead of resetting every session.
 let customWorkoutExercises = { A: [], B: [], fullbody: [] };
 let hiddenWorkoutExercises = { A: [], B: [], fullbody: [] };
+let exerciseOrderOverride = {}; // { planKey: [exerciseName, ...] } — synced same as hidden/custom exercises above
+let workoutExerciseSortable = null;
+let reorderingExercises = false;
 const REST_SECONDS = 120; // matches the 2:00 shown in the reference screenshot
 
 function parseSetCount(setsStr) {
@@ -8795,7 +8801,34 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
     </div>`;
 }
 
+// Rebuilt every render (not created once like the dashboard's sortable)
+// because renderWorkoutPlan replaces the whole exercise list's HTML on
+// every set checked, zoom toggle, etc. — the old DOM nodes are gone, so
+// the old Sortable binding would be too.
+function initExerciseSortable() {
+  const container = document.getElementById('exerciseListContainer');
+  if (!container || typeof Sortable === 'undefined') return;
+  if (workoutExerciseSortable) { workoutExerciseSortable.destroy(); workoutExerciseSortable = null; }
+  workoutExerciseSortable = Sortable.create(container, {
+    handle: '.exercise-drag-handle',
+    animation: 150,
+    disabled: !reorderingExercises,
+    onEnd: async () => {
+      const planKey = currentPlanKey();
+      const order = [...container.querySelectorAll('.workout-exercise-block')].map(c => c.dataset.exercise);
+      exerciseOrderOverride[planKey] = order;
+      try { await saveWorkoutPlanCustomizations(); } catch (err) { console.error('Failed to save exercise order:', err); }
+    }
+  });
+}
+
 function wireWorkoutPlanEvents() {
+  initExerciseSortable();
+  const reorderBtn = document.getElementById('reorderExercisesBtn');
+  if (reorderBtn) reorderBtn.addEventListener('click', () => {
+    reorderingExercises = !reorderingExercises;
+    renderWorkoutPlan();
+  });
   document.querySelectorAll('.exercise-zoom-btn').forEach(el => {
     el.addEventListener('click', () => {
       zoomedExercise = el.dataset.exercise;
@@ -8810,7 +8843,7 @@ function wireWorkoutPlanEvents() {
   });
   const backBtn = document.getElementById('backToExerciseListBtn');
   if (backBtn) backBtn.addEventListener('click', () => {
-    zoomedExercise = null;
+    zoomedExercise = null; reorderingExercises = false;
     renderWorkoutPlan();
   });
   document.querySelectorAll('.ppl-day-chip').forEach(chip => {
@@ -8822,7 +8855,7 @@ function wireWorkoutPlanEvents() {
       // switching days should start that day fresh, same as opening the
       // plan normally does.
       workoutSessionState = {};
-      zoomedExercise = null;
+      zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
     });
   });
@@ -8831,7 +8864,7 @@ function wireWorkoutPlanEvents() {
       if (chip.dataset.splitDay === splitDayOverride) return; // already showing this one
       splitDayOverride = chip.dataset.splitDay;
       workoutSessionState = {};
-      zoomedExercise = null;
+      zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
     });
   });
@@ -8928,7 +8961,7 @@ function wireWorkoutPlanEvents() {
         // full list automatically — showing what's done and what's left,
         // rather than guessing which exercise to jump to next.
         if (zoomedExercise === exName && workoutSessionState[exName].every(s => s.done)) {
-          zoomedExercise = null;
+          zoomedExercise = null; reorderingExercises = false;
         }
       } else {
         delete workoutSessionState[exName][idx].checkedAt;
@@ -8986,7 +9019,7 @@ function currentPlanDisplayName() {
 }
 
 async function saveWorkoutPlanCustomizations() {
-  await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { customWorkoutExercises, hiddenWorkoutExercises }, { merge: true });
+  await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { customWorkoutExercises, hiddenWorkoutExercises, exerciseOrderOverride }, { merge: true });
 }
 
 async function saveNewWorkoutExercise() {
@@ -9175,6 +9208,20 @@ function renderWorkoutPlan() {
   const custom = customWorkoutExercises[planKey] || [];
   plan = [...plan, ...custom].filter(ex => !hidden.includes(ex.name));
 
+  // Apply any saved custom order for this day — an exercise not in the
+  // saved order (e.g. a new one added since the order was last saved)
+  // falls back to appearing at the end, in its natural order, rather
+  // than vanishing or throwing off everything else's position.
+  const savedOrder = exerciseOrderOverride[planKey];
+  if (savedOrder && savedOrder.length) {
+    const orderIndex = new Map(savedOrder.map((name, i) => [name, i]));
+    plan = plan.slice().sort((a, b) => {
+      const ai = orderIndex.has(a.name) ? orderIndex.get(a.name) : Infinity;
+      const bi = orderIndex.has(b.name) ? orderIndex.get(b.name) : Infinity;
+      return ai - bi;
+    });
+  }
+
   // Zoomed-in view narrows the list to just one exercise's own sets —
   // the underlying plan/session state is completely unaffected either
   // way, this only changes what gets rendered here. Falls back to the
@@ -9189,6 +9236,7 @@ function renderWorkoutPlan() {
     ${workoutNudgeHtml()}
     ${headerHtml}
     ${backToListHtml}
+    <div id="exerciseListContainer">
     ${visiblePlan.map((ex, exIndex) => {
       const setCount = parseSetCount(ex.sets);
       const setState = getOrInitSetState(ex.name, setCount);
@@ -9198,6 +9246,19 @@ function renderWorkoutPlan() {
       const allDone = setState.length > 0 && doneCount === setState.length;
       const accent = workoutAccentColor(exIndex);
       const cardColor = allDone ? 'var(--sage)' : accent;
+      if (reorderingExercises) {
+        // Compact row: just the drag handle and name, sets/inputs hidden
+        // — smaller cards mean less scrolling to see the whole list
+        // while actually dragging one into place.
+        return `
+        <div class="workout-exercise-block" data-exercise="${ex.name}" style="margin-bottom:10px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;background:var(--card)">
+          <div class="exercise-drag-handle" style="cursor:grab;color:var(--ink-soft);font-size:20px;line-height:1;flex-shrink:0">⠿</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:14px">${ex.name}</div>
+            <div style="font-size:11px;color:var(--ink-soft)">${ex.sets}</div>
+          </div>
+        </div>`;
+      }
       return `
       <div class="workout-exercise-block${allDone ? ' workout-exercise-done' : ''}" data-exercise="${ex.name}" style="margin-bottom:18px;padding:16px 16px 12px;border:2px solid ${cardColor};border-radius:16px;background:${allDone ? 'var(--success-tint)' : 'transparent'}">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
@@ -9220,8 +9281,12 @@ function renderWorkoutPlan() {
         <button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${ex.name}" style="margin-top:6px;font-size:12px;padding:6px 12px">+ Add Set</button>
       </div>`;
     }).join('')}
+    </div>
     ${isZoomed ? '' : `<div id="addExerciseRow" style="margin-top:2px">
-      <button type="button" class="btn btn-ghost btn-sm" id="showAddExerciseBtn" style="width:100%">+ Add Exercise</button>
+      <div style="display:flex;gap:8px;margin-bottom:2px">
+        <button type="button" class="btn btn-ghost btn-sm" id="showAddExerciseBtn" style="flex:1">+ Add Exercise</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="reorderExercisesBtn" style="flex:1">${reorderingExercises ? '✓ Done Reordering' : '⠿ Reorder'}</button>
+      </div>
       <div id="addExerciseForm" style="display:none;margin-top:8px;padding:10px;border:1.5px dashed var(--line);border-radius:10px">
         <div style="display:flex;gap:6px;margin-bottom:6px">
           <input type="text" id="newExerciseName" placeholder="Exercise name" style="flex:1.4;min-width:0;padding:7px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:12px;background:var(--input-bg);color:var(--ink)">
@@ -9252,7 +9317,7 @@ function renderWorkoutPlan() {
       setExType('Strength');
       workoutStartedAt = Date.now(); setWorkoutFullscreen(true);
       startWorkoutTimer();
-      zoomedExercise = null; // fresh start, always begin on the full list
+      zoomedExercise = null; reorderingExercises = false; // fresh start, always begin on the full list
       renderWorkoutPlan();
       const firstSetInput = document.querySelector('.set-weight-input');
       if (firstSetInput) {
