@@ -962,7 +962,7 @@ body {
 </div>
 
 <!-- ── REST TIMER POPUP (workout sets) ── -->
-<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="restTimerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.35);z-index:600"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
+<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="restTimerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.35);z-index:600"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
 <div id="restTimerWrap" style="display:none;flex-direction:column;align-items:center;gap:8px;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1.5px solid var(--teal);border-radius:18px;padding:24px 30px;box-shadow:0 14px 44px rgba(0,0,0,0.32);z-index:601;min-width:190px;text-align:center">
   <span id="restTimerLabel" style="font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em">⏱ Rest</span>
   <span id="restTimerDisplay" style="font-family:'IBM Plex Mono',monospace;font-size:42px;font-weight:700;color:var(--teal);line-height:1.1">2:00</span>
@@ -8321,6 +8321,89 @@ function previousSetsFor(exerciseName) {
   return null;
 }
 
+// Every logged session for one exercise, oldest first — not just the
+// most recent (that's what previousSetsFor above already covers). Powers
+// the per-exercise history/progression view.
+function fullExerciseHistory(exerciseName) {
+  const history = [];
+  entries.filter(e => e.ex && e.ex.length).forEach(e => {
+    e.ex.forEach(x => {
+      if (x.type === 'Strength' && x.sets && x.sets[exerciseName] && x.sets[exerciseName].length) {
+        const sets = x.sets[exerciseName];
+        const workingSets = sets.filter(s => !s.warmup);
+        const bestSet = workingSets.length
+          ? workingSets.reduce((best, s) => (s.weight > best.weight ? s : best), workingSets[0])
+          : null;
+        history.push({ date: e.date, sets, bestWeight: bestSet ? bestSet.weight : null });
+      }
+    });
+  });
+  history.sort((a, b) => a.date.localeCompare(b.date));
+  return history;
+}
+
+function showExerciseHistory(exerciseName) {
+  const modal = document.getElementById('exerciseHistoryModal');
+  const backdrop = document.getElementById('exerciseHistoryBackdrop');
+  if (!modal || !backdrop) return;
+  const history = fullExerciseHistory(exerciseName);
+
+  // Best-set weight over time — same lightweight sparkline approach used
+  // for the weight trend elsewhere in the app, just scoped to one exercise.
+  let chartHtml = '';
+  const withWeight = history.filter(h => h.bestWeight != null);
+  if (withWeight.length >= 2) {
+    const vals = withWeight.map(h => h.bestWeight);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = max - min || 1;
+    const stepX = 100 / (withWeight.length - 1);
+    const points = vals.map((v, i) => `${(i * stepX).toFixed(1)},${(46 - ((v - min) / range) * 40).toFixed(1)}`).join(' ');
+    chartHtml = `
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line)">
+        <svg viewBox="0 0 100 50" style="width:100%;height:70px;display:block">
+          <polyline points="${points}" fill="none" stroke="#5CE6C0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:4px">
+          <span>${fmtDate(withWeight[0].date)}</span>
+          <span>${min}–${max} lb</span>
+          <span>${fmtDate(withWeight[withWeight.length - 1].date)}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  const listHtml = history.slice().reverse().map(h => `
+    <div style="padding:10px 16px;border-bottom:1px solid var(--line)">
+      <div style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px">${fmtDate(h.date)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${h.sets.map(s => `<span style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);border-radius:6px;padding:3px 8px;${s.warmup ? 'color:var(--ink-soft);opacity:0.75' : 'color:var(--ink)'}">${s.warmup ? 'W · ' : ''}${s.weight}×${s.reps}</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  modal.innerHTML = `
+    <div style="padding:16px 16px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:16px;font-weight:800">${exerciseName}</div>
+      <button type="button" id="exerciseHistoryCloseBtn" style="background:none;border:none;font-size:20px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px">✕</button>
+    </div>
+    ${chartHtml}
+    <div style="max-height:50vh;overflow-y:auto">
+      ${listHtml || '<div style="padding:16px;font-size:13px;color:var(--ink-soft);text-align:center">No sessions logged yet for this exercise.</div>'}
+    </div>
+  `;
+  document.getElementById('exerciseHistoryCloseBtn').addEventListener('click', hideExerciseHistory);
+  backdrop.addEventListener('click', hideExerciseHistory, { once: true });
+  backdrop.style.display = 'block';
+  modal.style.display = 'block';
+}
+
+function hideExerciseHistory() {
+  const modal = document.getElementById('exerciseHistoryModal');
+  const backdrop = document.getElementById('exerciseHistoryBackdrop');
+  if (modal) modal.style.display = 'none';
+  if (backdrop) backdrop.style.display = 'none';
+}
+
 // Parses "3 × 10–12" -> {min:10, max:12}. Returns null for anything that
 // isn't a weight/rep target (e.g. Plank's "30–45 sec" is time-based, not
 // applicable to a weight-progression suggestion).
@@ -8609,6 +8692,12 @@ function wireWorkoutPlanEvents() {
     el.addEventListener('click', () => {
       zoomedExercise = el.dataset.exercise;
       renderWorkoutPlan();
+    });
+  });
+  document.querySelectorAll('.exercise-history-btn').forEach(el => {
+    el.addEventListener('click', (evt) => {
+      evt.stopPropagation(); // sits inside the same header row as the zoom target — don't also trigger a zoom
+      showExerciseHistory(el.dataset.exercise);
     });
   });
   const backBtn = document.getElementById('backToExerciseListBtn');
@@ -9009,6 +9098,7 @@ function renderWorkoutPlan() {
             <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-soft);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
           <span style="font-size:13px;font-weight:800;color:#0d0d0f;background:${cardColor};padding:4px 11px;border-radius:20px;flex-shrink:0">${doneCount}/${setState.length}</span>
+          <button type="button" class="exercise-history-btn" data-exercise="${ex.name}" title="View history for ${ex.name}" aria-label="View history for ${ex.name}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:4px;flex-shrink:0;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></button>
           <button type="button" class="remove-exercise-btn" data-exercise="${ex.name}" title="Remove from today's list" aria-label="Remove ${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:17px;line-height:1;cursor:pointer;padding:4px;margin-left:2px;flex-shrink:0">✕</button>
         </div>
         <div style="font-size:12px;color:var(--ink-soft);margin-bottom:${hint ? '6px' : '10px'}">${ex.sets}</div>
