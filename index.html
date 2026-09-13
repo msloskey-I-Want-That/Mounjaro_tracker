@@ -8311,6 +8311,22 @@ let workoutSessionState = {}; // { exerciseName: [{weight, reps, done, checkedAt
 let lastAutoFilledMin = null; // so auto-fill never overwrites a value you typed yourself
 let restTimerEndTime = null;
 let restTimerInterval = null;
+
+// A single, reused AudioContext for the rest-timer beep — iOS Safari
+// silently mutes any AudioContext that wasn't created/resumed inside a
+// direct user-gesture handler, and the beep itself fires from a
+// setInterval tick, not a tap. Unlocking one here (called from the set
+// checkmark's own tap, right where the timer starts) means it's already
+// running by the time the timer later needs it.
+let sharedAudioCtx = null;
+function unlockAudioContext() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    if (!sharedAudioCtx) sharedAudioCtx = new Ctx();
+    if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
+  } catch (err) { /* audio unavailable — the visual timer still works */ }
+}
 let restTimerAutoHideTimer = null; let restTimerContext = null;
 let workoutStartedAt = null; let workoutTimerInterval = null; let workoutModalOpen = false; let workoutCardHomeParent = null; let workoutCardHomeNext = null; let entryPopupCard = null; let entryPopupHomeParent = null; let entryPopupHomeNext = null; // in-memory only, same as workoutSessionState — resets on reload
 // User-added/removed exercises per plan ('A', 'B', or 'fullbody'), synced to
@@ -8721,9 +8737,9 @@ function updateRestTimerDisplay() {
 function playRestEndAlert() {
   try {
     if (navigator.vibrate) navigator.vibrate([180, 90, 180]);
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
+    unlockAudioContext(); // defensive — covers the rare case where nothing called this yet, or iOS suspended it again (e.g. app was backgrounded)
+    const ctx = sharedAudioCtx;
+    if (!ctx) return;
     const beep = (freq, startOffset, dur) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -8954,7 +8970,7 @@ function wireWorkoutPlanEvents() {
       workoutSessionState[exName][idx].done = !wasDone;
       if (!wasDone) {
         workoutSessionState[exName][idx].checkedAt = Date.now();
-        restTimerContext = { exerciseName: exName, setIdx: idx }; startRestTimer(getExerciseRestSeconds(exName));
+        restTimerContext = { exerciseName: exName, setIdx: idx }; unlockAudioContext(); startRestTimer(getExerciseRestSeconds(exName));
         autoFillWorkoutDuration();
         // Checking off (not un-checking) the last remaining set for
         // whichever exercise is currently zoomed in pops back out to the
