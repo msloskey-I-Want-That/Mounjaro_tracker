@@ -1086,10 +1086,10 @@ body {
       </div>
 
       <div class="form-card" id="weeklyRecapCard" style="display:none">
-        <div class="form-section-title"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> This Week</div>
+        <div class="form-section-title"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;background:linear-gradient(135deg,#37C6FF,#5CE6C0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent"><svg width="15" height="15" viewBox="0 0 24 24" stroke="#5CE6C0" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> This Week</span></div>
         <div id="weeklyRecapBody" style="display:flex;justify-content:space-around;text-align:center;gap:8px"></div>
         <div id="patternsSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
-          <div style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg> Patterns Noticed</div>
+          <div style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="#7A5C9E" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg> Patterns Noticed</div>
           <div style="font-size:11px;color:var(--ink-soft);margin-bottom:8px">Plain comparisons across your own recent numbers — correlation, not causation, and not medical advice.</div>
           <div id="patternsBody" style="font-size:13px;color:var(--ink);line-height:1.5;display:flex;flex-direction:column;gap:10px"></div>
         </div>
@@ -4937,11 +4937,11 @@ function updateStats() {
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Weight</div>
           </div>
           <div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:var(--ink)">${workouts}</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#37C6FF">${workouts}</div>
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Workout${workouts === 1 ? '' : 's'}</div>
           </div>
           <div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:var(--ink)">${streak}</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#FFB020">${streak}</div>
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Day Streak</div>
           </div>
         `;
