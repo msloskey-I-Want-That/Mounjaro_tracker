@@ -1088,12 +1088,11 @@ body {
       <div class="form-card" id="weeklyRecapCard" style="display:none">
         <div class="form-section-title"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> This Week</div>
         <div id="weeklyRecapBody" style="display:flex;justify-content:space-around;text-align:center;gap:8px"></div>
-      </div>
-
-      <div class="form-card" id="patternsCard" style="display:none">
-        <div class="form-section-title"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg> Patterns Noticed</div>
-        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px">Plain comparisons across your own recent numbers — correlation, not causation, and not medical advice.</div>
-        <div id="patternsBody" style="font-size:13px;color:var(--ink);line-height:1.5;display:flex;flex-direction:column;gap:10px"></div>
+        <div id="patternsSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+          <div style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg> Patterns Noticed</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-bottom:8px">Plain comparisons across your own recent numbers — correlation, not causation, and not medical advice.</div>
+          <div id="patternsBody" style="font-size:13px;color:var(--ink);line-height:1.5;display:flex;flex-direction:column;gap:10px"></div>
+        </div>
       </div>
 
       <div class="form-card" id="aiInsightsCard">
@@ -4913,17 +4912,22 @@ function updateStats() {
     applyBadgeHint('scLoggingStreakBadgeHint', 'Consistency', badgeCatsForHints);
   } catch (err) { console.error('Logging streak computation failed:', err); }
 
-  // This Week recap — same "hide rather than pad with placeholders"
-  // philosophy as Patterns Noticed below: nothing shows until there's at
-  // least one real number worth reporting.
+  // This Week recap + Patterns Noticed — merged into one card so Home
+  // doesn't carry two separate "how am I doing" cards for closely
+  // related info. Each half still shows or hides independently based on
+  // its own data; the outer card only shows if at least one has
+  // something to say.
   try {
     const recapCard = document.getElementById('weeklyRecapCard');
     const recapBody = document.getElementById('weeklyRecapBody');
-    if (recapCard && recapBody) {
+    const patternsSection = document.getElementById('patternsSection');
+    const patternsBody = document.getElementById('patternsBody');
+    if (recapCard && recapBody && patternsSection && patternsBody) {
       const wChange = weightChangeOverDays(7);
       const workouts = workoutsInLastDays(7);
       const streak = currentLoggingStreak();
-      if (wChange !== null || workouts > 0 || streak > 0) {
+      const hasRecapData = wChange !== null || workouts > 0 || streak > 0;
+      if (hasRecapData) {
         const weightColor = wChange === null ? 'var(--ink-soft)' : (wChange.change <= 0 ? 'var(--in)' : 'var(--out)');
         const weightText = wChange === null ? '—' : (wChange.change <= 0 ? '' : '+') + wChange.change.toFixed(1) + ' lbs';
         recapBody.innerHTML = `
@@ -4940,31 +4944,25 @@ function updateStats() {
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Day Streak</div>
           </div>
         `;
-        recapCard.style.display = '';
+        recapBody.style.display = 'flex';
       } else {
-        recapCard.style.display = 'none';
+        recapBody.style.display = 'none';
       }
+
+      const insights = computePatternsNoticed();
+      const hasPatternsData = insights.length > 0;
+      if (hasPatternsData) {
+        patternsBody.innerHTML = insights.map(s => `<div>${s}</div>`).join('');
+        patternsSection.style.display = '';
+      } else {
+        patternsSection.style.display = 'none';
+      }
+
+      recapCard.style.display = (hasRecapData || hasPatternsData) ? '' : 'none';
     }
-  } catch (err) { console.error('Weekly recap computation failed:', err); }
+  } catch (err) { console.error('Weekly recap / Patterns computation failed:', err); }
 
   try { renderAchievementCelebrations(badgeCatsForHints); } catch (err) { console.error('Achievement celebration failed:', err); }
-
-  // Patterns Noticed — hidden entirely when nothing meets the bar (see
-  // analyzeCorrelationPair's own thresholds); no padded card with a
-  // "nothing found yet" placeholder.
-  try {
-    const patternsCard = document.getElementById('patternsCard');
-    const patternsBody = document.getElementById('patternsBody');
-    if (patternsCard && patternsBody) {
-      const insights = computePatternsNoticed();
-      if (insights.length) {
-        patternsBody.innerHTML = insights.map(s => `<div>${s}</div>`).join('');
-        patternsCard.style.display = '';
-      } else {
-        patternsCard.style.display = 'none';
-      }
-    }
-  } catch (err) { console.error('Patterns Noticed computation failed:', err); }
 }
 
 // ── TIMELINE ──
