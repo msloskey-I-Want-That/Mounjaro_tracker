@@ -957,6 +957,18 @@ body {
   </div>
 </div>
 
+<!-- ── RECIPE BOX IMPORT ── -->
+<div class="modal-overlay hidden" id="recipeBoxModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Import from Recipe Box</div>
+    <div class="modal-sub">Pick a recipe — its per-serving macros drop straight into the Food tab.</div>
+    <input class="modal-input" id="recipeBoxSearch" placeholder="Search your recipes…" autocomplete="off" autocorrect="off" spellcheck="false">
+    <div id="recipeBoxList" style="max-height:50vh;overflow-y:auto;margin:12px 0"></div>
+    <button class="btn btn-ghost" id="recipeBoxCancelBtn">Cancel</button>
+  </div>
+</div>
+
 <!-- ── UNDO TOAST ── -->
 <div id="undoToast" style="display:none;position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 16px;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:500;max-width:90vw">
   <span id="undoToastMsg" style="font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
@@ -2040,6 +2052,7 @@ body {
         </div>
 
         <div class="food-tab-panel" id="foodTabPanel-recipe" style="display:none">
+          <button type="button" class="btn btn-secondary btn-sm" id="importRecipeBoxBtn" style="width:100%;margin-bottom:8px;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg> Import from Recipe Box</button>
           <button type="button" class="btn btn-ghost btn-sm" id="newRecipeBtn" style="width:100%;margin-bottom:12px"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16v2a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M8 12V8a4 4 0 0 1 8 0v4"/><line x1="2" y1="12" x2="22" y2="12"/></svg> New Recipe (precise, multi-ingredient, saved for reuse)</button>
           <div id="recipeBuilder" style="display:none"></div>
           <div class="field" style="margin-bottom:0">
@@ -2920,7 +2933,7 @@ body {
 setTimeout(() => { if (typeof hideLoading === 'function') hideLoading(); }, 8000);
 
 import { initializeApp }        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, query, orderBy, enableIndexedDbPersistence }
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, query, orderBy, enableIndexedDbPersistence }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ── FIREBASE ──
@@ -2935,6 +2948,29 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 enableIndexedDbPersistence(db).catch(() => {});
+
+// ── RECIPE BOX (separate app, separate Firebase project — read-only import) ──
+// Lets the Food tab pull a recipe's per-serving macros straight from the
+// Recipe Box app instead of re-typing them. Named 'recipeBox' so this
+// second app instance doesn't collide with the tracker's own default app.
+const recipeBoxConfig = {
+  apiKey: "AIzaSyAiLPE-Z49QRy1Yj4gM-Yc-_wy5jnPd8Fs",
+  authDomain: "recipes-a7558.firebaseapp.com",
+  projectId: "recipes-a7558",
+  storageBucket: "recipes-a7558.firebasestorage.app",
+  messagingSenderId: "522798336950",
+  appId: "1:522798336950:web:2bf7e8cf3cd1206fd4cf17"
+};
+const recipeBoxApp = initializeApp(recipeBoxConfig, 'recipeBox');
+const recipeBoxDb = getFirestore(recipeBoxApp);
+let recipeBoxCache = null;
+async function fetchRecipeBoxRecipes(force) {
+  if (recipeBoxCache && !force) return recipeBoxCache;
+  const snap = await getDocs(collection(recipeBoxDb, 'recipes'));
+  recipeBoxCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  recipeBoxCache.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+  return recipeBoxCache;
+}
 
 // ── HEALTH SYNC (from an Apple Health Shortcut) ──
 // The Shortcut opens this app's URL with health data as query params
@@ -11045,6 +11081,77 @@ function applyFavFilter() {
   });
 }
 document.getElementById('favFoodsFilter').addEventListener('input', applyFavFilter);
+
+// ── IMPORT FROM RECIPE BOX ──
+// Pulls the picked recipe's per-serving macros into the same mDesc/mServings/
+// mProtein/mCal/mCarbs/mFat fields the rest of the Food tab already uses, so
+// "+ Add to Day" works exactly the same afterward — servings eaten (not
+// servings the recipe makes) is set via the existing mServings stepper.
+function renderRecipeBoxList(recipes, filterText) {
+  const list = document.getElementById('recipeBoxList');
+  const q = (filterText || '').trim().toLowerCase();
+  const filtered = q ? recipes.filter(r => (r.title || '').toLowerCase().includes(q)) : recipes;
+
+  if (recipes.length === 0) {
+    list.innerHTML = `<div style="padding:16px;text-align:center;color:var(--ink-soft);font-size:13px">No recipes found in Recipe Box yet.</div>`;
+    return;
+  }
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="padding:16px;text-align:center;color:var(--ink-soft);font-size:13px">No matches for "${escapeHtml(filterText)}".</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(r => {
+    const m = r.macros || {};
+    const macroLine = m.calories
+      ? `${m.calories} cal · ${m.protein || 0}g P · ${m.carbs || 0}g C · ${m.fat || 0}g F / serving`
+      : 'No macros saved yet for this recipe';
+    return `<div class="recipe-box-item" data-recipe-id="${r.id}" style="padding:12px 10px;border-bottom:1px solid var(--line);cursor:pointer">
+      <div style="font-weight:700;color:var(--ink);font-size:14px">${escapeHtml(r.title || 'Untitled recipe')}</div>
+      <div style="font-size:12px;color:var(--ink-soft);margin-top:2px">${escapeHtml(macroLine)}</div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.recipe-box-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const recipe = recipes.find(r => r.id === el.dataset.recipeId);
+      if (recipe) applyRecipeBoxSelection(recipe);
+    });
+  });
+}
+
+function applyRecipeBoxSelection(recipe) {
+  const m = recipe.macros || {};
+  document.getElementById('mDesc').value = recipe.title || '';
+  document.getElementById('mServings').value = '1';
+  document.getElementById('mProtein').value = m.protein || '';
+  document.getElementById('mCal').value = m.calories || '';
+  document.getElementById('mCarbs').value = m.carbs || '';
+  document.getElementById('mFat').value = m.fat || '';
+  lastLookupSource = 'Recipe Box';
+  document.getElementById('recipeBoxModal').classList.add('hidden');
+  const mDesc = document.getElementById('mDesc');
+  if (mDesc) mDesc.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+document.getElementById('importRecipeBoxBtn').addEventListener('click', async () => {
+  const modal = document.getElementById('recipeBoxModal');
+  modal.classList.remove('hidden');
+  document.getElementById('recipeBoxSearch').value = '';
+  document.getElementById('recipeBoxList').innerHTML = `<div style="padding:16px;text-align:center;color:var(--ink-soft);font-size:13px">Loading your recipes…</div>`;
+  try {
+    const recipes = await fetchRecipeBoxRecipes(true);
+    renderRecipeBoxList(recipes, '');
+  } catch (err) {
+    document.getElementById('recipeBoxList').innerHTML = `<div style="padding:16px;text-align:center;color:var(--coral);font-size:13px">Couldn't reach Recipe Box: ${escapeHtml(err.message)}</div>`;
+  }
+});
+document.getElementById('recipeBoxSearch').addEventListener('input', (e) => {
+  if (recipeBoxCache) renderRecipeBoxList(recipeBoxCache, e.target.value);
+});
+document.getElementById('recipeBoxCancelBtn').addEventListener('click', () => {
+  document.getElementById('recipeBoxModal').classList.add('hidden');
+});
 
 document.getElementById('newRecipeBtn').addEventListener('click', openRecipeBuilder);
 
