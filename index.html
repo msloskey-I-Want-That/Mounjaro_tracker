@@ -7657,7 +7657,7 @@ function updateCardioTrendsBtnVisibility() {
 // so this never clobbers a value you entered yourself. Consumed once,
 // then cleared, so it doesn't keep re-applying to unrelated entries.
 function applyPendingWalkDistance() {
-  if (selectedExType() !== 'Walk') return;
+  if (!['Walk', 'Dog Walk'].includes(selectedExType())) return;
   let pending;
   try { pending = localStorage.getItem('mounjaro-pending-walk-distance'); } catch (err) { return; }
   if (!pending) return;
