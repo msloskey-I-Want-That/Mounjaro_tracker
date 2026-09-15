@@ -8361,13 +8361,21 @@ let restTimerInterval = null;
 // checkmark's own tap, right where the timer starts) means it's already
 // running by the time the timer later needs it.
 let sharedAudioCtx = null;
-function unlockAudioContext() {
+async function unlockAudioContext() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
+    if (!Ctx) return null;
     if (!sharedAudioCtx) sharedAudioCtx = new Ctx();
-    if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
-  } catch (err) { /* audio unavailable — the visual timer still works */ }
+    if (sharedAudioCtx.state === 'suspended') {
+      // resume() is genuinely asynchronous on a real device (unlike a
+      // quick mock) — awaiting it matters, since scheduling sound before
+      // the context has actually finished resuming can silently drop it.
+      await sharedAudioCtx.resume();
+    }
+    return sharedAudioCtx;
+  } catch (err) {
+    return null; // audio unavailable — callers fall back to vibration/visuals only
+  }
 }
 
 // Badge/milestone celebrations can appear the moment Home loads — before
@@ -8382,10 +8390,9 @@ document.addEventListener('click', function unlockOnFirstTap() {
 // A brighter, ascending 3-note run for badge/milestone/PR celebrations —
 // deliberately distinct from the rest timer's flat double-beep above, so
 // the two never feel like the same kind of alert.
-function playCelebrationSound() {
+async function playCelebrationSound() {
   try {
-    unlockAudioContext();
-    const ctx = sharedAudioCtx;
+    const ctx = await unlockAudioContext();
     if (!ctx) return;
     const beep = (freq, startOffset, dur) => {
       const osc = ctx.createOscillator();
@@ -8859,11 +8866,17 @@ function updateRestTimerDisplay() {
 // this PWA. Falls back silently if audio is blocked (e.g. no user
 // interaction yet, or the OS mutes it) — the visual "Rest over" state and
 // vibration still cover it either way.
-function playRestEndAlert() {
+async function playRestEndAlert() {
   try {
     if (navigator.vibrate) navigator.vibrate([180, 90, 180]);
-    unlockAudioContext(); // defensive — covers the rare case where nothing called this yet, or iOS suspended it again (e.g. app was backgrounded)
-    const ctx = sharedAudioCtx;
+    // Awaiting here is the actual fix: resume() is genuinely asynchronous
+    // on a real device, and a 60-180 second idle rest period is long
+    // enough for iOS to have suspended the context again in the
+    // meantime. Scheduling the beep before resume() has truly finished
+    // can silently drop the sound entirely, even though the code looks
+    // correct and a rushed test with an instantly-resolving mock
+        // wouldn't have caught it.
+    const ctx = await unlockAudioContext();
     if (!ctx) return;
     const beep = (freq, startOffset, dur) => {
       const osc = ctx.createOscillator();
