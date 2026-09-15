@@ -9453,7 +9453,10 @@ function renderWorkoutPlan() {
       </div>
     </div>`}
     <div id="workoutStartFinishBlock">${workoutStartedAt
-      ? `<div id="resumeWorkoutIndicator" style="font-size:11.5px;color:var(--teal);font-weight:600;margin-top:10px;text-align:center;cursor:pointer" title="Tap to resume full screen">⏱ <span id="workoutElapsedDisplay">0:00</span> — tap to resume full screen</div>
+      ? `<div id="resumeWorkoutIndicator" style="margin-top:10px;text-align:center;cursor:pointer" title="Tap to resume full screen">
+           <div style="font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:800;color:#5CE6C0;line-height:1.1">⏱ <span id="workoutElapsedDisplay">0:00</span></div>
+           <div style="font-size:11px;color:var(--ink-soft);margin-top:2px">tap to resume full screen</div>
+         </div>
          <button type="button" class="btn btn-primary btn-sm" id="finishPlanBtn" style="margin-top:8px;width:100%;padding:12px;font-size:14px;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800;text-transform:uppercase;letter-spacing:0.02em">Finish Workout</button>`
       : `<button type="button" class="btn btn-secondary btn-sm" id="startPlanBtn" style="margin-top:10px;width:100%">Start this workout</button>`
     }
