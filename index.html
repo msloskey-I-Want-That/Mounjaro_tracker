@@ -7805,6 +7805,19 @@ function detectSessionPRs(sets) {
   return prs;
 }
 
+// Attaches an effort rating to the just-finished session — found as the
+// most recently-logged Strength entry for today (ts is a Date.now()
+// timestamp, so the highest one is the one that was just saved).
+async function saveEffortRatingForTodaysSession(rating) {
+  const date = todayStr();
+  const dayEx = exForDate(date);
+  const strengthEntries = dayEx.filter(x => x.type === 'Strength');
+  if (!strengthEntries.length) return;
+  const mostRecent = strengthEntries.reduce((a, b) => (b.ts > a.ts ? b : a));
+  const updated = dayEx.map(x => x.ts === mostRecent.ts ? { ...x, effort: rating } : x);
+  await writeEx(date, updated);
+}
+
 function showWorkoutSummary(sets, minutes, totalWeight, prs) {
   const modal = document.getElementById('workoutSummaryModal');
   const backdrop = document.getElementById('workoutSummaryBackdrop');
@@ -7843,9 +7856,22 @@ function showWorkoutSummary(sets, minutes, totalWeight, prs) {
           </div>
         `).join('')}
       </div>
+      <div style="border-top:1px solid var(--line);padding-top:12px;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">How did that feel?</div>
+        <div id="effortRatingRow" style="display:flex;gap:6px;justify-content:space-between">
+          ${[1, 2, 3, 4, 5].map(n => `<button type="button" class="effort-rating-btn" data-rating="${n}" style="flex:1;padding:10px 0;border:1.5px solid var(--line);border-radius:10px;background:var(--input-bg);color:var(--ink);font-weight:700;font-size:15px;cursor:pointer">${n}</button>`).join('')}
+        </div>
+      </div>
       <button type="button" class="btn btn-primary" id="workoutSummaryDoneBtn" style="width:100%">Nice!</button>
     </div>
   `;
+  document.querySelectorAll('.effort-rating-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      document.querySelectorAll('.effort-rating-btn').forEach(b => { b.style.background = 'var(--input-bg)'; b.style.color = 'var(--ink)'; b.style.borderColor = 'var(--line)'; });
+      btn.style.background = '#7A5C9E'; btn.style.color = '#fff'; btn.style.borderColor = '#7A5C9E';
+      try { await saveEffortRatingForTodaysSession(Number(btn.dataset.rating)); } catch (err) { console.error('Failed to save effort rating:', err); }
+    });
+  });
   document.getElementById('workoutSummaryDoneBtn').addEventListener('click', hideWorkoutSummary);
   backdrop.addEventListener('click', hideWorkoutSummary, { once: true });
   backdrop.style.display = 'block';
