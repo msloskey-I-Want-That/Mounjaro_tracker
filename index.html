@@ -4559,6 +4559,9 @@ function startListening() {
       if (s.exerciseOrderOverride && typeof s.exerciseOrderOverride === 'object') {
         exerciseOrderOverride = { ...s.exerciseOrderOverride };
       }
+      if (s.supersetPairs && typeof s.supersetPairs === 'object') {
+        supersetPairs = { ...s.supersetPairs };
+      }
     }
     renderMedications();
     syncSettingsInputs();
@@ -8427,6 +8430,31 @@ let workoutStartedAt = null; let workoutTimerInterval = null; let workoutModalOp
 let customWorkoutExercises = { A: [], B: [], fullbody: [] };
 let hiddenWorkoutExercises = { A: [], B: [], fullbody: [] };
 let exerciseOrderOverride = {}; // { planKey: [exerciseName, ...] } — synced same as hidden/custom exercises above
+let supersetPairs = {}; // { planKey: { exName: partnerExName, partnerExName: exName } } — bidirectional, so either side of a pair looks the other up the same way
+
+function supersetPartnerFor(planKey, exerciseName) {
+  const dayPairs = supersetPairs[planKey];
+  return dayPairs ? (dayPairs[exerciseName] || null) : null;
+}
+
+function setSupersetPair(planKey, exA, exB) {
+  if (!supersetPairs[planKey]) supersetPairs[planKey] = {};
+  // Clear any prior partners first — an exercise can only be in one pair
+  // at a time, so re-pairing either side cleanly drops its old partner
+  // rather than leaving a stale, one-directional link behind.
+  clearSupersetPair(planKey, exA);
+  clearSupersetPair(planKey, exB);
+  supersetPairs[planKey][exA] = exB;
+  supersetPairs[planKey][exB] = exA;
+}
+
+function clearSupersetPair(planKey, exerciseName) {
+  const dayPairs = supersetPairs[planKey];
+  if (!dayPairs || !dayPairs[exerciseName]) return;
+  const partner = dayPairs[exerciseName];
+  delete dayPairs[exerciseName];
+  delete dayPairs[partner];
+}
 let workoutExerciseSortable = null;
 let reorderingExercises = false;
 const REST_SECONDS = 120; // matches the 2:00 shown in the reference screenshot
@@ -9165,7 +9193,17 @@ function wireWorkoutPlanEvents() {
       workoutSessionState[exName][idx].done = !wasDone;
       if (!wasDone) {
         workoutSessionState[exName][idx].checkedAt = Date.now();
-        restTimerContext = { exerciseName: exName, setIdx: idx }; unlockAudioContext(); startRestTimer(getExerciseRestSeconds(exName));
+        // Superset pairs share one rest period across both exercises —
+        // rest only actually starts once BOTH sides of this round are
+        // done, not after the first half. A missing partner set at this
+        // index (mismatched set counts) is treated as "not done yet",
+        // which just means the timer waits for the other exercise too.
+        const planKey = currentPlanKey();
+        const partner = supersetPartnerFor(planKey, exName);
+        const partnerSetDone = partner ? !!(workoutSessionState[partner] && workoutSessionState[partner][idx] && workoutSessionState[partner][idx].done) : true;
+        if (!partner || partnerSetDone) {
+          restTimerContext = { exerciseName: exName, setIdx: idx }; unlockAudioContext(); startRestTimer(getExerciseRestSeconds(exName));
+        }
         autoFillWorkoutDuration();
         // Checking off (not un-checking) the last remaining set for
         // whichever exercise is currently zoomed in pops back out to the
@@ -9200,6 +9238,30 @@ function wireWorkoutPlanEvents() {
   document.querySelectorAll('.exercise-note-input').forEach(textarea => {
     textarea.addEventListener('input', () => {
       workoutNotesState[textarea.dataset.exercise] = textarea.value;
+    });
+  });
+  document.querySelectorAll('.superset-pair-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const select = document.querySelector(`.superset-pair-select[data-exercise="${CSS.escape(btn.dataset.exercise)}"]`);
+      if (select) select.style.display = select.style.display === 'none' ? '' : 'none';
+    });
+  });
+  document.querySelectorAll('.superset-pair-select').forEach(select => {
+    select.addEventListener('change', async () => {
+      const partner = select.value;
+      if (!partner) return;
+      const planKey = currentPlanKey();
+      setSupersetPair(planKey, select.dataset.exercise, partner);
+      try { await saveWorkoutPlanCustomizations(); } catch (err) { console.error('Failed to save superset pair:', err); }
+      renderWorkoutPlan();
+    });
+  });
+  document.querySelectorAll('.superset-unpair-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const planKey = currentPlanKey();
+      clearSupersetPair(planKey, btn.dataset.exercise);
+      try { await saveWorkoutPlanCustomizations(); } catch (err) { console.error('Failed to save superset unpair:', err); }
+      renderWorkoutPlan();
     });
   });
   document.querySelectorAll('.remove-exercise-btn').forEach(btn => {
@@ -9245,7 +9307,7 @@ function currentPlanDisplayName() {
 }
 
 async function saveWorkoutPlanCustomizations() {
-  await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { customWorkoutExercises, hiddenWorkoutExercises, exerciseOrderOverride }, { merge: true });
+  await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { customWorkoutExercises, hiddenWorkoutExercises, exerciseOrderOverride, supersetPairs }, { merge: true });
 }
 
 async function saveNewWorkoutExercise() {
@@ -9503,6 +9565,20 @@ function renderWorkoutPlan() {
           <button type="button" class="exercise-history-btn" data-exercise="${ex.name}" title="View history for ${ex.name}" aria-label="View history for ${ex.name}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:4px;flex-shrink:0;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></button>
           <button type="button" class="remove-exercise-btn" data-exercise="${ex.name}" title="Remove from today's list" aria-label="Remove ${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:17px;line-height:1;cursor:pointer;padding:4px;margin-left:2px;flex-shrink:0">✕</button>
         </div>
+        ${(() => {
+          const planKey = currentPlanKey();
+          const partnerName = supersetPartnerFor(planKey, ex.name);
+          if (partnerName) {
+            return `<div class="superset-label" data-exercise="${ex.name}" style="font-size:11px;color:#7A5C9E;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px">⚡ Superset with ${escapeHtml(partnerName)} <button type="button" class="superset-unpair-btn" data-exercise="${ex.name}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:11px;padding:0;text-decoration:underline">unpair</button></div>`;
+          }
+          return `<div class="superset-pair-row" style="margin-bottom:6px">
+              <button type="button" class="superset-pair-toggle-btn" data-exercise="${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:11px;font-weight:600;cursor:pointer;padding:0">🔗 Pair as superset</button>
+              <select class="superset-pair-select" data-exercise="${ex.name}" style="display:none;margin-top:4px;width:100%;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px;background:var(--input-bg);color:var(--ink)">
+                <option value="">Choose partner exercise…</option>
+                ${plan.filter(p => p.name !== ex.name).map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('')}
+              </select>
+            </div>`;
+        })()}
         <div style="font-size:12px;color:var(--ink-soft);margin-bottom:${hint ? '6px' : '10px'}">${ex.sets}</div>
         ${hint ? `<div style="font-size:12px;color:var(--coral);font-weight:600;margin-bottom:10px">${hint}</div>` : ''}
         <div style="display:grid;grid-template-columns:26px 1fr 62px 54px 38px;gap:8px;font-size:10px;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.03em">
