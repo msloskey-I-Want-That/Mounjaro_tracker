@@ -8790,6 +8790,23 @@ function recentWorkingSetsFor(exerciseName, count) {
   return sessions;
 }
 
+// The opposite signal from progressionHintFor — flags an exercise whose
+// best weight hasn't actually increased in 4+ sessions, regardless of
+// reps. Callers should only check this when progressionHintFor came back
+// null for the same exercise: that one already fires on the same "same
+// weight across recent sessions" pattern when reps are consistently
+// hitting the top of the range, and showing both at once would be a
+// contradictory "you're crushing it" / "you're stuck" double message.
+function plateauHintFor(exerciseName) {
+  const sessions = recentWorkingSetsFor(exerciseName, 4);
+  if (sessions.length < 4) return null; // not enough history to call it a plateau yet
+  const maxWeights = sessions.map(sets => Math.max(...sets.map(s => s.weight || 0)));
+  const mostRecent = maxWeights[0];
+  const fourSessionsAgo = maxWeights[maxWeights.length - 1];
+  if (mostRecent > fourSessionsAgo) return null; // net progress over that span — not a plateau
+  return `⏸ Stuck at ${mostRecent} lb for ${sessions.length} sessions — try more reps, or a small jump next time.`;
+}
+
 // In-line progression hint shown right on the Workout Plan card — no AI
 // call, just a quick local check: if the last couple of sessions held the
 // exact same weight and consistently hit the top of the target rep range,
@@ -9553,6 +9570,7 @@ function renderWorkoutPlan() {
       const setState = getOrInitSetState(ex.name, setCount);
       const prevSets = previousSetsFor(ex.name);
       const hint = progressionHintFor(ex.name, ex.sets);
+      const plateau = hint ? null : plateauHintFor(ex.name);
       const doneCount = setState.filter(s => s.done).length;
       const allDone = setState.length > 0 && doneCount === setState.length;
       const accent = workoutAccentColor(exIndex);
@@ -9595,8 +9613,9 @@ function renderWorkoutPlan() {
               </select>
             </div>`;
         })()}
-        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:${hint ? '6px' : '10px'}">${ex.sets}</div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:${(hint || plateau) ? '6px' : '10px'}">${ex.sets}</div>
         ${hint ? `<div style="font-size:12px;color:var(--coral);font-weight:600;margin-bottom:10px">${hint}</div>` : ''}
+        ${plateau ? `<div style="font-size:12px;color:#FFB020;font-weight:600;margin-bottom:10px">${plateau}</div>` : ''}
         <div style="display:grid;grid-template-columns:26px 1fr 62px 54px 38px;gap:8px;font-size:10px;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.03em">
           <span style="font-weight:700">Set</span><span style="font-weight:700">Previous</span><span>lbs</span><span style="font-weight:700">Reps</span><span></span>
         </div>
