@@ -8844,6 +8844,23 @@ function lastWeightFor(exerciseName) {
   return source[source.length - 1].weight;
 }
 
+// Most recent WARMUP-specific weight for this exercise, searched across
+// sessions (not just the last one, since a given session might not have
+// used a warmup set at all) — matched by warmup status, not set index,
+// since which position is the warmup set can shift session to session.
+function lastWarmupWeightFor(exerciseName) {
+  const sorted = entries.filter(e => e.ex && e.ex.length).slice().sort((a, b) => b.date.localeCompare(a.date));
+  for (const e of sorted) {
+    for (const x of e.ex) {
+      if (x.type === 'Strength' && x.sets && x.sets[exerciseName]) {
+        const warmupSet = x.sets[exerciseName].find(s => s.warmup);
+        if (warmupSet) return warmupSet.weight;
+      }
+    }
+  }
+  return null;
+}
+
 // Looks up an exercise's configured rest duration from whichever plan is
 // currently active — different exercises rest for different lengths
 // (a heavy Leg Press set needs longer than a Bicep Curl), rather than one
@@ -9198,7 +9215,13 @@ function wireWorkoutPlanEvents() {
     const exName = row.dataset.exercise;
     const idx = Number(row.dataset.setIdx);
     btn.addEventListener('click', () => {
-      workoutSessionState[exName][idx].warmup = !workoutSessionState[exName][idx].warmup;
+      const set = workoutSessionState[exName][idx];
+      const turningOnWarmup = !set.warmup;
+      set.warmup = turningOnWarmup;
+      if (turningOnWarmup && (set.weight === '' || set.weight == null)) {
+        const suggested = lastWarmupWeightFor(exName);
+        if (suggested != null) set.weight = suggested;
+      }
       renderWorkoutPlan();
     });
   });
