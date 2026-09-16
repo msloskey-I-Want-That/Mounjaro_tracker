@@ -8477,6 +8477,47 @@ function fullExerciseHistory(exerciseName) {
 // Your actual best-ever lift on every exercise, in one place — a
 // highlight reel, not a full log (that's what the per-exercise history
 // modal above is for). Reuses the same warmup-exclusion logic.
+// Lightweight single-exercise lookup for the live "X lbs from a PR" hint
+// while typing a weight mid-set — avoids recomputing every exercise's PR
+// and re-sorting the whole list (what allExercisePRs() does) on every keystroke.
+function bestWeightForExercise(exerciseName) {
+  let best = null;
+  entries.filter(e => e.ex && e.ex.length).forEach(e => {
+    e.ex.forEach(x => {
+      if (x.type !== 'Strength' || !x.sets || !x.sets[exerciseName]) return;
+      const workingSets = x.sets[exerciseName].filter(s => !s.warmup);
+      if (!workingSets.length) return;
+      const sessionBest = workingSets.reduce((b, s) => (s.weight > b.weight ? s : b), workingSets[0]);
+      if (!best || sessionBest.weight > best) best = sessionBest.weight;
+    });
+  });
+  return best; // null if this exercise has never been logged
+}
+
+// Live "X lbs from a PR" hint under a set's weight input, updated as the
+// person types mid-set — a small nudge that today's set could be a new
+// best, using the same warmup-excluded PR data as PR Hall of Fame.
+function updatePRProximityHint(row) {
+  if (!row) return;
+  const hint = row.nextElementSibling;
+  if (!hint || !hint.classList || !hint.classList.contains('pr-proximity-hint')) return;
+  const exerciseName = row.dataset.exercise;
+  const weightInput = row.querySelector('.set-weight-input');
+  const weight = parseFloat(weightInput ? weightInput.value : '');
+  if (isNaN(weight) || weight <= 0) { hint.style.display = 'none'; return; }
+  const pr = bestWeightForExercise(exerciseName);
+  if (pr === null) { hint.style.display = 'none'; return; }
+  const diff = Math.round((pr - weight) * 100) / 100;
+  if (diff <= 0) {
+    hint.textContent = '🏆 New PR pace!';
+    hint.style.color = '#FFB020';
+  } else {
+    hint.textContent = `${diff % 1 === 0 ? diff : diff.toFixed(1)} lb${diff === 1 ? '' : 's'} from a PR`;
+    hint.style.color = 'var(--ink-soft)';
+  }
+  hint.style.display = '';
+}
+
 function allExercisePRs() {
   const bestByExercise = {};
   const sessionCounts = {};
@@ -8952,7 +8993,7 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
       <input type="number" class="set-reps-input" inputmode="numeric" value="${setData.reps}" placeholder="reps"
         style="width:100%;padding:9px 4px;border:${setData.done ? '2px solid ' + doneAccent : '1.5px solid var(--line)'};border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:${setData.done ? '800' : '400'};background:${setData.done ? doneAccent : 'var(--input-bg)'};color:${setData.done ? '#0d0d0f' : 'var(--ink)'};text-align:center">
       <button type="button" class="set-check-btn" style="width:36px;height:36px;border-radius:10px;border:1.5px solid ${setData.done ? doneAccent : 'var(--line)'};background:${setData.done ? doneAccent : 'var(--input-bg)'};color:${setData.done ? '#0d0d0f' : 'var(--ink-soft)'};font-size:18px;font-weight:800;cursor:pointer">✓</button>
-    </div>`;
+    </div>${setData.warmup ? '' : `<div class="pr-proximity-hint" data-exercise="${exerciseName}" data-set-idx="${idx}" style="display:none;font-size:11px;font-weight:700;margin:-4px 0 8px 34px"></div>`}`;
 }
 
 // Rebuilt every render (not created once like the dashboard's sortable)
@@ -9089,8 +9130,9 @@ function wireWorkoutPlanEvents() {
     const row = input.closest('.set-row');
     const exName = row.dataset.exercise;
     const idx = Number(row.dataset.setIdx);
-    input.addEventListener('input', () => { workoutSessionState[exName][idx].weight = input.value; });
+    input.addEventListener('input', () => { workoutSessionState[exName][idx].weight = input.value; updatePRProximityHint(row); });
     input.addEventListener('focus', () => input.select());
+    updatePRProximityHint(row); // covers a value already present on render (e.g. resuming a session)
   });
   document.querySelectorAll('.set-reps-input').forEach(input => {
     const row = input.closest('.set-row');
