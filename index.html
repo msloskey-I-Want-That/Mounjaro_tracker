@@ -7764,6 +7764,22 @@ function totalSessionWeight(sets) {
   return Math.round(total);
 }
 
+// Most recent prior session's total volume for this SAME plan day (e.g.
+// last time it was specifically a Push day, not just any workout) — the
+// comparison point for the live "so far vs last time" figure below.
+function lastSessionVolumeForPlanDay(planKey) {
+  let best = null;
+  entries.filter(e => e.ex && e.ex.length).forEach(e => {
+    e.ex.forEach(x => {
+      if (x.type !== 'Strength' || !x.sets || x.planDay !== planKey) return;
+      if (!best || e.date > best.date) {
+        best = { date: e.date, volume: totalSessionWeight(x.sets) };
+      }
+    });
+  });
+  return best; // null if this plan day has no prior logged session
+}
+
 // PR = heaviest working-set weight for that exercise, ever, beaten by
 // today's session. Compares against entries as they currently stand
 // (before today's session is written), so an earlier-today session's
@@ -9616,6 +9632,13 @@ function renderWorkoutPlan() {
            <div style="font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:800;color:#5CE6C0;line-height:1.1">⏱ <span id="workoutElapsedDisplay">0:00</span></div>
            <div style="font-size:11px;color:var(--ink-soft);margin-top:2px">tap to resume full screen</div>
            <div style="font-size:11px;color:var(--ink-soft);margin-top:2px">Workout #${workoutsInLastDays(7) + 1} this week</div>
+           ${(() => {
+             const currentSets = gatherWorkoutSets();
+             const currentVolume = currentSets ? totalSessionWeight(currentSets) : 0;
+             const lastSession = lastSessionVolumeForPlanDay(currentPlanKey());
+             if (!lastSession) return ''; // no prior session for this plan day yet — nothing to compare
+             return `<div style="font-size:11px;color:var(--ink-soft);margin-top:2px">${currentVolume.toLocaleString()} lb so far — last time: ${lastSession.volume.toLocaleString()} lb</div>`;
+           })()}
          </div>
          <button type="button" class="btn btn-primary btn-sm" id="finishPlanBtn" style="margin-top:8px;width:100%;padding:12px;font-size:14px;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800;text-transform:uppercase;letter-spacing:0.02em">Finish Workout</button>`
       : `<button type="button" class="btn btn-secondary btn-sm" id="startPlanBtn" style="margin-top:10px;width:100%">Start this workout</button>`
