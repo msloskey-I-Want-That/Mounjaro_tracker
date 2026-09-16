@@ -7857,6 +7857,12 @@ async function logExercise(type, min, dist, incline) {
   if (type === 'Strength') {
     const sets = gatherWorkoutSets();
     if (sets) item.sets = sets;
+    const notes = {};
+    Object.keys(workoutNotesState).forEach(name => {
+      const trimmed = (workoutNotesState[name] || '').trim();
+      if (trimmed) notes[name] = trimmed;
+    });
+    if (Object.keys(notes).length) item.notes = notes;
     // Tag which day this actually was (respects any manual override), so
     // nextPPLDay()/nextWorkoutDay() can advance from what was really
     // trained rather than a blind session count — see their own
@@ -7868,6 +7874,7 @@ async function logExercise(type, min, dist, incline) {
     // Fresh start for next time — otherwise the checked-off sets from
     // this session would still show as "done" on the next workout.
     workoutSessionState = {};
+    workoutNotesState = {};
     lastAutoFilledMin = null;
     stopRestTimer();
     pplDayOverride = null;
@@ -8350,6 +8357,7 @@ function daysSinceLastExercise() {
 // otherwise an unrelated re-render would silently wipe out whatever had
 // already been checked off.
 let workoutSessionState = {}; // { exerciseName: [{weight, reps, done, checkedAt}, ...] }
+let workoutNotesState = {}; // { exerciseName: 'note text' } - cleared on the same resets as workoutSessionState
 let lastAutoFilledMin = null; // so auto-fill never overwrites a value you typed yourself
 let restTimerEndTime = null;
 let restTimerInterval = null;
@@ -8466,7 +8474,7 @@ function fullExerciseHistory(exerciseName) {
         const bestSet = workingSets.length
           ? workingSets.reduce((best, s) => (s.weight > best.weight ? s : best), workingSets[0])
           : null;
-        history.push({ date: e.date, sets, bestWeight: bestSet ? bestSet.weight : null });
+        history.push({ date: e.date, sets, bestWeight: bestSet ? bestSet.weight : null, note: (x.notes && x.notes[exerciseName]) || null });
       }
     });
   });
@@ -8598,6 +8606,7 @@ function showExerciseHistory(exerciseName) {
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${h.sets.map(s => `<span style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);border-radius:6px;padding:3px 8px;${s.warmup ? 'color:var(--ink-soft);opacity:0.75' : 'color:var(--ink)'}">${s.warmup ? 'W · ' : ''}${s.weight}×${s.reps}</span>`).join('')}
       </div>
+      ${h.note ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:6px;font-style:italic">📝 ${escapeHtml(h.note)}</div>` : ''}
     </div>
   `).join('');
 
@@ -9050,6 +9059,7 @@ function wireWorkoutPlanEvents() {
       // switching days should start that day fresh, same as opening the
       // plan normally does.
       workoutSessionState = {};
+      workoutNotesState = {};
       zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
     });
@@ -9059,6 +9069,7 @@ function wireWorkoutPlanEvents() {
       if (chip.dataset.splitDay === splitDayOverride) return; // already showing this one
       splitDayOverride = chip.dataset.splitDay;
       workoutSessionState = {};
+      workoutNotesState = {};
       zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
     });
@@ -9084,6 +9095,7 @@ function wireWorkoutPlanEvents() {
         // doesn't touch any of that.
         pplDayOverride = 'Legs';
         workoutSessionState = {};
+        workoutNotesState = {};
         feelingCheckDismissed = true;
       } else if (area === 'lower') {
         // Avoid Legs specifically; Push and Pull are equally fine for
@@ -9092,16 +9104,19 @@ function wireWorkoutPlanEvents() {
         const normalNext = nextPPLDay();
         pplDayOverride = normalNext === 'Legs' ? order[(order.indexOf('Legs') + 1) % 3] : normalNext;
         workoutSessionState = {};
+        workoutNotesState = {};
         feelingCheckDismissed = true;
       } else if (area === 'push') {
         // Chest/shoulders/triceps sore (Day A's focus) — Day B avoids those.
         splitDayOverride = 'B';
         workoutSessionState = {};
+        workoutNotesState = {};
         feelingCheckDismissed = true;
       } else if (area === 'pull') {
         // Back/biceps sore (Day B's focus) — Day A avoids those.
         splitDayOverride = 'A';
         workoutSessionState = {};
+        workoutNotesState = {};
         feelingCheckDismissed = true;
       } else {
         // Everywhere sore — no day is meaningfully easier than another,
@@ -9170,6 +9185,21 @@ function wireWorkoutPlanEvents() {
       const exName = btn.dataset.exercise;
       workoutSessionState[exName].push({ weight: '', reps: '', done: false, warmup: false });
       renderWorkoutPlan();
+    });
+  });
+  document.querySelectorAll('.exercise-note-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const exName = btn.dataset.exercise;
+      const wrap = document.querySelector(`.exercise-note-wrap[data-exercise="${CSS.escape(exName)}"]`);
+      if (!wrap) return;
+      const opening = wrap.style.display === 'none';
+      wrap.style.display = opening ? '' : 'none';
+      if (opening) wrap.querySelector('.exercise-note-input').focus();
+    });
+  });
+  document.querySelectorAll('.exercise-note-input').forEach(textarea => {
+    textarea.addEventListener('input', () => {
+      workoutNotesState[textarea.dataset.exercise] = textarea.value;
     });
   });
   document.querySelectorAll('.remove-exercise-btn').forEach(btn => {
@@ -9482,6 +9512,10 @@ function renderWorkoutPlan() {
           ${setState.map((s, i) => renderSetRowHtml(ex.name, i, s, prevSets && prevSets[i], accent)).join('')}
         </div>
         <button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${ex.name}" style="margin-top:6px;font-size:12px;padding:6px 12px">+ Add Set</button>
+        <button type="button" class="btn btn-ghost btn-sm exercise-note-toggle-btn" data-exercise="${ex.name}" style="margin-top:6px;margin-left:6px;font-size:12px;padding:6px 12px">${workoutNotesState[ex.name] ? '📝 Edit note' : '📝 Add note'}</button>
+        <div class="exercise-note-wrap" data-exercise="${ex.name}" style="display:${workoutNotesState[ex.name] ? '' : 'none'};margin-top:8px">
+          <textarea class="exercise-note-input" data-exercise="${ex.name}" placeholder="e.g. left shoulder felt off today" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;background:var(--input-bg);color:var(--ink);resize:vertical">${escapeHtml(workoutNotesState[ex.name] || '')}</textarea>
+        </div>
       </div>`;
     }).join('')}
     </div>
