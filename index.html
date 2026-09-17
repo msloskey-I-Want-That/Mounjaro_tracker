@@ -1424,7 +1424,149 @@ body {
 
     <!-- Log -->
     <div class="view" id="view-log">
-      <div class="form-card" id="logContextCard" style="padding:12px 16px">
+      <div class="form-card" id="quickLogCard">
+          <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polygon points="13 2 3 14 11 14 9 22 21 10 13 10 13 2"/></svg> Quick Log <span style="font-weight:400;font-size:11px;color:var(--ink-soft);text-transform:none">(most days)</span></span>
+            <span id="quickLogChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="fDate">Date</label>
+              <input type="date" id="fDate">
+            </div>
+            <div style="display:flex;align-items:flex-end">
+              <div class="field" style="width:100%">
+                <label>&nbsp;</label>
+                <label class="check-field">
+                  <input type="checkbox" id="fInjection">
+                  <span>Injection day</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div id="injSiteWrap" style="display:none;margin-top:4px">
+            <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px">Injection site <span id="lastSiteHint" style="color:var(--sage)"></span></label>
+            <svg id="injSiteMapSvg" viewBox="0 0 200 260" style="width:130px;height:auto;margin:0 auto 6px;display:block">
+              <rect x="70" y="42" width="60" height="80" rx="16" fill="none" stroke="var(--line)" stroke-width="2"/>
+              <circle cx="100" cy="22" r="16" fill="none" stroke="var(--line)" stroke-width="2"/>
+              <rect x="35" y="48" width="24" height="70" rx="12" fill="none" stroke="var(--line)" stroke-width="2"/>
+              <rect x="141" y="48" width="24" height="70" rx="12" fill="none" stroke="var(--line)" stroke-width="2"/>
+              <rect x="72" y="126" width="26" height="100" rx="13" fill="none" stroke="var(--line)" stroke-width="2"/>
+              <rect x="102" y="126" width="26" height="100" rx="13" fill="none" stroke="var(--line)" stroke-width="2"/>
+              <g id="siteMarkersGroup"></g>
+            </svg>
+            <div id="siteMapCaption" style="text-align:center;font-size:11px;color:var(--ink-soft);margin-bottom:8px">Tap a site below or on the diagram</div>
+            <div class="chip-row" id="injSiteRow">
+              <div class="chip site-chip" data-site="L Abdomen">L Abdomen</div>
+              <div class="chip site-chip" data-site="R Abdomen">R Abdomen</div>
+              <div class="chip site-chip" data-site="L Thigh">L Thigh</div>
+              <div class="chip site-chip" data-site="R Thigh">R Thigh</div>
+              <div class="chip site-chip" data-site="L Arm">L Arm</div>
+              <div class="chip site-chip" data-site="R Arm">R Arm</div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="fGlucose">Fasting glucose (mg/dL)</label>
+              <input type="number" id="fGlucose" inputmode="numeric" placeholder="e.g. 128">
+            </div>
+            <div class="field">
+              <label for="fGlucose2hr">2hr post-meal (mg/dL)</label>
+              <input type="number" id="fGlucose2hr" inputmode="numeric" placeholder="e.g. 165">
+            </div>
+          </div>
+        </div>
+
+
+      <div class="form-card" id="stepsOverrideCard">
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Steps (from Apple Health)</span><span id="stepsOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewSteps">—</div>
+          <div style="font-size:12px;color:var(--ink-soft)" id="exViewStepsSub">syncs automatically once your Shortcut is set up</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="exStepsInput">Enter manually</label>
+            <input type="number" id="exStepsInput" inputmode="numeric" placeholder="e.g. 8500">
+          </div>
+          <button class="btn btn-secondary btn-sm" id="saveStepsBtn" style="margin-bottom:2px">Save</button>
+        </div>
+      </div>
+
+      <div class="form-card" id="sleepOverrideCard">
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Sleep (from Apple Health)</span><span id="sleepOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewSleep">—</div>
+          <div style="font-size:12px;color:var(--ink-soft)" id="exViewSleepSub">syncs automatically once your Shortcut is set up</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:16px">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="exSleepInput">Enter manually (hours)</label>
+            <input type="number" id="exSleepInput" inputmode="decimal" step="0.1" placeholder="e.g. 7.5">
+          </div>
+          <button class="btn btn-secondary btn-sm" id="saveSleepBtn" style="margin-bottom:2px">Save</button>
+        </div>
+        <div style="border-top:1px solid var(--line);padding-top:14px">
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewSleepScore">—</div>
+            <div style="font-size:12px;color:var(--ink-soft)" id="exViewSleepScoreSub">syncs automatically if your device exposes it</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div class="field" style="flex:1;margin-bottom:0">
+              <label for="exSleepScoreInput">Enter manually (0–100)</label>
+              <input type="number" id="exSleepScoreInput" inputmode="numeric" min="0" max="100" placeholder="e.g. 82">
+            </div>
+            <button class="btn btn-secondary btn-sm" id="saveSleepScoreBtn" style="margin-bottom:2px">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card" id="activeEnergyOverrideCard">
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Active Energy (from Apple Health)</span><span id="activeEnergyOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewActiveCal">—</div>
+          <div style="font-size:12px;color:var(--ink-soft)" id="exViewActiveCalSub">syncs automatically once your Shortcut is set up</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="exActiveCalInput">Enter manually (calories burned)</label>
+            <input type="number" id="exActiveCalInput" inputmode="numeric" min="0" placeholder="e.g. 450">
+          </div>
+          <button class="btn btn-secondary btn-sm" id="saveActiveCalBtn" style="margin-bottom:2px">Save</button>
+        </div>
+      </div>
+
+      <div class="form-card" id="distanceOverrideCard">
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Distance (from Apple Health)</span><span id="distanceOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewDistance">—</div>
+          <div style="font-size:12px;color:var(--ink-soft)" id="exViewDistanceSub">syncs automatically once your Shortcut is set up</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="exDistanceInput">Enter manually (miles)</label>
+            <input type="number" id="exDistanceInput" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 3.1">
+          </div>
+          <button class="btn btn-secondary btn-sm" id="saveDistanceBtn" style="margin-bottom:2px">Save</button>
+        </div>
+      </div>
+
+      <div class="form-card" id="hrvOverrideCard">
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Heart Rate Variability (from Apple Health)</span><span id="hrvOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewHrv">—</div>
+          <div style="font-size:12px;color:var(--ink-soft)" id="exViewHrvSub">syncs automatically once your Shortcut is set up</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label for="exHrvInput">Enter manually (ms, SDNN)</label>
+            <input type="number" id="exHrvInput" inputmode="decimal" step="0.1" min="0" placeholder="e.g. 42">
+          </div>
+          <button class="btn btn-secondary btn-sm" id="saveHrvBtn" style="margin-bottom:2px">Save</button>
+        </div>
+      </div>
+
+        <div class="form-card" id="logContextCard" style="padding:12px 16px">
         <div id="logContextBody" style="font-size:12px;color:var(--ink-soft);line-height:1.6"></div>
       </div>
 
@@ -1811,95 +1953,7 @@ body {
       </div>
 
       <div class="log-subpanel" id="logSub-daily">
-      <div class="form-card" id="stepsOverrideCard">
-        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Steps (from Apple Health)</span><span id="stepsOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
-        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewSteps">—</div>
-          <div style="font-size:12px;color:var(--ink-soft)" id="exViewStepsSub">syncs automatically once your Shortcut is set up</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:flex-end">
-          <div class="field" style="flex:1;margin-bottom:0">
-            <label for="exStepsInput">Enter manually</label>
-            <input type="number" id="exStepsInput" inputmode="numeric" placeholder="e.g. 8500">
-          </div>
-          <button class="btn btn-secondary btn-sm" id="saveStepsBtn" style="margin-bottom:2px">Save</button>
-        </div>
-      </div>
-
-      <div class="form-card" id="sleepOverrideCard">
-        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Sleep (from Apple Health)</span><span id="sleepOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
-        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewSleep">—</div>
-          <div style="font-size:12px;color:var(--ink-soft)" id="exViewSleepSub">syncs automatically once your Shortcut is set up</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:16px">
-          <div class="field" style="flex:1;margin-bottom:0">
-            <label for="exSleepInput">Enter manually (hours)</label>
-            <input type="number" id="exSleepInput" inputmode="decimal" step="0.1" placeholder="e.g. 7.5">
-          </div>
-          <button class="btn btn-secondary btn-sm" id="saveSleepBtn" style="margin-bottom:2px">Save</button>
-        </div>
-        <div style="border-top:1px solid var(--line);padding-top:14px">
-          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewSleepScore">—</div>
-            <div style="font-size:12px;color:var(--ink-soft)" id="exViewSleepScoreSub">syncs automatically if your device exposes it</div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:flex-end">
-            <div class="field" style="flex:1;margin-bottom:0">
-              <label for="exSleepScoreInput">Enter manually (0–100)</label>
-              <input type="number" id="exSleepScoreInput" inputmode="numeric" min="0" max="100" placeholder="e.g. 82">
-            </div>
-            <button class="btn btn-secondary btn-sm" id="saveSleepScoreBtn" style="margin-bottom:2px">Save</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-card" id="activeEnergyOverrideCard">
-        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Active Energy (from Apple Health)</span><span id="activeEnergyOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
-        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewActiveCal">—</div>
-          <div style="font-size:12px;color:var(--ink-soft)" id="exViewActiveCalSub">syncs automatically once your Shortcut is set up</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:flex-end">
-          <div class="field" style="flex:1;margin-bottom:0">
-            <label for="exActiveCalInput">Enter manually (calories burned)</label>
-            <input type="number" id="exActiveCalInput" inputmode="numeric" min="0" placeholder="e.g. 450">
-          </div>
-          <button class="btn btn-secondary btn-sm" id="saveActiveCalBtn" style="margin-bottom:2px">Save</button>
-        </div>
-      </div>
-
-      <div class="form-card" id="distanceOverrideCard">
-        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Distance (from Apple Health)</span><span id="distanceOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
-        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewDistance">—</div>
-          <div style="font-size:12px;color:var(--ink-soft)" id="exViewDistanceSub">syncs automatically once your Shortcut is set up</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:flex-end">
-          <div class="field" style="flex:1;margin-bottom:0">
-            <label for="exDistanceInput">Enter manually (miles)</label>
-            <input type="number" id="exDistanceInput" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 3.1">
-          </div>
-          <button class="btn btn-secondary btn-sm" id="saveDistanceBtn" style="margin-bottom:2px">Save</button>
-        </div>
-      </div>
-
-      <div class="form-card" id="hrvOverrideCard">
-        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Heart Rate Variability (from Apple Health)</span><span id="hrvOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
-        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewHrv">—</div>
-          <div style="font-size:12px;color:var(--ink-soft)" id="exViewHrvSub">syncs automatically once your Shortcut is set up</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:flex-end">
-          <div class="field" style="flex:1;margin-bottom:0">
-            <label for="exHrvInput">Enter manually (ms, SDNN)</label>
-            <input type="number" id="exHrvInput" inputmode="decimal" step="0.1" min="0" placeholder="e.g. 42">
-          </div>
-          <button class="btn btn-secondary btn-sm" id="saveHrvBtn" style="margin-bottom:2px">Save</button>
-        </div>
-      </div>
-
-        <div class="form-card" id="tellMeAboutDayCard">
+      <div class="form-card" id="tellMeAboutDayCard">
           <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Tell Me About Your Day <span style="font-weight:400;font-size:11px;color:var(--ink-soft);text-transform:none">(optional)</span></span><span id="tellMeAboutDayChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
           <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px">Describe it in a sentence — I'll try to fill in symptoms and exercise below for you to review.</div>
           <div style="display:flex;gap:8px">
@@ -1907,59 +1961,6 @@ body {
             <button class="btn btn-secondary btn-sm" id="parseDayBtn">Parse</button>
           </div>
           <div id="dayParseResults" style="font-size:12px;margin-top:8px"></div>
-        </div>
-
-        <div class="form-card" id="quickLogCard">
-          <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
-            <span><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polygon points="13 2 3 14 11 14 9 22 21 10 13 10 13 2"/></svg> Quick Log <span style="font-weight:400;font-size:11px;color:var(--ink-soft);text-transform:none">(most days)</span></span>
-            <span id="quickLogChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label for="fDate">Date</label>
-              <input type="date" id="fDate">
-            </div>
-            <div style="display:flex;align-items:flex-end">
-              <div class="field" style="width:100%">
-                <label>&nbsp;</label>
-                <label class="check-field">
-                  <input type="checkbox" id="fInjection">
-                  <span>Injection day</span>
-                </label>
-              </div>
-            </div>
-          </div>
-          <div id="injSiteWrap" style="display:none;margin-top:4px">
-            <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px">Injection site <span id="lastSiteHint" style="color:var(--sage)"></span></label>
-            <svg id="injSiteMapSvg" viewBox="0 0 200 260" style="width:130px;height:auto;margin:0 auto 6px;display:block">
-              <rect x="70" y="42" width="60" height="80" rx="16" fill="none" stroke="var(--line)" stroke-width="2"/>
-              <circle cx="100" cy="22" r="16" fill="none" stroke="var(--line)" stroke-width="2"/>
-              <rect x="35" y="48" width="24" height="70" rx="12" fill="none" stroke="var(--line)" stroke-width="2"/>
-              <rect x="141" y="48" width="24" height="70" rx="12" fill="none" stroke="var(--line)" stroke-width="2"/>
-              <rect x="72" y="126" width="26" height="100" rx="13" fill="none" stroke="var(--line)" stroke-width="2"/>
-              <rect x="102" y="126" width="26" height="100" rx="13" fill="none" stroke="var(--line)" stroke-width="2"/>
-              <g id="siteMarkersGroup"></g>
-            </svg>
-            <div id="siteMapCaption" style="text-align:center;font-size:11px;color:var(--ink-soft);margin-bottom:8px">Tap a site below or on the diagram</div>
-            <div class="chip-row" id="injSiteRow">
-              <div class="chip site-chip" data-site="L Abdomen">L Abdomen</div>
-              <div class="chip site-chip" data-site="R Abdomen">R Abdomen</div>
-              <div class="chip site-chip" data-site="L Thigh">L Thigh</div>
-              <div class="chip site-chip" data-site="R Thigh">R Thigh</div>
-              <div class="chip site-chip" data-site="L Arm">L Arm</div>
-              <div class="chip site-chip" data-site="R Arm">R Arm</div>
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label for="fGlucose">Fasting glucose (mg/dL)</label>
-              <input type="number" id="fGlucose" inputmode="numeric" placeholder="e.g. 128">
-            </div>
-            <div class="field">
-              <label for="fGlucose2hr">2hr post-meal (mg/dL)</label>
-              <input type="number" id="fGlucose2hr" inputmode="numeric" placeholder="e.g. 165">
-            </div>
-          </div>
         </div>
 
         <div class="form-card" id="fullLogCard">
