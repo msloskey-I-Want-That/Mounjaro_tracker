@@ -2268,6 +2268,10 @@ body {
         <button class="btn btn-secondary btn-sm" id="suggestProgressionBtn" style="width:100%;margin-top:10px"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Suggest Progression</button>
         <div id="progressionResults" style="font-size:13px;color:var(--ink);margin-top:8px;line-height:1.5"></div>
       </div>
+      <div class="form-card" id="workoutHistoryCard">
+        <div class="form-section-title">Workout History</div>
+        <div id="workoutHistoryList"></div>
+      </div>
       <div class="form-card">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Exercise</span><button type="button" id="exerciseFullscreenCloseBtn" title="Minimize — timer keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px">✕</button></div>
         <div id="workoutDescBlock" style="margin-bottom:12px">
@@ -7767,6 +7771,97 @@ function totalSessionWeight(sets) {
   return Math.round(total);
 }
 
+// Builds one summary per day that had a Strength session — duration,
+// total volume, each exercise's best set that day, and how many of those
+// were genuine PRs at the time. "Genuine PR" matches detectSessionPRs's
+// own definition: only counts if an earlier session already logged that
+// exercise (nothing to beat on the very first time doing something new).
+// Entries are walked oldest-first so "best so far" accumulates correctly
+// as we go, then the result is reversed for newest-first display.
+function buildWorkoutHistorySummaries() {
+  const sorted = entries.filter(e => e.ex && e.ex.some(x => x.type === 'Strength')).slice().sort((a, b) => a.date.localeCompare(b.date));
+  const bestSoFar = {};
+  const summaries = [];
+  sorted.forEach(e => {
+    const strengthEntries = e.ex.filter(x => x.type === 'Strength');
+    const combinedSets = {};
+    let duration = 0;
+    let planDay = null;
+    strengthEntries.forEach(x => {
+      duration += (x.min || 0);
+      if (x.planDay && !planDay) planDay = x.planDay;
+      if (x.sets) {
+        Object.entries(x.sets).forEach(([name, setArr]) => {
+          combinedSets[name] = (combinedSets[name] || []).concat(setArr);
+        });
+      }
+    });
+    const exerciseRows = [];
+    let prCount = 0;
+    Object.entries(combinedSets).forEach(([name, setArr]) => {
+      const working = setArr.filter(s => !s.warmup);
+      const best = working.length ? working.reduce((b, s) => (s.weight > b.weight ? s : b), working[0]) : null;
+      exerciseRows.push({ name, setCount: setArr.length, bestWeight: best ? best.weight : null, bestReps: best ? best.reps : null });
+      if (best) {
+        const priorBest = bestSoFar[name];
+        if (priorBest !== undefined && best.weight > priorBest) prCount++;
+        if (priorBest === undefined || best.weight > priorBest) bestSoFar[name] = best.weight;
+      }
+    });
+    summaries.push({
+      date: e.date,
+      label: planDay ? `${planDay} Day` : 'Workout',
+      duration,
+      totalVolume: totalSessionWeight(combinedSets),
+      prCount,
+      exercises: exerciseRows
+    });
+  });
+  return summaries.reverse();
+}
+
+function renderWorkoutHistory() {
+  const box = document.getElementById('workoutHistoryList');
+  if (!box) return;
+  const summaries = buildWorkoutHistorySummaries();
+  if (!summaries.length) {
+    box.innerHTML = '<div style="text-align:center;padding:16px 4px;color:var(--ink-soft);font-size:12px">No workouts logged yet — finish one and it\'ll show up here.</div>';
+    return;
+  }
+  const LIMIT = 30;
+  const shown = summaries.slice(0, LIMIT);
+  let html = '';
+  let currentMonth = null;
+  shown.forEach(s => {
+    const monthLabel = new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (monthLabel !== currentMonth) {
+      currentMonth = monthLabel;
+      html += `<div style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;margin:${html ? '16px' : '0'} 0 8px">${monthLabel}</div>`;
+    }
+    const dayLabel = new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    html += `
+      <div style="margin-bottom:14px;padding:14px 16px;border:1.5px solid var(--line);border-radius:14px">
+        <div style="font-weight:800;font-size:15px;margin-bottom:2px">${s.label}</div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">${dayLabel}</div>
+        <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:var(--ink)">
+          <span>⏱ ${s.duration}m</span>
+          <span>🏋️ ${s.totalVolume.toLocaleString()} lb</span>
+          ${s.prCount ? `<span>🏆 ${s.prCount} PR${s.prCount === 1 ? '' : 's'}</span>` : ''}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:5px 12px;font-size:13px">
+          ${s.exercises.map(ex => `
+            <div style="color:var(--ink-soft)">${ex.setCount} × ${escapeHtml(ex.name)}</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;text-align:right">${ex.bestWeight != null ? `${ex.bestWeight} lb × ${ex.bestReps}` : '—'}</div>
+          `).join('')}
+        </div>
+      </div>`;
+  });
+  if (summaries.length > LIMIT) {
+    html += `<div style="text-align:center;font-size:12px;color:var(--ink-soft);margin-top:8px">Showing your ${LIMIT} most recent workouts</div>`;
+  }
+  box.innerHTML = html;
+}
+
 // Most recent prior session's total volume for this SAME plan day (e.g.
 // last time it was specifically a Push day, not just any workout) — the
 // comparison point for the live "so far vs last time" figure below.
@@ -10055,6 +10150,7 @@ function renderExList() {
     });
   }
   renderActivityHistory();
+  renderWorkoutHistory();
   renderWorkoutPlan();
 }
 document.getElementById('exDate').addEventListener('change', renderExList);
