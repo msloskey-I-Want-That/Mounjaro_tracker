@@ -7923,6 +7923,7 @@ async function logExercise(type, min, dist, incline) {
     // this session would still show as "done" on the next workout.
     workoutSessionState = {};
     workoutNotesState = {};
+    todaysSwaps = {};
     lastAutoFilledMin = null;
     stopRestTimer();
     pplDayOverride = null;
@@ -8291,6 +8292,119 @@ const WORKOUT_PLAN_PPL = {
   ]
 };
 
+// Muscle group per exercise, for suggesting a same-muscle-group swap when
+// a machine is busy. Covers the built-in exercises above exactly; a
+// custom-added exercise (e.g. "Hammer Strength MTS Row") falls through to
+// the keyword-based guesses below instead.
+const EXERCISE_MUSCLE_GROUP = {
+  'Chest Press (machine)': 'Chest',
+  'Pec Deck (machine)': 'Chest',
+  'Shoulder Press (machine)': 'Shoulders',
+  'Triceps Pushdown (cable)': 'Triceps',
+  'Lat Pulldown': 'Back',
+  'Seated Row': 'Back',
+  'Reverse Fly (machine)': 'Rear Delts',
+  'Bicep Curl': 'Biceps',
+  'Leg Press': 'Quads',
+  'Leg Extension (machine)': 'Quads',
+  'Leg Curl (machine)': 'Hamstrings',
+  'Calf Raise (machine)': 'Calves',
+  'Plank': 'Core'
+};
+
+// Fallback for any exercise not in the table above — checked in order,
+// first match wins, so more specific patterns (leg curl, leg press) are
+// listed before the generic ones (curl, press) they'd otherwise collide
+// with.
+const MUSCLE_GROUP_KEYWORDS = [
+  [/leg\s*curl/i, 'Hamstrings'],
+  [/leg\s*ext/i, 'Quads'],
+  [/leg\s*press/i, 'Quads'],
+  [/hack\s*squat|squat/i, 'Quads'],
+  [/calf/i, 'Calves'],
+  [/row|lat\s*pull|pulldown|pull-?up/i, 'Back'],
+  [/rear\s*delt|reverse\s*fly|face\s*pull/i, 'Rear Delts'],
+  [/curl/i, 'Biceps'],
+  [/tricep|pushdown|dip/i, 'Triceps'],
+  [/chest|bench|pec|fly/i, 'Chest'],
+  [/shoulder|overhead\s*press|military/i, 'Shoulders'],
+  [/plank|crunch|\bab\b|core/i, 'Core']
+];
+
+function muscleGroupFor(exerciseName) {
+  if (EXERCISE_MUSCLE_GROUP[exerciseName]) return EXERCISE_MUSCLE_GROUP[exerciseName];
+  for (const [pattern, group] of MUSCLE_GROUP_KEYWORDS) {
+    if (pattern.test(exerciseName)) return group;
+  }
+  return null; // genuinely unrecognized name - nothing to suggest
+}
+
+// Common Planet Fitness equipment per muscle group, used as candidates
+// for a same-muscle-group swap — deliberately broader than just what's
+// in today's own plan, since the whole point is offering something that
+// might actually be free right now.
+const SWAP_SUGGESTIONS_BY_GROUP = {
+  'Back': [
+    { name: 'Seated Row', sets: '3 × 10–12' },
+    { name: 'Lat Pulldown', sets: '3 × 10–12' },
+    { name: 'Assisted Pull-Up (machine)', sets: '3 × 8–10' },
+    { name: 'Cable Row (single-arm)', sets: '3 × 10–12' }
+  ],
+  'Biceps': [
+    { name: 'Bicep Curl', sets: '3 × 12–15' },
+    { name: 'Preacher Curl (machine)', sets: '3 × 10–12' },
+    { name: 'Cable Curl', sets: '3 × 12–15' }
+  ],
+  'Rear Delts': [
+    { name: 'Reverse Fly (machine)', sets: '2 × 10–12' },
+    { name: 'Face Pull (cable)', sets: '3 × 12–15' }
+  ],
+  'Chest': [
+    { name: 'Chest Press (machine)', sets: '3 × 10–12' },
+    { name: 'Pec Deck (machine)', sets: '2 × 10–12' },
+    { name: 'Incline Chest Press (Smith machine)', sets: '3 × 10–12' },
+    { name: 'Cable Fly', sets: '3 × 12–15' }
+  ],
+  'Shoulders': [
+    { name: 'Shoulder Press (machine)', sets: '3 × 10–12' },
+    { name: 'Lateral Raise (dumbbell)', sets: '3 × 12–15' },
+    { name: 'Overhead Press (Smith machine)', sets: '3 × 10–12' }
+  ],
+  'Triceps': [
+    { name: 'Triceps Pushdown (cable)', sets: '3 × 12–15' },
+    { name: 'Overhead Triceps Extension (cable)', sets: '3 × 12–15' },
+    { name: 'Assisted Dip (machine)', sets: '3 × 8–10' }
+  ],
+  'Quads': [
+    { name: 'Leg Press', sets: '3 × 10–12' },
+    { name: 'Leg Extension (machine)', sets: '3 × 10–12' },
+    { name: 'Hack Squat (machine)', sets: '3 × 10–12' },
+    { name: 'Smith Machine Squat', sets: '3 × 10–12' }
+  ],
+  'Hamstrings': [
+    { name: 'Leg Curl (machine)', sets: '3 × 10–12' },
+    { name: 'Romanian Deadlift (dumbbell)', sets: '3 × 10–12' }
+  ],
+  'Calves': [
+    { name: 'Calf Raise (machine)', sets: '3 × 12–15' },
+    { name: 'Seated Calf Raise (machine)', sets: '3 × 12–15' }
+  ],
+  'Core': [
+    { name: 'Plank', sets: '3 × 30–45 sec' },
+    { name: 'Cable Crunch', sets: '3 × 12–15' }
+  ]
+};
+
+// Alternatives for a busy machine, targeting the same muscle group,
+// excluding the exercise itself and anything already elsewhere in
+// today's plan (so it's a genuinely different, unused option).
+function suggestSwapsFor(exerciseName, todaysExerciseNames) {
+  const group = muscleGroupFor(exerciseName);
+  if (!group) return [];
+  const pool = SWAP_SUGGESTIONS_BY_GROUP[group] || [];
+  return pool.filter(s => s.name !== exerciseName && !todaysExerciseNames.includes(s.name));
+}
+
 // Generates the plan description used by Suggest Progression directly
 // from whichever plan is actually active, rather than a separately
 // hand-typed string — the two had already drifted out of sync once
@@ -8406,6 +8520,7 @@ function daysSinceLastExercise() {
 // already been checked off.
 let workoutSessionState = {}; // { exerciseName: [{weight, reps, done, checkedAt}, ...] }
 let workoutNotesState = {}; // { exerciseName: 'note text' } - cleared on the same resets as workoutSessionState
+let todaysSwaps = {}; // { originalExerciseName: {name, sets} } - session-only substitute exercises, never persisted, cleared on the same resets as workoutSessionState
 let lastAutoFilledMin = null; // so auto-fill never overwrites a value you typed yourself
 let restTimerEndTime = null;
 let restTimerInterval = null;
@@ -9163,6 +9278,7 @@ function wireWorkoutPlanEvents() {
       // plan normally does.
       workoutSessionState = {};
       workoutNotesState = {};
+      todaysSwaps = {};
       zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
     });
@@ -9173,6 +9289,7 @@ function wireWorkoutPlanEvents() {
       splitDayOverride = chip.dataset.splitDay;
       workoutSessionState = {};
       workoutNotesState = {};
+      todaysSwaps = {};
       zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
     });
@@ -9199,6 +9316,7 @@ function wireWorkoutPlanEvents() {
         pplDayOverride = 'Legs';
         workoutSessionState = {};
         workoutNotesState = {};
+        todaysSwaps = {};
         feelingCheckDismissed = true;
       } else if (area === 'lower') {
         // Avoid Legs specifically; Push and Pull are equally fine for
@@ -9208,18 +9326,21 @@ function wireWorkoutPlanEvents() {
         pplDayOverride = normalNext === 'Legs' ? order[(order.indexOf('Legs') + 1) % 3] : normalNext;
         workoutSessionState = {};
         workoutNotesState = {};
+        todaysSwaps = {};
         feelingCheckDismissed = true;
       } else if (area === 'push') {
         // Chest/shoulders/triceps sore (Day A's focus) — Day B avoids those.
         splitDayOverride = 'B';
         workoutSessionState = {};
         workoutNotesState = {};
+        todaysSwaps = {};
         feelingCheckDismissed = true;
       } else if (area === 'pull') {
         // Back/biceps sore (Day B's focus) — Day A avoids those.
         splitDayOverride = 'A';
         workoutSessionState = {};
         workoutNotesState = {};
+        todaysSwaps = {};
         feelingCheckDismissed = true;
       } else {
         // Everywhere sore — no day is meaningfully easier than another,
@@ -9342,6 +9463,52 @@ function wireWorkoutPlanEvents() {
       const planKey = currentPlanKey();
       clearSupersetPair(planKey, btn.dataset.exercise);
       try { await saveWorkoutPlanCustomizations(); } catch (err) { console.error('Failed to save superset unpair:', err); }
+      renderWorkoutPlan();
+    });
+  });
+  document.querySelectorAll('.swap-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const select = document.querySelector(`.swap-select[data-exercise="${CSS.escape(btn.dataset.exercise)}"]`);
+      if (select) select.style.display = select.style.display === 'none' ? '' : 'none';
+    });
+  });
+  document.querySelectorAll('.swap-select').forEach(select => {
+    select.addEventListener('change', () => {
+      const chosenName = select.value;
+      if (!chosenName) return;
+      const originalName = select.dataset.exercise;
+      const group = muscleGroupFor(originalName);
+      const suggestion = (SWAP_SUGGESTIONS_BY_GROUP[group] || []).find(s => s.name === chosenName);
+      if (!suggestion) return;
+      todaysSwaps[originalName] = { name: suggestion.name, sets: suggestion.sets };
+      // Migrate any in-progress set/note tracking to the new name — in
+      // practice this is usually empty (the swap happens before the
+      // exercise is touched), but a set or two might already be logged.
+      if (workoutSessionState[originalName]) {
+        workoutSessionState[suggestion.name] = workoutSessionState[originalName];
+        delete workoutSessionState[originalName];
+      }
+      if (workoutNotesState[originalName]) {
+        workoutNotesState[suggestion.name] = workoutNotesState[originalName];
+        delete workoutNotesState[originalName];
+      }
+      renderWorkoutPlan();
+    });
+  });
+  document.querySelectorAll('.swap-revert-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const originalName = btn.dataset.original;
+      const swap = todaysSwaps[originalName];
+      const swappedName = swap ? swap.name : null;
+      delete todaysSwaps[originalName];
+      if (swappedName && workoutSessionState[swappedName]) {
+        workoutSessionState[originalName] = workoutSessionState[swappedName];
+        delete workoutSessionState[swappedName];
+      }
+      if (swappedName && workoutNotesState[swappedName]) {
+        workoutNotesState[originalName] = workoutNotesState[swappedName];
+        delete workoutNotesState[swappedName];
+      }
       renderWorkoutPlan();
     });
   });
@@ -9596,6 +9763,18 @@ function renderWorkoutPlan() {
   // way, this only changes what gets rendered here. Falls back to the
   // full list on its own if the zoomed exercise no longer exists (e.g.
   // it got removed, or the day changed out from under it).
+  // Apply any session-only exercise swaps ("machine's taken, do this
+  // instead") — todaysSwaps is intentionally never persisted, since it
+  // only reflects what actually happened today, not a permanent plan
+  // change. Applied after ordering/hiding so a swapped exercise still
+  // sits in its usual spot in the list.
+  if (Object.keys(todaysSwaps).length) {
+    plan = plan.map(ex => {
+      const swap = todaysSwaps[ex.name];
+      return swap ? { ...ex, name: swap.name, sets: swap.sets, swappedFrom: ex.name } : ex;
+    });
+  }
+
   const isZoomed = zoomedExercise && plan.some(ex => ex.name === zoomedExercise);
   const visiblePlan = isZoomed ? plan.filter(ex => ex.name === zoomedExercise) : plan;
   const nextExercise = isZoomed ? (() => {
@@ -9658,6 +9837,21 @@ function renderWorkoutPlan() {
               <select class="superset-pair-select" data-exercise="${ex.name}" style="display:none;margin-top:4px;width:100%;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px;background:var(--input-bg);color:var(--ink)">
                 <option value="">Choose partner exercise…</option>
                 ${plan.filter(p => p.name !== ex.name).map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('')}
+              </select>
+            </div>`;
+        })()}
+        ${(() => {
+          if (ex.swappedFrom) {
+            return `<div class="swap-label" data-exercise="${ex.name}" style="font-size:11px;color:#37C6FF;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px">🔄 Swapped in for ${escapeHtml(ex.swappedFrom)} <button type="button" class="swap-revert-btn" data-original="${escapeHtml(ex.swappedFrom)}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:11px;padding:0;text-decoration:underline">revert</button></div>`;
+          }
+          const todaysNames = plan.map(p => p.name);
+          const suggestions = suggestSwapsFor(ex.name, todaysNames);
+          if (!suggestions.length) return '';
+          return `<div class="swap-row" style="margin-bottom:6px">
+              <button type="button" class="swap-toggle-btn" data-exercise="${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:11px;font-weight:600;cursor:pointer;padding:0">🔄 Machine busy? Swap</button>
+              <select class="swap-select" data-exercise="${ex.name}" style="display:none;margin-top:4px;width:100%;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px;background:var(--input-bg);color:var(--ink)">
+                <option value="">Choose an alternative…</option>
+                ${suggestions.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`).join('')}
               </select>
             </div>`;
         })()}
