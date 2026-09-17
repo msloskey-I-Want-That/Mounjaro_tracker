@@ -2295,7 +2295,7 @@ body {
         </div>
         <button type="button" class="btn btn-ghost btn-sm" id="cardioTrendsBtn" style="width:100%;margin-bottom:12px;display:none"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> View Trends</button>
         <div id="exTimerBar" style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:14px;border:2px solid #37C6FF;border-radius:14px;background:linear-gradient(135deg,rgba(55,198,255,0.14),rgba(92,230,192,0.14))">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:800;color:#5CE6C0;min-width:76px" id="exTimerDisplay">0:00</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:800;color:var(--teal-mid);min-width:76px" id="exTimerDisplay">0:00</div>
           <button class="btn btn-primary btn-sm" id="exTimerStartBtn" style="flex:1;padding:12px;font-size:13px;font-weight:800;text-transform:uppercase;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28">⏱ Start Timer</button>
           <button class="btn btn-secondary btn-sm" id="exTimerStopBtn" style="flex:1;display:none;padding:12px;font-size:13px;font-weight:800;text-transform:uppercase">⏹ Stop &amp; Log</button>
         </div>
@@ -9890,7 +9890,7 @@ function renderWorkoutPlan() {
     </div>`}
     <div id="workoutStartFinishBlock">${workoutStartedAt
       ? `<div id="resumeWorkoutIndicator" style="margin-top:10px;text-align:center;cursor:pointer" title="Tap to resume full screen">
-           <div style="font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:800;color:#5CE6C0;line-height:1.1">⏱ <span id="workoutElapsedDisplay">0:00</span></div>
+           <div style="font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:800;color:var(--teal-mid);line-height:1.1">⏱ <span id="workoutElapsedDisplay">0:00</span></div>
            <div style="font-size:11px;color:var(--ink-soft);margin-top:2px">tap to resume full screen</div>
            <div style="font-size:11px;color:var(--ink-soft);margin-top:2px">Workout #${workoutsInLastDays(7) + 1} this week</div>
            ${(() => {
