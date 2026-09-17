@@ -2269,7 +2269,10 @@ body {
         <div id="progressionResults" style="font-size:13px;color:var(--ink);margin-top:8px;line-height:1.5"></div>
       </div>
       <div class="form-card" id="workoutHistoryCard">
-        <div class="form-section-title">Workout History</div>
+        <div class="form-section-title" id="workoutHistoryToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+          <span>Workout History</span>
+          <span id="workoutHistoryChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
+        </div>
         <div id="workoutHistoryList"></div>
       </div>
       <div class="form-card">
@@ -11546,6 +11549,26 @@ try {
   });
 })();
 } catch (err) { console.error('initActivityHistoryToggle failed:', err); }
+
+try {
+(function initWorkoutHistoryToggle() {
+  const toggle = document.getElementById('workoutHistoryToggle');
+  const box = document.getElementById('workoutHistoryList');
+  const chevron = document.getElementById('workoutHistoryChevron');
+  if (!toggle || !box || !chevron) return;
+  // Defaults to expanded (unlike Activity History above) — easy, immediate
+  // visibility was the whole point of this card; collapsing is opt-in.
+  const expanded = localStorage.getItem('mounjaro-workouthistory-expanded') !== 'false';
+  box.style.display = expanded ? '' : 'none';
+  chevron.textContent = expanded ? '▼' : '▶';
+  toggle.addEventListener('click', () => {
+    const isExpanded = box.style.display !== 'none';
+    box.style.display = isExpanded ? 'none' : '';
+    chevron.textContent = isExpanded ? '▶' : '▼';
+    localStorage.setItem('mounjaro-workouthistory-expanded', String(!isExpanded));
+  });
+})();
+} catch (err) { console.error('initWorkoutHistoryToggle failed:', err); }
 
 // Every Settings section can now be collapsed independently — this tab had
 // grown into one long uninterrupted scroll as more fields were added over
