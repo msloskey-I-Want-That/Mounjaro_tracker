@@ -12055,6 +12055,19 @@ let editingMealTs = null;
 function startEditMeal(date, ts) {
   const meal = mealsForDate(date).find(m => m.ts === Number(ts));
   if (!meal) return;
+  // The edit form lives inside Add Food's popup, on its "Quick add" tab —
+  // now that the food log is its own always-visible card, editing can be
+  // triggered without that popup ever having been opened. Populating the
+  // fields without also opening them would silently fill in a form the
+  // person can't see, so make sure both are actually showing first.
+  const addFoodContent = document.getElementById('addFoodCardContent');
+  if (addFoodContent && addFoodContent.style.display === 'none') {
+    const addFoodCard = document.getElementById('addFoodCard');
+    const title = addFoodCard && addFoodCard.querySelector('.form-section-title');
+    if (title) title.click();
+  }
+  const quickChip = document.querySelector('.food-tab-chip[data-food-tab="quick"]');
+  if (quickChip && !quickChip.classList.contains('on')) quickChip.click();
   editingMealTs = meal.ts;
   setMealType(meal.mt || defaultMealType());
   document.getElementById('mDesc').value = meal.desc || '';
