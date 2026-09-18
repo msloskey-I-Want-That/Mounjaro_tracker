@@ -607,7 +607,7 @@ body {
 .metric-pill.neutral { color: var(--ink-soft); }
 .entry-notes { font-size: 12px; color: var(--ink-soft); }
 #restTimerWrap.rest-timer-done { border-color: var(--sage); }
-#restTimerWrap.rest-timer-done #restTimerDisplay { color: var(--sage); font-size: 22px; }
+#restTimerWrap.rest-timer-done #restTimerDisplay { color: var(--sage); font-size: 26px; }
 .entry-del {
   background: none; border: none;
   color: var(--line); font-size: 18px;
@@ -978,12 +978,12 @@ body {
 
 <!-- ── REST TIMER POPUP (workout sets) ── -->
 <div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="cardioTrendsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:706"></div><div id="cardioTrendsModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:707;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
-<div id="restTimerWrap" style="display:none;flex-direction:row;align-items:center;gap:10px;position:fixed;bottom:88px;right:14px;background:var(--card);border:1.5px solid var(--teal);border-radius:16px;padding:8px 10px 8px 14px;box-shadow:0 8px 26px rgba(0,0,0,0.28);z-index:601;text-align:center">
+<div id="restTimerWrap" style="display:none;flex-direction:row;align-items:center;gap:11px;position:fixed;bottom:88px;right:14px;background:var(--card);border:1.5px solid var(--teal);border-radius:17px;padding:9px 11px 9px 15px;box-shadow:0 8px 26px rgba(0,0,0,0.28);z-index:601;text-align:center">
   <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.1">
-    <span id="restTimerLabel" style="font-size:9px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em">⏱ Rest</span>
-    <span id="restTimerDisplay" style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:var(--teal)">2:00</span>
+    <span id="restTimerLabel" style="font-size:10px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em">⏱ Rest</span>
+    <span id="restTimerDisplay" style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:var(--teal)">2:00</span>
   </div>
-  <button type="button" class="btn btn-secondary btn-sm" id="restTimerSkipBtn" style="padding:6px 12px;font-size:12px">Skip</button>
+  <button type="button" class="btn btn-secondary btn-sm" id="restTimerSkipBtn" style="padding:7px 13px;font-size:12px">Skip</button>
 </div>
 
 <!-- ── APP ── -->
