@@ -10043,6 +10043,7 @@ function renderWorkoutPlan() {
         if (minInput) { minInput.value = minutes; lastAutoFilledMin = minutes; }
       }
       workoutStartedAt = null; setWorkoutFullscreen(false);
+      if (window.__checkPendingServiceWorkerReload) window.__checkPendingServiceWorkerReload();
       stopWorkoutTimer();
       renderWorkoutPlan();
       const addBtn = document.getElementById('addExBtn');
@@ -13031,15 +13032,30 @@ if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {});
     }
   });
-  // When a new version installs, reload once to run it (skips if user is mid-typing)
+  // When a new version installs, reload once to run it — unless the person
+  // is mid-typing OR mid-workout. A completed set, a jotted note, an
+  // in-progress superset pairing all live only in memory until Finish
+  // Workout is tapped; reloading out from under that would silently wipe
+  // it. Deferred reloads apply automatically right after the workout
+  // finishes instead (see the pendingServiceWorkerReload check below).
   let reloaded = false;
+  let pendingServiceWorkerReload = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (reloaded) return;
-    reloaded = true;
     const el = document.activeElement;
     const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && el.value;
-    if (!typing) location.reload();
+    if (typing || workoutStartedAt) { pendingServiceWorkerReload = true; return; }
+    reloaded = true;
+    location.reload();
   });
+  window.__checkPendingServiceWorkerReload = function() {
+    if (!pendingServiceWorkerReload || reloaded) return;
+    reloaded = true;
+    // A short delay so the just-finished workout's own save (an async
+    // Firestore write kicked off the moment the workout ended) has time
+    // to actually complete before the page reloads out from under it.
+    setTimeout(() => location.reload(), 2500);
+  };
 }
 
 // ── BOOT ──
