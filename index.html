@@ -3876,6 +3876,15 @@ function analyzeCorrelationPair(config) {
   return config.sentence(avg(highYs), avg(lowYs), round1(threshold));
 }
 
+// Effort rating lives on the individual Strength session, not the day
+// entry directly — pulls the first Strength session that day with a
+// rating set (there's normally only one Strength session per day anyway).
+function dayEffortRating(e) {
+  if (!e || !e.ex) return null;
+  const withEffort = e.ex.find(x => x.type === 'Strength' && x.effort != null);
+  return withEffort ? withEffort.effort : null;
+}
+
 const CORRELATION_PAIRS = [
   {
     getX: e => e.sleepHrs ? parseFloat(e.sleepHrs) : null,
@@ -3918,6 +3927,20 @@ const CORRELATION_PAIRS = [
     nextDay: false,
     splitThreshold: GLUCOSE_TARGET,
     sentence: (high, low) => `On days your glucose ran ${GLUCOSE_TARGET}+, that night's sleep score averaged ${high}. On lower-glucose days, it averaged ${low}.`
+  },
+  {
+    getX: e => e.sleepHrs ? parseFloat(e.sleepHrs) : null,
+    getY: e => dayEffortRating(e),
+    nextDay: true,
+    splitThreshold: 7,
+    sentence: (high, low) => `On nights you slept 7+ hours, the next day's workout effort averaged ${high}/5. On shorter nights, it averaged ${low}/5.`
+  },
+  {
+    getX: e => dayEffortRating(e),
+    getY: e => e.sleepScore ? parseFloat(e.sleepScore) : null,
+    nextDay: false,
+    splitThreshold: 4,
+    sentence: (high, low) => `On days your workout effort was high (4-5/5), that night's sleep score averaged ${high}. On lower-effort days, it averaged ${low}.`
   }
 ];
 
