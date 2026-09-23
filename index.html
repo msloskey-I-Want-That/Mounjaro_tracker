@@ -3779,7 +3779,7 @@ function sessionVolume(exEntry) {
   if (!exEntry.sets) return 0;
   let total = 0;
   Object.values(exEntry.sets).forEach(setArr => {
-    setArr.forEach(s => { total += (s.weight || 0) * (s.reps || 0); });
+    setArr.filter(s => !s.warmup).forEach(s => { total += (s.weight || 0) * (s.reps || 0); });
   });
   return total;
 }
