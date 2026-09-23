@@ -12052,14 +12052,13 @@ async function writeMeals(date, meals) {
 // until "Update" is actually tapped.
 let editingMealTs = null;
 
-function startEditMeal(date, ts) {
-  const meal = mealsForDate(date).find(m => m.ts === Number(ts));
-  if (!meal) return;
-  // The edit form lives inside Add Food's popup, on its "Quick add" tab —
-  // now that the food log is its own always-visible card, editing can be
-  // triggered without that popup ever having been opened. Populating the
-  // fields without also opening them would silently fill in a form the
-  // person can't see, so make sure both are actually showing first.
+// Ensures Add Food's popup is open and its "Quick add" tab is active —
+// needed whenever code is about to focus/populate fields that live there
+// (mDesc, or the shared Review & Add macros). The food log card is now
+// separate and always visible regardless of Add Food's own open/collapsed
+// state, so anything that used to assume "if you can see the log, the
+// popup must already be open" no longer holds.
+function ensureAddFoodOpenOnQuickTab() {
   const addFoodContent = document.getElementById('addFoodCardContent');
   if (addFoodContent && addFoodContent.style.display === 'none') {
     const addFoodCard = document.getElementById('addFoodCard');
@@ -12068,6 +12067,12 @@ function startEditMeal(date, ts) {
   }
   const quickChip = document.querySelector('.food-tab-chip[data-food-tab="quick"]');
   if (quickChip && !quickChip.classList.contains('on')) quickChip.click();
+}
+
+function startEditMeal(date, ts) {
+  const meal = mealsForDate(date).find(m => m.ts === Number(ts));
+  if (!meal) return;
+  ensureAddFoodOpenOnQuickTab();
   editingMealTs = meal.ts;
   setMealType(meal.mt || defaultMealType());
   document.getElementById('mDesc').value = meal.desc || '';
@@ -12327,6 +12332,7 @@ function renderMealList() {
   });
   list.querySelectorAll('[data-addmeal]').forEach(el => {
     el.addEventListener('click', () => {
+      ensureAddFoodOpenOnQuickTab();
       setMealType(el.dataset.addmeal);
       const desc = document.getElementById('mDesc');
       desc.scrollIntoView({ behavior: 'smooth', block: 'center' });
