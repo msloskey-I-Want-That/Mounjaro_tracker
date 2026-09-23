@@ -3034,6 +3034,24 @@ function isValidHealthSyncValue(field, raw) {
   return num >= bounds[0] && num <= bounds[1];
 }
 
+// A Shortcut-supplied sync ID in the URL takes priority over whatever's in
+// localStorage — this exists specifically because iOS Safari can isolate
+// or clear a site's storage between automation-triggered opens (like an
+// "Open URLs" Shortcut action), even when the same site works fine from a
+// home-screen icon. Passing &sync=<id> in the Shortcut's own URL
+// guarantees the right account loads every time, independent of whatever
+// Safari does to storage in between runs. Captured here — before the URL
+// gets cleared below — into a variable initSyncId() reads later, since by
+// the time it runs (near the very end of the script) the query string is
+// already gone.
+let urlProvidedSyncId = null;
+try {
+(function captureUrlSyncId() {
+  const syncParam = new URLSearchParams(location.search).get('sync');
+  if (syncParam) urlProvidedSyncId = syncParam;
+})();
+} catch (err) { console.error('captureUrlSyncId failed:', err); }
+
 try {
 (function captureHealthSyncParams() {
   const params = new URLSearchParams(location.search);
@@ -4460,6 +4478,9 @@ function scheduledDose(daysIn) {
 
 // ── SYNC ID SETUP ──
 function initSyncId() {
+  if (urlProvidedSyncId) {
+    try { localStorage.setItem('mounjaro-sync-id', urlProvidedSyncId); } catch (err) { /* localStorage unavailable — falls through to the normal check below */ }
+  }
   syncId = localStorage.getItem('mounjaro-sync-id');
   if (!syncId) {
     hideLoading();
