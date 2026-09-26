@@ -3126,6 +3126,9 @@ let fatSecretTokenExp     = 0;       // epoch ms when fatSecretAccessToken expir
 let themeOverride       = '';        // '' = auto, or 'light' / 'dark'
 let pinnedFavorites     = [];        // user-starred foods, synced to Firestore, always shown
 let pinnedRecipes       = [];        // saved multi-ingredient recipes, synced to Firestore
+let foodCombos          = [];        // groups of existing favorites logged together in one tap
+                                      // (each item stays a separate log entry — unlike a Recipe,
+                                      // which sums into one combined entry) — synced to Firestore
 // Set right before adding a favorite/recipe/usual, so renderFavorites()
 // can flash the freshly-rebuilt chip after it re-renders — flashing the
 // tapped chip directly doesn't work, since writeMeals() re-renders this
@@ -4605,6 +4608,7 @@ function startListening() {
       if (s.theme != null) themeOverride = s.theme;
       pinnedFavorites = Array.isArray(s.favoriteFoods) ? s.favoriteFoods : [];
       pinnedRecipes = Array.isArray(s.recipes) ? s.recipes : [];
+      foodCombos = Array.isArray(s.foodCombos) ? s.foodCombos : [];
       if (s.accentPalette && PALETTES[s.accentPalette]) accentPalette = s.accentPalette;
       if (Array.isArray(s.dashboardOrder)) dashboardOrder = s.dashboardOrder;
       if (Array.isArray(s.hiddenCards)) hiddenCards = s.hiddenCards;
@@ -11344,6 +11348,41 @@ async function deleteRecipe(idx) {
   await saveRecipesToFirestore();
 }
 
+// ── COMBOS (a group of existing favorites logged together in one tap —
+// unlike a Recipe, each item stays its own separate, individually
+// editable log entry, exactly as if you'd tapped each favorite one at a
+// time) ──
+async function saveFoodCombosToFirestore() {
+  if (!syncId) return;
+  try {
+    await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { foodCombos }, { merge: true });
+  } catch (err) { console.error(err); alert('Couldn\'t save combo — check your connection and try again.'); }
+}
+
+async function deleteCombo(idx) {
+  const c = foodCombos[idx];
+  if (!c) return;
+  if (!confirm(`Delete combo "${c.name}"?`)) return;
+  foodCombos = foodCombos.filter((_, i) => i !== idx);
+  renderFavorites();
+  await saveFoodCombosToFirestore();
+}
+
+async function quickAddCombo(combo) {
+  const date = document.getElementById('foodDate').value;
+  if (!date) { alert('Please select a date first.'); return; }
+  const mt = selectedMealType();
+  // Each item needs its own unique ts (it's what edit/delete key off of)
+  // — a shared Date.now() across all of them would make every item in
+  // the combo indistinguishable to startEditMeal/deleteMeal.
+  const baseTs = Date.now();
+  const newMeals = combo.items.map((item, i) => ({
+    desc: item.desc, mt, protein: item.protein, cal: item.cal, carbs: item.carbs, fat: item.fat, ts: baseTs + i
+  }));
+  pendingFlashDesc = combo.name;
+  await writeMeals(date, [...mealsForDate(date), ...newMeals]);
+}
+
 // Lightweight portion adjustment for Favorites/History quick-adds. These
 // don't have a "per 100g" rate to scale from like database results do —
 // just whatever was logged last time — so this scales that whole amount
@@ -11390,6 +11429,18 @@ function renderFavorites() {
       `</div>`;
   }
 
+  if (foodCombos.length) {
+    html += `
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Combos</div>
+    <div class="chip-row" style="margin-bottom:12px">` +
+      foodCombos.map((c, i) => `
+        <div class="chip" data-combo="${i}" style="display:inline-flex;align-items:center;gap:6px">
+          <span data-combo-add="${i}">${escapeHtml(c.name)} <span style="opacity:0.65">(${c.items.length})</span></span>
+          <span data-combo-remove="${i}" role="button" tabindex="0" aria-label="Delete combo" style="opacity:0.6;font-size:11px">✕</span>
+        </div>`).join('') +
+      `</div>`;
+  }
+
   if (pinnedFavorites.length) {
     html += `
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px">⭐ Favorites</div>
@@ -11415,6 +11466,31 @@ function renderFavorites() {
           <span data-fav-pin="${i}" role="button" tabindex="0" aria-label="Pin to favorites" style="opacity:0.6;font-size:11px" title="Pin to Favorites"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 9.5 16.5 14 18 21 12 17 6 21 7.5 14 2 9.5 9 9"/></svg></span>
         </div>`).join('') +
       `</div>`;
+  }
+
+  if (pinnedFavorites.length >= 2) {
+    html += `
+    <div id="comboBuilderToggleRow" style="margin-top:4px">
+      <button type="button" id="showComboBuilderBtn" style="background:none;border:none;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;padding:0">+ New Combo</button>
+      <div id="comboBuilderForm" style="display:none;margin-top:8px;padding:12px;border:1.5px solid var(--line);border-radius:10px">
+        <div class="field" style="margin-bottom:8px">
+          <label for="comboNameInput">Combo name</label>
+          <input type="text" id="comboNameInput" placeholder="e.g. Morning breakfast">
+        </div>
+        <div style="font-size:11px;color:var(--ink-soft);margin-bottom:6px">Select favorites to include:</div>
+        <div id="comboItemChecklist" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;max-height:200px;overflow-y:auto">
+          ${pinnedFavorites.map((f, i) => `
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+              <input type="checkbox" class="combo-item-checkbox" data-combofav="${i}">
+              ${escapeHtml(f.desc)}${f.protein ? ` · ${f.protein}g` : ''}
+            </label>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-secondary btn-sm" id="saveComboBtn" style="flex:1">Save Combo</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="cancelComboBtn">Cancel</button>
+        </div>
+      </div>
+    </div>`;
   }
 
   box.innerHTML = html;
@@ -11458,6 +11534,42 @@ function renderFavorites() {
   box.querySelectorAll('[data-recipe-remove]').forEach(el => {
     el.addEventListener('click', (ev) => { ev.stopPropagation(); deleteRecipe(Number(el.dataset.recipeRemove)); });
   });
+
+  box.querySelectorAll('[data-combo-add]').forEach(el => {
+    el.addEventListener('click', () => quickAddCombo(foodCombos[Number(el.dataset.comboAdd)]));
+  });
+  box.querySelectorAll('[data-combo-remove]').forEach(el => {
+    el.addEventListener('click', (ev) => { ev.stopPropagation(); deleteCombo(Number(el.dataset.comboRemove)); });
+  });
+
+  const showComboBuilderBtn = document.getElementById('showComboBuilderBtn');
+  if (showComboBuilderBtn) {
+    showComboBuilderBtn.addEventListener('click', () => {
+      document.getElementById('comboBuilderForm').style.display = '';
+      showComboBuilderBtn.style.display = 'none';
+      document.getElementById('comboNameInput').focus();
+    });
+  }
+  const cancelComboBtn = document.getElementById('cancelComboBtn');
+  if (cancelComboBtn) {
+    cancelComboBtn.addEventListener('click', () => {
+      document.getElementById('comboBuilderForm').style.display = 'none';
+      document.getElementById('showComboBuilderBtn').style.display = '';
+    });
+  }
+  const saveComboBtn = document.getElementById('saveComboBtn');
+  if (saveComboBtn) {
+    saveComboBtn.addEventListener('click', async () => {
+      const name = document.getElementById('comboNameInput').value.trim();
+      if (!name) { alert('Please give the combo a name.'); return; }
+      const selectedIdx = [...document.querySelectorAll('.combo-item-checkbox:checked')].map(cb => Number(cb.dataset.combofav));
+      if (selectedIdx.length < 2) { alert('Select at least 2 favorites to combine.'); return; }
+      const items = selectedIdx.map(i => pinnedFavorites[i]).map(f => ({ desc: f.desc, protein: f.protein || null, cal: f.cal || null, carbs: f.carbs || null, fat: f.fat || null }));
+      foodCombos = [...foodCombos, { name, items }];
+      renderFavorites();
+      await saveFoodCombosToFirestore();
+    });
+  }
 
   box.querySelectorAll('[data-pin-add]').forEach(el => {
     el.addEventListener('click', () => quickAddFood(pinnedFavorites[Number(el.dataset.pinAdd)], el.closest('.chip')));
