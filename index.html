@@ -1064,6 +1064,11 @@ body {
 
       <div class="inj-banner" id="injBanner"></div>
 
+      <div class="form-card" id="dueTodayCard" style="margin-bottom:14px;display:none">
+        <div class="form-section-title">What's Due Today</div>
+        <div id="dueTodayList"></div>
+      </div>
+
       <div class="form-card" id="ringsCard" style="margin-bottom:14px;border-radius:20px;box-shadow:var(--shadow-hero)">
         <div style="display:flex;align-items:center;gap:16px">
           <div style="flex:1;display:flex;flex-direction:column;gap:16px;min-width:0">
@@ -4785,6 +4790,8 @@ function renderWeightSparkline(weightEntries) {
 
 function updateStats() {
   const diff = daysSinceStart();
+
+  try { renderDueToday(); } catch (err) { console.error('Due Today render failed:', err); }
 
   // Computed once here rather than per stat card below — each call
   // scans full history for several different streaks (see
@@ -12881,6 +12888,68 @@ function computeRefillStatus(fillDate, daysSupply) {
   else if (daysUntil <= 7) { label = `Refill in ${daysUntil} day${daysUntil === 1 ? '' : 's'}`; color = '#FFB020'; }
   else { label = `Refill in ${daysUntil} days`; color = 'var(--ink-soft)'; }
   return { daysUntil, label, color };
+}
+
+// How far behind a linear hydration pace someone is right now, assuming
+// a roughly 7am-10pm waking window spread evenly toward the 64oz target.
+// Returns null before 10am (too early for a meaningful check) or when
+// intake is already reasonably close to pace, so this only surfaces a
+// genuine, actionable gap rather than nagging all day.
+function hydrationPaceCheck(tOz) {
+  const now = new Date();
+  const hour = now.getHours() + now.getMinutes() / 60;
+  const wakeHour = 7, sleepHour = 22;
+  if (hour < 10) return null;
+  const elapsedFrac = Math.min(1, Math.max(0, (hour - wakeHour) / (sleepHour - wakeHour)));
+  const expectedByNow = 64 * elapsedFrac;
+  const behindBy = expectedByNow - tOz;
+  if (behindBy < 15) return null;
+  return { expectedByNow: Math.round(expectedByNow), behindBy: Math.round(behindBy) };
+}
+
+// One compact "what needs attention today" glance, pulling together
+// signals that otherwise live scattered across separate cards (or, for
+// refill status, aren't on Home at all — only in the Log tab's
+// Medications sub-tab). Each signal is independently computed from data
+// this file already tracks elsewhere, so there's no new source of truth
+// here — just a surfaced summary of it.
+function computeDueTodayItems() {
+  const items = [];
+
+  medications.forEach(m => {
+    const refill = computeRefillStatus(m.fillDate, m.daysSupply);
+    if (refill && refill.daysUntil <= 7) {
+      items.push({ icon: '💊', text: `${escapeHtml(m.name)}: ${refill.label}`, urgent: refill.daysUntil <= 0 });
+    }
+  });
+
+  const workedOutToday = exForDate(todayStr()).some(x => x.type === 'Strength');
+  if (!workedOutToday) {
+    items.push({ icon: '🏋️', text: `Next workout: ${currentPlanDisplayName()}`, urgent: false });
+  }
+
+  const t = entries.find(x => x.date === todayStr());
+  const tOz = t && t.water ? parseFloat(t.water) : 0;
+  const pace = hydrationPaceCheck(tOz);
+  if (pace) {
+    items.push({ icon: '💧', text: `Hydration: ${pace.behindBy}oz behind pace (${tOz}oz so far, ~${pace.expectedByNow}oz expected by now)`, urgent: false });
+  }
+
+  return items;
+}
+
+function renderDueToday() {
+  const card = document.getElementById('dueTodayCard');
+  const list = document.getElementById('dueTodayList');
+  if (!card || !list) return;
+  const items = computeDueTodayItems();
+  if (!items.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  list.innerHTML = items.map(i => `
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 0${i.urgent ? ';color:var(--coral);font-weight:600' : ''}">
+      <span style="font-size:16px;flex-shrink:0">${i.icon}</span>
+      <span style="font-size:13px">${i.text}</span>
+    </div>`).join('');
 }
 
 function renderMedications() {
