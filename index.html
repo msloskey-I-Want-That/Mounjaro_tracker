@@ -2074,6 +2074,7 @@ body {
 
       <div class="form-card">
         <div class="form-section-title">Today's Food Log</div>
+        <div id="comboSuggestionBanner" style="display:none;margin-bottom:12px;padding:10px 12px;border:1.5px solid var(--teal);border-radius:10px;background:var(--teal-tint)"></div>
         <div id="mealList"></div>
       </div>
 
@@ -11383,6 +11384,77 @@ async function quickAddCombo(combo) {
   await writeMeals(date, [...mealsForDate(date), ...newMeals]);
 }
 
+// Groups a set of food descriptions into a consistent, order-independent
+// key for comparing "the same items eaten together" across different
+// days — sorted so "Banana, Muffin" and "Muffin, Banana" match as the
+// same group.
+function foodGroupKey(descriptions) {
+  return descriptions.slice().sort().join('|');
+}
+
+// Notices when the same 2-4 items have been logged together, under the
+// same meal type, on 3+ different days — and offers to save that pattern
+// as a Combo, rather than waiting for the person to remember to build one
+// manually. Skips anything already saved as a combo, and anything already
+// dismissed once (tracked in localStorage so it doesn't keep re-asking).
+function detectRepeatedFoodGroup(date, mt) {
+  const todaysGroup = mealsForDate(date).filter(m => m.mt === mt).map(m => m.desc);
+  if (todaysGroup.length < 2 || todaysGroup.length > 4) return null;
+  const todaysKey = foodGroupKey(todaysGroup);
+
+  const alreadyACombo = foodCombos.some(c => foodGroupKey(c.items.map(i => i.desc)) === todaysKey);
+  if (alreadyACombo) return null;
+
+  let dismissed = [];
+  try { dismissed = JSON.parse(localStorage.getItem('mounjaro-combo-suggestions-dismissed') || '[]'); } catch (err) { /* ignore */ }
+  if (dismissed.includes(todaysKey)) return null;
+
+  const matchingDates = new Set();
+  entries.forEach(e => {
+    if (!e.meals) return;
+    const groupThisDay = e.meals.filter(m => m.mt === mt).map(m => m.desc);
+    if (groupThisDay.length !== todaysGroup.length) return;
+    if (foodGroupKey(groupThisDay) === todaysKey) matchingDates.add(e.date);
+  });
+  if (matchingDates.size < 3) return null;
+
+  const items = mealsForDate(date).filter(m => m.mt === mt).map(m => ({ desc: m.desc, protein: m.protein, cal: m.cal, carbs: m.carbs, fat: m.fat }));
+  return { items, mt, count: matchingDates.size, key: todaysKey };
+}
+
+function dismissComboSuggestion(key) {
+  let dismissed = [];
+  try { dismissed = JSON.parse(localStorage.getItem('mounjaro-combo-suggestions-dismissed') || '[]'); } catch (err) { /* ignore */ }
+  dismissed.push(key);
+  try { localStorage.setItem('mounjaro-combo-suggestions-dismissed', JSON.stringify(dismissed)); } catch (err) { /* ignore */ }
+}
+
+function showComboSuggestion(group) {
+  const banner = document.getElementById('comboSuggestionBanner');
+  if (!banner) return;
+  const names = group.items.map(i => escapeHtml(i.desc)).join(', ');
+  banner.innerHTML = `
+    <div style="font-size:13px;margin-bottom:8px">You've had ${names} together for ${group.mt.toLowerCase()} ${group.count} times — save as a combo?</div>
+    <div style="display:flex;gap:8px">
+      <button type="button" class="btn btn-secondary btn-sm" id="acceptComboSuggestionBtn" style="flex:1">Save as Combo</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="dismissComboSuggestionBtn">Not now</button>
+    </div>
+  `;
+  banner.style.display = '';
+  document.getElementById('acceptComboSuggestionBtn').addEventListener('click', async () => {
+    const name = prompt('Name this combo:', `${group.mt} combo`);
+    if (!name) return;
+    foodCombos = [...foodCombos, { name, items: group.items }];
+    banner.style.display = 'none';
+    renderFavorites();
+    await saveFoodCombosToFirestore();
+  });
+  document.getElementById('dismissComboSuggestionBtn').addEventListener('click', () => {
+    dismissComboSuggestion(group.key);
+    banner.style.display = 'none';
+  });
+}
+
 // Lightweight portion adjustment for Favorites/History quick-adds. These
 // don't have a "per 100g" rate to scale from like database results do —
 // just whatever was logged last time — so this scales that whole amount
@@ -12284,6 +12356,10 @@ document.getElementById('addMealBtn').addEventListener('click', async () => {
     const meal = { ...fields, ts: Date.now() };
     const meals = [...mealsForDate(date), meal];
     await writeMeals(date, meals);
+    try {
+      const group = detectRepeatedFoodGroup(date, fields.mt);
+      if (group) showComboSuggestion(group);
+    } catch (err) { console.error('Combo suggestion check failed:', err); }
     if (pendingUnmatchedBarcode) {
       const barcode = pendingUnmatchedBarcode;
       pendingUnmatchedBarcode = null;
