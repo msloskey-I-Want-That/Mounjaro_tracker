@@ -6488,8 +6488,17 @@ function renderLookupResults(foods, note) {
           ? `<div style="width:100%;font-size:11px;color:var(--ink-soft)">Label serving: ${lookupSelection.servingText} — enter the amount below</div>`
           : '';
       }
+      // Show the macros for the current default portion right away in the
+      // shared Review & Add fields below — otherwise they stay blank
+      // ("e.g.") until the separate Add to Day button up here gets
+      // tapped, which reads as "no macros came up" even though they're
+      // already known for this result.
+      previewPortionMacros();
     });
   });
+
+  document.getElementById('portionG')?.addEventListener('input', previewPortionMacros);
+  document.getElementById('portionUnit')?.addEventListener('change', previewPortionMacros);
 
   document.getElementById('applyPortionBtn')?.addEventListener('click', applyPortionAndAdd);
 
@@ -6509,17 +6518,26 @@ function applyFixedAmountAdd() {
   document.getElementById('addMealBtn').click();
 }
 
-function applyPortionAndAdd() {
-  if (!lookupSelection) return;
+// Computes macros for the currently-entered portion and displays them in
+// the shared Review & Add fields, without submitting — lets someone see
+// what a portion adjustment will actually log before committing to it,
+// and means the fields never sit blank while a valid selection exists.
+function previewPortionMacros() {
+  if (!lookupSelection || lookupSelection.fixedAmount) return;
   const raw = parseFloat(document.getElementById('portionG').value) || 100;
   const unit = document.getElementById('portionUnit').value;
   const grams = unit === 'oz' ? raw * 28.3495 : raw;
   const scale = grams / 100;
   document.getElementById('mDesc').value = `${lookupSelection.name} (${unit === 'oz' ? raw + 'oz' : Math.round(grams) + 'g'})`;
-  if (lookupSelection.protein100 != null) document.getElementById('mProtein').value = Math.round(lookupSelection.protein100 * scale);
-  if (lookupSelection.cal100 != null)     document.getElementById('mCal').value = Math.round(lookupSelection.cal100 * scale);
-  if (lookupSelection.carbs100 != null)   document.getElementById('mCarbs').value = Math.round(lookupSelection.carbs100 * scale);
-  if (lookupSelection.fat100 != null)     document.getElementById('mFat').value = Math.round(lookupSelection.fat100 * scale);
+  document.getElementById('mProtein').value = lookupSelection.protein100 != null ? Math.round(lookupSelection.protein100 * scale) : '';
+  document.getElementById('mCal').value = lookupSelection.cal100 != null ? Math.round(lookupSelection.cal100 * scale) : '';
+  document.getElementById('mCarbs').value = lookupSelection.carbs100 != null ? Math.round(lookupSelection.carbs100 * scale) : '';
+  document.getElementById('mFat').value = lookupSelection.fat100 != null ? Math.round(lookupSelection.fat100 * scale) : '';
+}
+
+function applyPortionAndAdd() {
+  if (!lookupSelection) return;
+  previewPortionMacros();
   lastLookupSource = lookupSelection.source || null;
   lookupSelection = null;
   // One tap does the whole job now — reuses the same add/update logic
