@@ -7314,6 +7314,12 @@ async function testHealthSync() {
   box.innerHTML = '<div style="font-size:12px;color:var(--ink-soft)">Checking…</div>';
   const lines = [];
 
+  if (urlProvidedSyncId) {
+    lines.push({ ok: true, label: 'Sync ID in URL', detail: `this page load received &sync=${urlProvidedSyncId} and saved it — if this doesn't match your real Sync ID above, the Shortcut has the wrong value in it` });
+  } else {
+    lines.push({ ok: null, label: 'Sync ID in URL', detail: 'this page load did not include a &sync= parameter — normal for opening the app directly, but if this Shortcut is supposed to include one, check that step' });
+  }
+
   if (lastSyncDiagnostic.urlHadSyncParams) {
     lines.push({ ok: true, label: 'This page load', detail: `received sync params: ${JSON.stringify(lastSyncDiagnostic.capturedValues)}` });
     if (lastSyncDiagnostic.rejectedValues) {
@@ -13148,7 +13154,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 document.getElementById('exportJsonBtn').addEventListener('click', () => {
   const backup = {
     app: 'mounjaro-tracker',
-    backupVersion: 1,
+    backupVersion: 2,
     exportedAt: new Date().toISOString(),
     entries,
     labs,
@@ -13157,12 +13163,36 @@ document.getElementById('exportJsonBtn').addEventListener('click', () => {
       goalWeight,
       usdaKey,
       spoonacularKey,
+      fatSecretClientId,
+      fatSecretClientSecret,
+      anthropicKey,
+      heightIn: userHeightIn,
+      age: userAge,
+      sex: userSex,
+      activityLevel: userActivityLevel,
+      lossRate: userLossRate,
+      workoutPlanMode,
       stepGoal: stepGoalOverride,
+      stravaId,
+      stravaSecret,
       theme: themeOverride,
+      accentPalette,
       favoriteFoods: pinnedFavorites,
-      recipes: pinnedRecipes
+      recipes: pinnedRecipes,
+      foodCombos,
+      dashboardOrder,
+      hiddenCards,
+      medications,
+      scannedBarcodes: scannedBarcodeCache,
+      customWorkoutExercises,
+      hiddenWorkoutExercises,
+      exerciseOrderOverride,
+      supersetPairs
     }
   };
+  // Note: this file contains your API keys and OAuth secrets in plain
+  // text (same as the app already stores them) — treat it like a
+  // password file, not something to share or upload anywhere public.
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -13199,7 +13229,7 @@ document.getElementById('restoreJsonInput').addEventListener('change', async (e)
   const hasSettings = !!backup.settings;
   if (!confirm(`Restore ${entryCount} day${entryCount === 1 ? '' : 's'} of entries` +
     (labCount ? `, ${labCount} lab result${labCount === 1 ? '' : 's'}` : '') +
-    (hasSettings ? ', and settings (goals, favorites, recipes)' : '') +
+    (hasSettings ? ', and settings (goals, favorites, recipes, combos, medications, workout customizations, API keys)' : '') +
     `?\n\nThis merges into what you already have — it won't delete anything not in the backup file, but matching dates will be overwritten with the backup's values.`)) {
     return;
   }
