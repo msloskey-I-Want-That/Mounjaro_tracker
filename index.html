@@ -3996,12 +3996,14 @@ function computeBadgeData(asOfDate) {
   let totalCareerVolume = 0;
   let maxSessionVolume = 0;
   let totalPRs = 0;
+  let effortRatingsLogged = 0;
   const exerciseMaxByName = {};
   const uniqueExerciseNames = new Set();
   [...entries].filter(e => e.date <= cutoff).sort((a, b) => a.date.localeCompare(b.date)).forEach(e => {
     (e.ex || []).forEach(x => {
       if (x.type !== 'Strength') return;
       strengthSessionCount++;
+      if (x.effort) effortRatingsLogged++;
       if (!x.sets) return;
       const vol = sessionVolume(x);
       totalCareerVolume += vol;
@@ -4023,7 +4025,8 @@ function computeBadgeData(asOfDate) {
     stepsStreak, proteinStreak, glucoseStreak, exerciseStreak, sleepStreak, waterStreak, loggingStreak,
     totalLost, goalLoss, totalWorkouts,
     strengthSessionCount, totalCareerVolume, maxSessionVolume, totalPRs,
-    uniqueExercisesLogged: uniqueExerciseNames.size
+    uniqueExercisesLogged: uniqueExerciseNames.size,
+    effortRatingsLogged, combosCreated: foodCombos.filter(c => !c.createdAt || c.createdAt <= new Date(cutoff + 'T23:59:59').getTime()).length
   };
 }
 
@@ -4063,7 +4066,9 @@ function buildBadgeCategories(d) {
     { category: 'Consistency', color: '#FF9466', icon: svg('<path d="M8.5 14.5A2.5 2.5 0 0 0 11 17a2.5 2.5 0 0 0 2.5-2.5c0-1.5-1.5-2-1.5-3.5 0-1 1-2 1-2s3 2 3 5.5A5.5 5.5 0 0 1 10.5 20a5.5 5.5 0 0 1-5.5-5.5c0-3 2-5 3-7 0 0 .5 2 .5 3.5z"/>'), badges: [
       { id: 'streak_7', title: 'Week Streak', desc: '7 days in a row logging something', tier: 7, value: d.loggingStreak },
       { id: 'streak_30', title: 'Month Streak', desc: '30 days in a row logging something', tier: 30, value: d.loggingStreak },
-      { id: 'streak_100', title: '100-Day Streak', desc: '100 days in a row logging something', tier: 100, value: d.loggingStreak }
+      { id: 'streak_100', title: '100-Day Streak', desc: '100 days in a row logging something', tier: 100, value: d.loggingStreak },
+      { id: 'combo_1', title: 'Combo Creator', desc: 'Save your first food combo', tier: 1, value: d.combosCreated },
+      { id: 'combo_5', title: 'Combo Collector', desc: 'Save 5 food combos', tier: 5, value: d.combosCreated }
     ]},
     { category: 'Workouts', color: '#E2574C', icon: svg('<line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/>'), badges: [
       { id: 'strength_1', title: 'First Workout', desc: 'Log your first strength session', tier: 1, value: d.strengthSessionCount },
@@ -4079,7 +4084,9 @@ function buildBadgeCategories(d) {
       { id: 'pr_5', title: '5 PRs', desc: 'Set 5 personal records total', tier: 5, value: d.totalPRs },
       { id: 'pr_15', title: '15 PRs', desc: 'Set 15 personal records total', tier: 15, value: d.totalPRs },
       { id: 'variety_5', title: 'Well-Rounded', desc: 'Log sets for 5 different exercises', tier: 5, value: d.uniqueExercisesLogged },
-      { id: 'variety_10', title: 'Full Arsenal', desc: 'Log sets for 10 different exercises', tier: 10, value: d.uniqueExercisesLogged }
+      { id: 'variety_10', title: 'Full Arsenal', desc: 'Log sets for 10 different exercises', tier: 10, value: d.uniqueExercisesLogged },
+      { id: 'effort_10', title: 'Effort Tracker', desc: 'Log an effort rating for 10 workouts', tier: 10, value: d.effortRatingsLogged },
+      { id: 'effort_50', title: 'Effort Master', desc: 'Log an effort rating for 50 workouts', tier: 50, value: d.effortRatingsLogged }
     ]}
   ];
   if (d.goalLoss > 0) {
@@ -4105,6 +4112,8 @@ function nextBadgeUnitLabel(badgeId) {
   if (badgeId.startsWith('pr_')) return 'PRs';
   if (badgeId.startsWith('variety_')) return 'exercises';
   if (badgeId.startsWith('weight_')) return 'lbs';
+  if (badgeId.startsWith('effort_')) return 'workouts';
+  if (badgeId.startsWith('combo_')) return 'combos';
   return 'days';
 }
 
@@ -11444,7 +11453,7 @@ function showComboSuggestion(group) {
   document.getElementById('acceptComboSuggestionBtn').addEventListener('click', async () => {
     const name = prompt('Name this combo:', `${group.mt} combo`);
     if (!name) return;
-    foodCombos = [...foodCombos, { name, items: group.items }];
+    foodCombos = [...foodCombos, { name, items: group.items, createdAt: Date.now() }];
     banner.style.display = 'none';
     renderFavorites();
     await saveFoodCombosToFirestore();
@@ -11637,7 +11646,7 @@ function renderFavorites() {
       const selectedIdx = [...document.querySelectorAll('.combo-item-checkbox:checked')].map(cb => Number(cb.dataset.combofav));
       if (selectedIdx.length < 2) { alert('Select at least 2 favorites to combine.'); return; }
       const items = selectedIdx.map(i => pinnedFavorites[i]).map(f => ({ desc: f.desc, protein: f.protein || null, cal: f.cal || null, carbs: f.carbs || null, fat: f.fat || null }));
-      foodCombos = [...foodCombos, { name, items }];
+      foodCombos = [...foodCombos, { name, items, createdAt: Date.now() }];
       renderFavorites();
       await saveFoodCombosToFirestore();
     });
