@@ -3827,6 +3827,59 @@ function weeklyWorkoutVolume() {
 
 // Every exercise name that's ever had a set logged against it — powers
 // the exercise picker on the Weight Progress chart.
+
+// Weekly (rolling 7-day blocks counted back from today) total Strength
+// volume and session count for each of the last N weeks — weeks[0] is
+// the current, still-in-progress week; weeks[1] is the last complete
+// week, and so on. Used to judge whether a deload has actually happened
+// recently, not just to show a single current-week number.
+function weeklyVolumeHistory(numWeeks) {
+  const weeks = [];
+  const today = new Date(todayStr());
+  for (let w = 0; w < numWeeks; w++) {
+    const end = new Date(today); end.setDate(end.getDate() - w * 7);
+    const start = new Date(end); start.setDate(start.getDate() - 6);
+    const startStr = start.toISOString().slice(0, 10);
+    const endStr = end.toISOString().slice(0, 10);
+    let volume = 0, sessions = 0;
+    entries.filter(e => e.date >= startStr && e.date <= endStr).forEach(e => {
+      (e.ex || []).forEach(x => { if (x.type === 'Strength') { volume += sessionVolume(x); sessions++; } });
+    });
+    weeks.push({ startStr, endStr, volume: Math.round(volume), sessions });
+  }
+  return weeks;
+}
+
+// Notices whether a genuine deload (a week at under half the trailing
+// 3-week average volume) has happened somewhat recently, and if it's
+// been 7+ weeks (or never, within the tracked window) — after enough
+// consistent training that a deload would actually mean something —
+// suggests one. Requires at least 6 complete weeks of history to make
+// any call at all, and requires real sustained training (avg 2+
+// sessions/week over the recent stretch) rather than firing for someone
+// who simply hasn't been going.
+function detectDeloadNeeded() {
+  const weeks = weeklyVolumeHistory(8).slice(1); // drop the current partial week
+  if (weeks.length < 6) return null;
+
+  let weeksSinceDeload = null;
+  for (let i = 0; i < weeks.length; i++) {
+    const trailing = weeks.slice(i + 1, i + 4);
+    if (trailing.length < 2) break;
+    const avg = trailing.reduce((s, w) => s + w.volume, 0) / trailing.length;
+    if (avg > 0 && weeks[i].volume < avg * 0.5) { weeksSinceDeload = i; break; }
+  }
+
+  const recentWeeks = weeks.slice(0, 7);
+  const avgSessions = recentWeeks.reduce((s, w) => s + w.sessions, 0) / recentWeeks.length;
+  if (avgSessions < 2) return null;
+
+  if (weeksSinceDeload === null || weeksSinceDeload >= 7) {
+    return { weeksSinceDeload: weeksSinceDeload === null ? null : weeksSinceDeload };
+  }
+  return null;
+}
+
 function allLoggedExerciseNames() {
   const names = new Set();
   entries.forEach(e => (e.ex || []).forEach(x => {
@@ -8680,6 +8733,23 @@ function nextPPLDay() {
   return order[(order.indexOf(lastDay) + 1) % 3];
 }
 
+// How many times each PPL category has actually been trained in the last
+// 7 days — since 4 sessions/week doesn't divide evenly into a 3-day
+// rotation, some weeks legitimately hit one category twice, but this
+// makes that visible rather than letting it pass unnoticed as
+// accidental extra volume on an already-worked pattern.
+function pplCategoryCountThisWeek() {
+  const cutoff = new Date(todayStr());
+  cutoff.setDate(cutoff.getDate() - 6);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const today = todayStr();
+  const counts = { Push: 0, Pull: 0, Legs: 0 };
+  entries.filter(e => e.date >= cutoffStr && e.date <= today).forEach(e => {
+    (e.ex || []).forEach(x => { if (x.type === 'Strength' && counts.hasOwnProperty(x.planDay)) counts[x.planDay]++; });
+  });
+  return counts;
+}
+
 // "Workout" = strength/weight training specifically here, matching the
 // Workout Plan card's own subject (Day A/B lifting routine) — a walk or
 // run shouldn't reset this counter, since it isn't the thing the plan
@@ -12943,7 +13013,24 @@ function computeDueTodayItems() {
 
   const workedOutToday = exForDate(todayStr()).some(x => x.type === 'Strength');
   if (!workedOutToday) {
-    items.push({ icon: '🏋️', text: `Next workout: ${currentPlanDisplayName()}`, urgent: false });
+    const nextDay = currentPlanDisplayName();
+    let text = `Next workout: ${nextDay}`;
+    if (workoutPlanMode === 'ppl') {
+      const counts = pplCategoryCountThisWeek();
+      const upcoming = nextPPLDay();
+      if (counts[upcoming] >= 2) {
+        text += ` (this'll be your ${counts[upcoming] === 2 ? '3rd' : counts[upcoming] + 1 + 'th'} ${upcoming} day this week)`;
+      }
+    }
+    items.push({ icon: '🏋️', text, urgent: false });
+  }
+
+  const deload = detectDeloadNeeded();
+  if (deload) {
+    const text = deload.weeksSinceDeload == null
+      ? "No deload week in your tracked history yet — worth planning one soon"
+      : `It's been ${deload.weeksSinceDeload}+ weeks since your last lighter week — a deload may be due`;
+    items.push({ icon: '📉', text, urgent: false });
   }
 
   const t = entries.find(x => x.date === todayStr());
