@@ -2186,6 +2186,10 @@ body {
             <div class="chip mt-chip" data-mt="Dinner">Dinner</div>
             <div class="chip mt-chip" data-mt="Snack">Snack</div>
           </div>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-soft);margin-bottom:12px;cursor:pointer">
+            <input type="checkbox" id="mOffPlan" style="width:16px;height:16px;accent-color:var(--teal)">
+            🔸 Off-plan (still logs, but excluded from trend charts)
+          </label>
           <div id="lookupResults"></div>
         <div class="field" style="margin-bottom:10px">
           <label for="mServings">Servings (macros above are per serving)</label>
@@ -4038,7 +4042,7 @@ const CORRELATION_PAIRS = [
     sentence: (high, low, threshold) => `On higher-HRV days (above ${threshold}ms), sleep score averaged ${high}. On lower-HRV days, it averaged ${low}.`
   },
   {
-    getX: e => e.protein ? parseFloat(e.protein) : null,
+    getX: e => (e.protein && !e.hasOffPlanMeal) ? parseFloat(e.protein) : null,
     getY: e => e.restHR ? parseFloat(e.restHR) : null,
     nextDay: false,
     splitThreshold: 100,
@@ -5775,7 +5779,7 @@ function renderCharts() {
   if (pCtxEl) {
     const pCtx = pCtxEl.getContext('2d');
     if (proteinChart) proteinChart.destroy();
-    const pEntries = entries.filter(e => e.protein != null && e.protein !== '');
+    const pEntries = entries.filter(e => e.protein != null && e.protein !== '' && !e.hasOffPlanMeal);
     proteinChart = new Chart(pCtx, {
       type: 'bar',
       data: {
@@ -5800,7 +5804,7 @@ function renderCharts() {
   if (cbCtxEl) {
     const cbCtx = cbCtxEl.getContext('2d');
     if (carbsChart) carbsChart.destroy();
-    const cbEntries = entries.filter(e => e.carbs != null && e.carbs !== '');
+    const cbEntries = entries.filter(e => e.carbs != null && e.carbs !== '' && !e.hasOffPlanMeal);
     carbsChart = new Chart(cbCtx, {
       type: 'bar',
       data: {
@@ -5829,7 +5833,7 @@ function renderCharts() {
   if (calCtxEl) {
     const calCtx = calCtxEl.getContext('2d');
     if (caloriesChart) caloriesChart.destroy();
-    const calE = entries.filter(e => e.calories != null && e.calories !== '');
+    const calE = entries.filter(e => e.calories != null && e.calories !== '' && !e.hasOffPlanMeal);
     caloriesChart = new Chart(calCtx, {
       type: 'bar',
       data: {
@@ -5853,7 +5857,7 @@ function renderCharts() {
   if (fatCtxEl) {
     const fatCtx = fatCtxEl.getContext('2d');
     if (fatChart) fatChart.destroy();
-    const fatE = entries.filter(e => e.fat != null && e.fat !== '');
+    const fatE = entries.filter(e => e.fat != null && e.fat !== '' && !e.hasOffPlanMeal);
     fatChart = new Chart(fatCtx, {
       type: 'bar',
       data: {
@@ -12642,7 +12646,7 @@ function mealTotals(meals) {
 
 async function writeMeals(date, meals) {
   const totals = mealTotals(meals);
-  const payload = { date, meals };
+  const payload = { date, meals, hasOffPlanMeal: meals.some(m => m.offPlan) };
   if (totals.protein != null)  payload.protein  = String(totals.protein);
   if (totals.calories != null) payload.calories = String(totals.calories);
   if (totals.carbs != null)    payload.carbs    = String(totals.carbs);
@@ -12695,6 +12699,7 @@ function startEditMeal(date, ts) {
   document.getElementById('mCarbs').value = meal.carbs || '';
   document.getElementById('mFat').value = meal.fat || '';
   document.getElementById('mServings').value = '';
+  document.getElementById('mOffPlan').checked = !!meal.offPlan;
   document.getElementById('addMealBtn').textContent = 'Update';
   document.getElementById('cancelMealEditBtn').style.display = '';
   document.getElementById('mDesc').focus();
@@ -12707,6 +12712,7 @@ function cancelEditMeal() {
   document.getElementById('mCal').value = '';
   document.getElementById('mCarbs').value = '';
   document.getElementById('mFat').value = '';
+  document.getElementById('mOffPlan').checked = false;
   document.getElementById('addMealBtn').textContent = '+ Add to Day';
   document.getElementById('cancelMealEditBtn').style.display = 'none';
 }
@@ -12729,6 +12735,7 @@ document.getElementById('addMealBtn').addEventListener('click', async () => {
       cal:     (v => { const n = parseFloat(v); const s = parseFloat(document.getElementById('mServings').value) || 1; return (v !== '' && v != null && !isNaN(n)) ? String(Math.round(n * s * 100) / 100) : null; })(document.getElementById('mCal').value),
       carbs:   (v => { const n = parseFloat(v); const s = parseFloat(document.getElementById('mServings').value) || 1; return (v !== '' && v != null && !isNaN(n)) ? String(Math.round(n * s * 100) / 100) : null; })(document.getElementById('mCarbs').value),
       fat:     (v => { const n = parseFloat(v); const s = parseFloat(document.getElementById('mServings').value) || 1; return (v !== '' && v != null && !isNaN(n)) ? String(Math.round(n * s * 100) / 100) : null; })(document.getElementById('mFat').value),
+      offPlan: document.getElementById('mOffPlan').checked,
     };
     if (lastLookupSource) fields.source = lastLookupSource;
     lastLookupSource = null; // consumed either way, so it never leaks into a later, unrelated entry
@@ -12761,6 +12768,7 @@ document.getElementById('addMealBtn').addEventListener('click', async () => {
     document.getElementById('mCal').value = '';
     document.getElementById('mCarbs').value = '';
     document.getElementById('mFat').value = '';
+    document.getElementById('mOffPlan').checked = false;
     document.getElementById('lookupResults').innerHTML = '';
     document.getElementById('myFoodResults').innerHTML = '';
     document.getElementById('mServings').value = '';
@@ -12929,7 +12937,7 @@ function renderMealList() {
       items.map(m => `
         <div class="lab-row">
           <span style="font-family:'Inter',sans-serif">
-            <div>${m.desc}</div>
+            <div>${m.offPlan ? '🔸 ' : ''}${m.desc}</div>
             ${m.source ? `<div style="font-size:10px;color:var(--ink-soft);font-weight:400">${m.source}</div>` : ''}
           </span>
           <span style="display:flex;align-items:center;gap:10px">
