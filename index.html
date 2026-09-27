@@ -9503,7 +9503,7 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
   const numberDisplay = setData.warmup ? 'W' : (idx + 1);
   const doneAccent = accent || '#5CE6C0';
   return `
-    <div class="set-row" data-exercise="${exerciseName}" data-set-idx="${idx}" style="display:grid;grid-template-columns:26px 1fr 62px 54px 38px;gap:8px;align-items:center;margin-bottom:8px;padding:3px 5px;border-radius:7px">
+    <div class="set-row" data-exercise="${exerciseName}" data-set-idx="${idx}" style="display:grid;grid-template-columns:26px 1fr 62px 54px 38px 26px;gap:8px;align-items:center;margin-bottom:8px;padding:3px 5px;border-radius:7px">
       <button type="button" class="set-number-toggle" title="Tap to mark as a warm-up set" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:${setData.warmup ? '700' : '400'};color:${setData.warmup ? 'var(--coral)' : 'var(--ink-soft)'};text-align:center;background:none;border:none;padding:0;cursor:pointer;width:100%">${numberDisplay}</button>
       <span style="font-size:12px;color:var(--ink-soft)">${prevText}</span>
       <input type="number" class="set-weight-input" inputmode="decimal" step="2.5" value="${setData.weight}" placeholder="lbs"
@@ -9511,7 +9511,26 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
       <input type="number" class="set-reps-input" inputmode="numeric" value="${setData.reps}" placeholder="reps"
         style="width:100%;padding:9px 4px;border:${setData.done ? '2px solid ' + doneAccent : '1.5px solid var(--line)'};border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:${setData.done ? '800' : '400'};background:${setData.done ? doneAccent : 'var(--input-bg)'};color:${setData.done ? '#0d0d0f' : 'var(--ink)'};text-align:center">
       <button type="button" class="set-check-btn" style="width:36px;height:36px;border-radius:10px;border:1.5px solid ${setData.done ? doneAccent : 'var(--line)'};background:${setData.done ? doneAccent : 'var(--input-bg)'};color:${setData.done ? '#0d0d0f' : 'var(--ink-soft)'};font-size:18px;font-weight:800;cursor:pointer">✓</button>
+      <button type="button" class="set-remove-btn" data-exercise="${exerciseName}" data-set-idx="${idx}" aria-label="Remove this set" style="width:26px;height:26px;border-radius:8px;border:none;background:none;color:var(--ink-soft);font-size:15px;cursor:pointer;opacity:0.6">✕</button>
     </div>${setData.warmup ? '' : `<div class="pr-proximity-hint" data-exercise="${exerciseName}" data-set-idx="${idx}" style="display:none;font-size:11px;font-weight:700;margin:-4px 0 8px 34px"></div>`}`;
+}
+
+// Removes a single accidentally-added set mid-workout — undoable via the
+// same toast pattern used for removing an exercise entirely, since an
+// extra tap on "+ Add Set" (or the removal itself) is an easy mistake to
+// want reversed.
+async function removeWorkoutSet(exerciseName, idx) {
+  const sets = workoutSessionState[exerciseName];
+  if (!sets || !sets[idx]) return;
+  const removed = sets[idx];
+  workoutSessionState[exerciseName] = sets.filter((_, i) => i !== idx);
+  renderWorkoutPlan();
+  showUndoToast(`Removed set ${idx + 1}`, () => {
+    const current = [...(workoutSessionState[exerciseName] || [])];
+    current.splice(idx, 0, removed);
+    workoutSessionState[exerciseName] = current;
+    renderWorkoutPlan();
+  });
 }
 
 // Rebuilt every render (not created once like the dashboard's sortable)
@@ -9710,6 +9729,9 @@ function wireWorkoutPlanEvents() {
       }
       renderWorkoutPlan();
     });
+  });
+  document.querySelectorAll('.set-remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => removeWorkoutSet(btn.dataset.exercise, Number(btn.dataset.setIdx)));
   });
   document.querySelectorAll('.add-set-btn').forEach(btn => {
     btn.addEventListener('click', () => {
