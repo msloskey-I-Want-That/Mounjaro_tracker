@@ -2352,6 +2352,18 @@ body {
 
     <!-- History -->
     <div class="view" id="view-history">
+      <div class="chart-card">
+        <div class="chart-title">Consistency</div>
+        <div id="consistencyHeatmap" style="overflow-x:auto;padding-bottom:4px"></div>
+        <div style="display:flex;align-items:center;gap:5px;margin-top:6px;font-size:10px;color:var(--ink-soft)">
+          <span>Less</span>
+          <span style="width:12px;height:12px;border-radius:3px;background:var(--line);display:inline-block"></span>
+          <span style="width:12px;height:12px;border-radius:3px;background:var(--teal);opacity:0.35;display:inline-block"></span>
+          <span style="width:12px;height:12px;border-radius:3px;background:var(--teal);opacity:0.65;display:inline-block"></span>
+          <span style="width:12px;height:12px;border-radius:3px;background:var(--teal);opacity:1;display:inline-block"></span>
+          <span>More</span>
+        </div>
+      </div>
       <div class="history-search">
         <span style="color:var(--ink-soft)"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
         <input type="text" id="historySearch" placeholder="Search notes…">
@@ -5176,7 +5188,87 @@ function updateTimeline() {
 }
 
 // ── HISTORY ──
+// How many distinct categories of data were logged on a given day — used
+// to shade that day's heatmap cell. Counts food, exercise, weight,
+// water, steps, and injection as up to 6 independent signals, so a day
+// with everything logged reads clearly darker than a day with just one
+// quick entry.
+function computeDailyActivityLevel(e) {
+  if (!e) return 0;
+  let count = 0;
+  if (e.meals && e.meals.length) count++;
+  if (e.ex && e.ex.length) count++;
+  if (e.weight) count++;
+  if (e.water) count++;
+  if (e.steps) count++;
+  if (e.injection) count++;
+  return count;
+}
+
+// GitHub-style contribution grid: one column per week, one row per day
+// of the week, shaded by computeDailyActivityLevel. Tapping a cell jumps
+// straight to that date in the Log tab, rather than this being a purely
+// look-only visual.
+function renderConsistencyHeatmap() {
+  const box = document.getElementById('consistencyHeatmap');
+  if (!box) return;
+
+  const numWeeks = 16;
+  const cellSize = 16, gap = 3;
+  const today = new Date(todayStr());
+  const todayDow = today.getDay(); // 0 = Sunday
+  const gridEnd = new Date(today); gridEnd.setDate(gridEnd.getDate() + (6 - todayDow));
+  const totalDays = numWeeks * 7;
+  const gridStart = new Date(gridEnd); gridStart.setDate(gridStart.getDate() - totalDays + 1);
+
+  const entriesByDate = {};
+  entries.forEach(e => { entriesByDate[e.date] = e; });
+
+  const cells = [];
+  const monthLabels = [];
+  let lastMonth = null;
+  for (let col = 0; col < numWeeks; col++) {
+    const colDate = new Date(gridStart); colDate.setDate(colDate.getDate() + col * 7);
+    const monthNum = colDate.getMonth();
+    if (monthNum !== lastMonth) {
+      monthLabels.push({ col, label: colDate.toLocaleDateString('en-US', { month: 'short' }) });
+      lastMonth = monthNum;
+    }
+    for (let row = 0; row < 7; row++) {
+      const cellDate = new Date(gridStart); cellDate.setDate(cellDate.getDate() + col * 7 + row);
+      if (cellDate > today) { cells.push(null); continue; }
+      const dateStr = cellDate.toISOString().slice(0, 10);
+      const level = computeDailyActivityLevel(entriesByDate[dateStr]);
+      cells.push({ dateStr, level, col, row, isToday: dateStr === todayStr() });
+    }
+  }
+
+  const gridWidth = numWeeks * (cellSize + gap);
+  const gridHeight = 7 * (cellSize + gap) + 16;
+
+  const monthLabelsHtml = monthLabels.map(m => `<text x="${m.col * (cellSize + gap)}" y="10" font-size="9" fill="var(--ink-soft)">${m.label}</text>`).join('');
+  const cellsHtml = cells.filter(Boolean).map(c => {
+    const x = c.col * (cellSize + gap);
+    const y = 16 + c.row * (cellSize + gap);
+    const fill = c.level === 0 ? 'var(--line)' : 'var(--teal)';
+    const opacity = c.level === 0 ? 1 : Math.min(1, 0.25 + c.level * 0.2);
+    const stroke = c.isToday ? 'var(--coral)' : 'none';
+    const strokeWidth = c.isToday ? '2' : '0';
+    return `<rect data-date="${c.dateStr}" x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="3" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="${strokeWidth}" style="cursor:pointer"/>`;
+  }).join('');
+
+  box.innerHTML = `<svg width="${gridWidth}" height="${gridHeight}" viewBox="0 0 ${gridWidth} ${gridHeight}">${monthLabelsHtml}${cellsHtml}</svg>`;
+
+  box.querySelectorAll('rect[data-date]').forEach(rect => {
+    rect.addEventListener('click', () => {
+      document.getElementById('foodDate').value = rect.dataset.date;
+      showView('food');
+    });
+  });
+}
+
 function renderHistory() {
+  renderConsistencyHeatmap();
   const search = (document.getElementById('historySearch')?.value || '').toLowerCase();
   const list   = document.getElementById('historyList');
   const sorted = [...entries].sort((a,b) => b.date.localeCompare(a.date));
