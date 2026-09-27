@@ -3835,21 +3835,35 @@ function weeklyWorkoutVolume() {
 // the current, still-in-progress week; weeks[1] is the last complete
 // week, and so on. Used to judge whether a deload has actually happened
 // recently, not just to show a single current-week number.
+//
+// Single pass over entries via a precomputed exact-date-string -> week
+// index map, rather than the numWeeks separate entries.filter() passes
+// this used to do — same date-string comparison semantics as before (no
+// Date-object day-math on entry dates, so no DST edge cases near a week
+// boundary), just without re-scanning the full history once per week.
 function weeklyVolumeHistory(numWeeks) {
-  const weeks = [];
   const today = new Date(todayStr());
+  const weeks = [];
+  const dateToWeek = new Map();
   for (let w = 0; w < numWeeks; w++) {
     const end = new Date(today); end.setDate(end.getDate() - w * 7);
     const start = new Date(end); start.setDate(start.getDate() - 6);
     const startStr = start.toISOString().slice(0, 10);
     const endStr = end.toISOString().slice(0, 10);
-    let volume = 0, sessions = 0;
-    entries.filter(e => e.date >= startStr && e.date <= endStr).forEach(e => {
-      (e.ex || []).forEach(x => { if (x.type === 'Strength') { volume += sessionVolume(x); sessions++; } });
-    });
-    weeks.push({ startStr, endStr, volume: Math.round(volume), sessions });
+    weeks.push({ startStr, endStr, volume: 0, sessions: 0 });
+    const cursor = new Date(start);
+    for (let d = 0; d < 7; d++) {
+      dateToWeek.set(cursor.toISOString().slice(0, 10), w);
+      cursor.setDate(cursor.getDate() + 1);
+    }
   }
-  return weeks;
+  entries.forEach(e => {
+    const w = dateToWeek.get(e.date);
+    if (w === undefined) return;
+    const bucket = weeks[w];
+    (e.ex || []).forEach(x => { if (x.type === 'Strength') { bucket.volume += sessionVolume(x); bucket.sessions++; } });
+  });
+  return weeks.map(wk => ({ startStr: wk.startStr, endStr: wk.endStr, volume: Math.round(wk.volume), sessions: wk.sessions }));
 }
 
 // Notices whether a genuine deload (a week at under half the trailing
