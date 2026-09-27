@@ -8894,9 +8894,16 @@ function parseSetCount(setsStr) {
   return match ? parseInt(match[1], 10) : 3;
 }
 
-function getOrInitSetState(exerciseName, setCount) {
+function getOrInitSetState(exerciseName, setCount, setsTarget) {
   if (!workoutSessionState[exerciseName]) {
-    const prev = previousSetsFor(exerciseName); workoutSessionState[exerciseName] = Array.from({ length: setCount }, (_, i) => ({ weight: (prev && prev[i]) ? prev[i].weight : '', reps: (prev && prev[i]) ? prev[i].reps : '', done: false, warmup: false }));
+    const prev = previousSetsFor(exerciseName);
+    const suggestion = setsTarget ? suggestedSetValues(exerciseName, setsTarget) : null;
+    workoutSessionState[exerciseName] = Array.from({ length: setCount }, (_, i) => {
+      const suggested = suggestion && suggestion.sets[i];
+      const weight = suggested ? suggested.weight : (prev && prev[i]) ? prev[i].weight : '';
+      const reps = suggested ? suggested.reps : (prev && prev[i]) ? prev[i].reps : '';
+      return { weight, reps, done: false, warmup: false };
+    });
   }
   while (workoutSessionState[exerciseName].length < setCount) {
     workoutSessionState[exerciseName].push({ weight: '', reps: '', done: false, warmup: false });
@@ -9244,7 +9251,55 @@ function progressionHintFor(exerciseName, setsTarget) {
 
   const currentWeight = sessionMaxWeights[0];
   const increment = currentWeight >= 100 ? 10 : 5;
-  return `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><polygon points="12 4 20 16 4 16"/></svg> Try ${currentWeight + increment} lb next time — ${repRange.max}+ reps at ${currentWeight} lb for ${recentSessions.length} sessions straight.`;
+  return `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><polygon points="12 4 20 16 4 16"/></svg> Pre-filled at ${currentWeight + increment} lb below — ${repRange.max}+ reps at ${currentWeight} lb for ${recentSessions.length} sessions straight.`;
+}
+
+// Full double-progression engine used to actually pre-fill a fresh
+// session's weight/reps fields (progressionHintFor above only decides
+// whether to show the inline "try X lb" text hint — this decides what
+// number goes in the box). Same core rule: hit the top of the target rep
+// range at a consistent weight across recent sessions -> bump the weight
+// and drop back to the bottom of the range; anything short of that ->
+// hold the same weight and aim to at least match last time's actual reps,
+// set by set, since a missed rep target should consolidate rather than
+// compound into another jump. Backs off the weight bump specifically
+// (never the exercise, never below last time's numbers) when a deload
+// looks due or last session's effort was already maxed out — those are
+// reasons to hold, not push. Returns null (leave fields to the normal
+// carry-over-last-time behavior) for timed exercises, or with fewer than
+// 2 sessions of real history to judge from.
+function suggestedSetValues(exerciseName, setsTarget) {
+  const repRange = parseRepRange(setsTarget);
+  if (!repRange) return null;
+
+  const recentSessions = recentWorkingSetsFor(exerciseName, 3);
+  if (recentSessions.length < 2) return null;
+
+  const lastSession = recentSessions[0];
+  const lastWeight = Math.max(...lastSession.map(s => s.weight || 0));
+  if (!lastWeight) return null;
+
+  const sessionMaxWeights = recentSessions.map(sets => Math.max(...sets.map(s => s.weight || 0)));
+  const allSameWeight = sessionMaxWeights.every(w => w === sessionMaxWeights[0]);
+  const hitTargetTop = lastSession.every(s => s.reps >= repRange.max);
+
+  const sortedEntries = entries.filter(e => e.ex && e.ex.length).slice().sort((a, b) => b.date.localeCompare(a.date));
+  let lastSessionDay = null;
+  for (const e of sortedEntries) {
+    if (e.ex.some(x => x.type === 'Strength' && x.sets && x.sets[exerciseName])) { lastSessionDay = e; break; }
+  }
+  const lastEffort = lastSessionDay ? dayEffortRating(lastSessionDay) : null;
+  const deloadDue = !!detectDeloadNeeded();
+
+  const readyToBump = allSameWeight && hitTargetTop && !deloadDue && lastEffort !== 5;
+
+  if (readyToBump) {
+    const increment = lastWeight >= 100 ? 10 : 5;
+    const newWeight = lastWeight + increment;
+    return { holding: false, sets: lastSession.map(() => ({ weight: newWeight, reps: repRange.min })) };
+  }
+
+  return { holding: true, sets: lastSession.map(s => ({ weight: lastWeight, reps: s.reps || repRange.min })) };
 }
 
 // Most recent weight logged for a specific named exercise (the last
@@ -10109,7 +10164,7 @@ function renderWorkoutPlan() {
     <div id="exerciseListContainer">
     ${visiblePlan.map((ex, exIndex) => {
       const setCount = parseSetCount(ex.sets);
-      const setState = getOrInitSetState(ex.name, setCount);
+      const setState = getOrInitSetState(ex.name, setCount, ex.sets);
       const prevSets = previousSetsFor(ex.name);
       const hint = progressionHintFor(ex.name, ex.sets);
       const plateau = hint ? null : plateauHintFor(ex.name);
