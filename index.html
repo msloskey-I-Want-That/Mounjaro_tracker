@@ -4887,6 +4887,43 @@ function renderWeightSparkline(weightEntries) {
   svg.innerHTML = `<polyline points="${points}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 
+// Projects a rough goal-weight date from the recent actual weight trend —
+// a simple linear regression over weigh-ins in the last 8 weeks (falling
+// back to the last 6 weigh-ins if that window is too sparse), rather than
+// a fixed timeline. Returns null whenever there isn't a real, currently-
+// downward trend to project from: too few weigh-ins, weight flat or
+// rising, already at/past goal, or a trend so slow the projected date
+// would be more than 3 years out (not a useful "ETA" at that point).
+function computeWeightGoalETA(weightEntries) {
+  if (weightEntries.length < 3) return null;
+  const cutoff = new Date(todayStr()); cutoff.setDate(cutoff.getDate() - 56);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const recent = weightEntries.filter(e => e.date >= cutoffStr);
+  const sample = recent.length >= 3 ? recent : weightEntries.slice(-6);
+  if (sample.length < 3) return null;
+
+  const first = new Date(sample[0].date);
+  const points = sample.map(e => ({ x: (new Date(e.date) - first) / 86400000, y: parseFloat(e.weight) }));
+  const n = points.length;
+  const sumX = points.reduce((s, p) => s + p.x, 0);
+  const sumY = points.reduce((s, p) => s + p.y, 0);
+  const sumXY = points.reduce((s, p) => s + p.x * p.y, 0);
+  const sumXX = points.reduce((s, p) => s + p.x * p.x, 0);
+  const denom = n * sumXX - sumX * sumX;
+  if (denom === 0) return null;
+  const slope = (n * sumXY - sumX * sumY) / denom;
+
+  const latest = points[points.length - 1].y;
+  if (slope >= 0) return null;
+  if (latest <= goalWeight) return null;
+
+  const daysToGoal = (goalWeight - latest) / slope;
+  if (!isFinite(daysToGoal) || daysToGoal <= 0 || daysToGoal > 1095) return null;
+
+  const etaDate = new Date(); etaDate.setDate(etaDate.getDate() + Math.round(daysToGoal));
+  return { etaDate, weeklyRate: Math.abs(slope * 7) };
+}
+
 function updateStats() {
   const diff = daysSinceStart();
 
@@ -4947,7 +4984,11 @@ function updateStats() {
     const actualLoss = baselineWeight - latest;
     const pct = goalLossTotal > 0 ? Math.max(0, Math.min(100, (actualLoss / goalLossTotal) * 100)) : 0;
     if (changeBar) changeBar.style.width = pct + '%';
-    if (changeSub) changeSub.textContent = `${Math.round(pct)}% to goal (−${Math.round(goalLossTotal)} lbs)`;
+    if (changeSub) {
+      const eta = computeWeightGoalETA(weightEntries);
+      const etaText = eta ? ` · ~${eta.etaDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} at this pace` : '';
+      changeSub.textContent = `${Math.round(pct)}% to goal (−${Math.round(goalLossTotal)} lbs)${etaText}`;
+    }
   } else {
     weightEl.textContent  = baselineWeight + ' lbs';
     weightSub.textContent = 'baseline';
