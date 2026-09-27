@@ -978,11 +978,13 @@ body {
 
 <!-- ── REST TIMER POPUP (workout sets) ── -->
 <div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="cardioTrendsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:706"></div><div id="cardioTrendsModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:707;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
-<div id="restTimerWrap" style="display:none;flex-direction:row;align-items:center;gap:11px;position:fixed;bottom:88px;right:14px;background:var(--card);border:1.5px solid var(--teal);border-radius:17px;padding:9px 11px 9px 15px;box-shadow:0 8px 26px rgba(0,0,0,0.28);z-index:601;text-align:center">
+<div id="restTimerWrap" style="display:none;flex-direction:row;align-items:center;gap:8px;position:fixed;bottom:88px;right:14px;background:var(--card);border:1.5px solid var(--teal);border-radius:17px;padding:9px 11px 9px 15px;box-shadow:0 8px 26px rgba(0,0,0,0.28);z-index:601;text-align:center">
   <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.1">
     <span id="restTimerLabel" style="font-size:10px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em">⏱ Rest</span>
     <span id="restTimerDisplay" style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:var(--teal)">2:00</span>
   </div>
+  <button type="button" class="btn btn-secondary btn-sm" id="restTimerMinusBtn" aria-label="Subtract 15 seconds, remembered for this exercise" style="padding:7px 9px;font-size:13px;font-weight:700;min-width:auto">−15</button>
+  <button type="button" class="btn btn-secondary btn-sm" id="restTimerPlusBtn" aria-label="Add 15 seconds, remembered for this exercise" style="padding:7px 9px;font-size:13px;font-weight:700;min-width:auto">+15</button>
   <button type="button" class="btn btn-secondary btn-sm" id="restTimerSkipBtn" style="padding:7px 13px;font-size:12px">Skip</button>
 </div>
 
@@ -4693,6 +4695,9 @@ function startListening() {
       }
       if (s.supersetPairs && typeof s.supersetPairs === 'object') {
         supersetPairs = { ...s.supersetPairs };
+      }
+      if (s.exerciseRestOverride && typeof s.exerciseRestOverride === 'object') {
+        exerciseRestOverride = { ...s.exerciseRestOverride };
       }
     }
     renderMedications();
@@ -8786,6 +8791,7 @@ let workoutNotesState = {}; // { exerciseName: 'note text' } - cleared on the sa
 let todaysSwaps = {}; // { originalExerciseName: {name, sets} } - session-only substitute exercises, never persisted, cleared on the same resets as workoutSessionState
 let lastAutoFilledMin = null; // so auto-fill never overwrites a value you typed yourself
 let restTimerEndTime = null;
+let restTimerTotalSeconds = null; // the current total duration for the active timer (not the absolute end timestamp) — adjusted by the +15/-15 buttons and persisted as the exercise's new default rest time
 let restTimerInterval = null;
 
 // A single, reused AudioContext for the rest-timer beep — iOS Safari
@@ -8854,6 +8860,7 @@ let customWorkoutExercises = { A: [], B: [], fullbody: [] };
 let hiddenWorkoutExercises = { A: [], B: [], fullbody: [] };
 let exerciseOrderOverride = {}; // { planKey: [exerciseName, ...] } — synced same as hidden/custom exercises above
 let supersetPairs = {}; // { planKey: { exName: partnerExName, partnerExName: exName } } — bidirectional, so either side of a pair looks the other up the same way
+let exerciseRestOverride = {}; // { exerciseName: seconds } — a rest duration adjusted via the +15/-15 timer buttons, remembered per exercise going forward; synced same as the fields above
 
 function supersetPartnerFor(planKey, exerciseName) {
   const dayPairs = supersetPairs[planKey];
@@ -9273,6 +9280,7 @@ function lastWarmupWeightFor(exerciseName) {
 // (a heavy Leg Press set needs longer than a Bicep Curl), rather than one
 // flat timer for everything.
 function getExerciseRestSeconds(exerciseName) {
+  if (exerciseRestOverride[exerciseName] != null) return exerciseRestOverride[exerciseName];
   const builtIn = workoutPlanMode === 'fullbody' ? WORKOUT_PLAN_FULLBODY
     : workoutPlanMode === 'ppl' ? [...WORKOUT_PLAN_PPL.Push, ...WORKOUT_PLAN_PPL.Pull, ...WORKOUT_PLAN_PPL.Legs]
     : [...WORKOUT_PLAN.A, ...WORKOUT_PLAN.B];
@@ -9345,6 +9353,7 @@ function fmtRestTime(sec) {
 function startRestTimer(seconds) {
   const duration = seconds || REST_SECONDS;
   restTimerEndTime = Date.now() + duration * 1000;
+  restTimerTotalSeconds = duration;
   clearTimeout(restTimerAutoHideTimer);
   const wrap = document.getElementById('restTimerWrap');
   if (wrap) { wrap.style.display = 'flex'; wrap.classList.remove('rest-timer-done'); }
@@ -9370,6 +9379,7 @@ function stopRestTimer() {
   clearTimeout(restTimerAutoHideTimer);
   if (restTimerInterval) { clearInterval(restTimerInterval); restTimerInterval = null; }
   restTimerEndTime = null;
+  restTimerTotalSeconds = null;
   hideRestTimerPopup();
 }
 
@@ -9389,6 +9399,24 @@ function updateRestTimerDisplay() {
     restTimerEndTime = null;
     playRestEndAlert();
     showRestTimerDone(); focusNextSetInput();
+  }
+}
+
+// Adjusts the currently running rest timer by ±15 seconds (clamped to a
+// 15-second floor so it can't be dragged to zero or negative), and
+// remembers the new total as this exercise's default rest time going
+// forward via exerciseRestOverride — so a preset that's off only needs
+// correcting once, not re-adjusted every single set.
+async function adjustRestTimer(deltaSeconds) {
+  if (restTimerEndTime == null || restTimerTotalSeconds == null) return;
+  const newTotal = Math.max(15, restTimerTotalSeconds + deltaSeconds);
+  const actualDelta = newTotal - restTimerTotalSeconds;
+  restTimerTotalSeconds = newTotal;
+  restTimerEndTime += actualDelta * 1000;
+  updateRestTimerDisplay();
+  if (restTimerContext && restTimerContext.exerciseName) {
+    exerciseRestOverride = { ...exerciseRestOverride, [restTimerContext.exerciseName]: newTotal };
+    await saveWorkoutPlanCustomizations();
   }
 }
 
@@ -9797,6 +9825,8 @@ function wireWorkoutPlanEvents() {
 // near #undoToast), so it must NOT be re-wired on every renderWorkoutPlan()
 // call or clicks would fire the handler multiple times.
 document.getElementById('restTimerSkipBtn').addEventListener('click', stopRestTimer);
+document.getElementById('restTimerMinusBtn').addEventListener('click', () => adjustRestTimer(-15));
+document.getElementById('restTimerPlusBtn').addEventListener('click', () => adjustRestTimer(15));
 document.getElementById('workoutFullscreenCloseBtn').addEventListener('click', () => setWorkoutFullscreen(false));
 document.getElementById('workoutFullscreenBackdrop').addEventListener('click', () => setWorkoutFullscreen(false));
 document.getElementById('entryPopupBackdrop').addEventListener('click', () => { if (entryPopupCard) { const t = entryPopupCard.querySelector('.form-section-title'); if (t) t.click(); } });
@@ -9818,7 +9848,7 @@ function currentPlanDisplayName() {
 }
 
 async function saveWorkoutPlanCustomizations() {
-  await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { customWorkoutExercises, hiddenWorkoutExercises, exerciseOrderOverride, supersetPairs }, { merge: true });
+  await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { customWorkoutExercises, hiddenWorkoutExercises, exerciseOrderOverride, supersetPairs, exerciseRestOverride }, { merge: true });
 }
 
 async function saveNewWorkoutExercise() {
@@ -13361,7 +13391,8 @@ document.getElementById('exportJsonBtn').addEventListener('click', () => {
       customWorkoutExercises,
       hiddenWorkoutExercises,
       exerciseOrderOverride,
-      supersetPairs
+      supersetPairs,
+      exerciseRestOverride
     }
   };
   // Note: this file contains your API keys and OAuth secrets in plain
