@@ -2935,6 +2935,17 @@ body {
             <button class="btn btn-secondary btn-sm" id="testHealthSyncBtn">Check</button>
           </div>
           <div id="healthSyncTestResults" style="margin:-4px 0 4px"></div>
+          <div class="settings-row" style="align-items:center">
+            <div>
+              <div class="settings-row-label">Share Weight to Apple Health</div>
+              <div class="settings-row-sub">One-way hand-off: opens a Shortcut you set up once, which then writes today's logged weight into Health. This app can't write to Health directly — see setup note below.</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="shareWeightToHealthBtn">Share</button>
+          </div>
+          <div id="shareWeightToHealthResults" style="margin:-4px 0 4px;font-size:12px;color:var(--ink-soft)"></div>
+          <div style="font-size:11px;color:var(--ink-soft);padding:8px 10px;background:var(--input-bg);border-radius:8px;line-height:1.5">
+            <b>One-time setup:</b> in the Shortcuts app, create a new Shortcut named exactly <code>Write To Health</code>. Add "Get Text from Input" → "Get Dictionary from Input" (or use "Match Text" to pull out the weight number) → "Log Health Sample", category Weight, value from what you parsed. Tapping "Share" above hands that Shortcut a line like <code>weight=185.4&date=2026-09-27</code> to work from.
+          </div>
         </div>
       </div>
 
@@ -7613,6 +7624,26 @@ async function testHealthSync() {
   }).join('');
 }
 document.getElementById('testHealthSyncBtn').addEventListener('click', testHealthSync);
+
+// Hands today's logged weight off to a Shortcut (built once, on Mike's
+// side) via the shortcuts:// URL scheme, which then writes it into
+// Apple Health — the only way a web app can reach HealthKit at all,
+// since there's no direct write API available to it. One-way, and only
+// fires when there's actually a weight logged for today to send.
+document.getElementById('shareWeightToHealthBtn').addEventListener('click', () => {
+  const box = document.getElementById('shareWeightToHealthResults');
+  const date = todayStr();
+  const e = entries.find(x => x.date === date);
+  if (!e || e.weight == null || e.weight === '') {
+    box.innerHTML = '<span style="color:var(--coral)">No weight logged for today yet — log one first.</span>';
+    return;
+  }
+  const payload = `weight=${e.weight}&date=${date}`;
+  const url = `shortcuts://run-shortcut?name=${encodeURIComponent('Write To Health')}&input=text&text=${encodeURIComponent(payload)}`;
+  window.__lastHealthShareUrl = url; // harmless debug hook, not used by the app itself
+  box.textContent = `Opening the "Write To Health" Shortcut with today's weight (${e.weight} lbs)…`;
+  window.location.href = url;
+});
 
 async function doLookup() {
   const q = document.getElementById('mDesc').value.trim();
