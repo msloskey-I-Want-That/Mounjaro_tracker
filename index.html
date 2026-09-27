@@ -11955,6 +11955,48 @@ function renderFavorites() {
     </div>`;
   }
 
+  if (pinnedFavorites.length || foodCombos.length) {
+    const batchOptions = [
+      ...pinnedFavorites.map((f, i) => `<option value="fav:${i}">${escapeHtml(f.desc)}</option>`),
+      ...foodCombos.map((c, i) => `<option value="combo:${i}">${escapeHtml(c.name)} (combo, ${c.items.length} items)</option>`)
+    ].join('');
+    const today = new Date(todayStr());
+    const dayOptions = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(today); d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return `<label style="display:flex;align-items:center;gap:8px;font-size:13px">
+        <input type="checkbox" class="batch-day-checkbox" data-date="${dateStr}">
+        ${label}${i === 0 ? ' (today)' : ''}
+      </label>`;
+    }).join('');
+    html += `
+    <div id="batchLogToggleRow" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+      <button type="button" id="showBatchLogBtn" style="background:none;border:none;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;padding:0">📅 Batch Log to Multiple Days</button>
+      <div id="batchLogForm" style="display:none;margin-top:8px;padding:12px;border:1.5px solid var(--line);border-radius:10px">
+        <div class="field" style="margin-bottom:8px">
+          <label for="batchLogItemSelect">What to log</label>
+          <select id="batchLogItemSelect">${batchOptions}</select>
+        </div>
+        <div class="field" style="margin-bottom:8px">
+          <label for="batchLogMealType">Meal</label>
+          <select id="batchLogMealType">
+            <option value="Breakfast">Breakfast</option>
+            <option value="Lunch">Lunch</option>
+            <option value="Dinner" selected>Dinner</option>
+            <option value="Snack">Snack</option>
+          </select>
+        </div>
+        <div style="font-size:11px;color:var(--ink-soft);margin-bottom:6px">Apply to these days:</div>
+        <div id="batchLogDayChecklist" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;max-height:200px;overflow-y:auto">${dayOptions}</div>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-secondary btn-sm" id="applyBatchLogBtn" style="flex:1">Apply to Selected Days</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="cancelBatchLogBtn">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
   box.innerHTML = html;
 
   if (pendingFlashDesc) {
@@ -12030,6 +12072,45 @@ function renderFavorites() {
       foodCombos = [...foodCombos, { name, items, createdAt: Date.now() }];
       renderFavorites();
       await saveFoodCombosToFirestore();
+    });
+  }
+
+  const showBatchLogBtn = document.getElementById('showBatchLogBtn');
+  if (showBatchLogBtn) {
+    showBatchLogBtn.addEventListener('click', () => {
+      document.getElementById('batchLogForm').style.display = '';
+      showBatchLogBtn.style.display = 'none';
+    });
+  }
+  const cancelBatchLogBtn = document.getElementById('cancelBatchLogBtn');
+  if (cancelBatchLogBtn) {
+    cancelBatchLogBtn.addEventListener('click', () => {
+      document.getElementById('batchLogForm').style.display = 'none';
+      document.getElementById('showBatchLogBtn').style.display = '';
+    });
+  }
+  const applyBatchLogBtn = document.getElementById('applyBatchLogBtn');
+  if (applyBatchLogBtn) {
+    applyBatchLogBtn.addEventListener('click', async () => {
+      const selectedDates = [...document.querySelectorAll('.batch-day-checkbox:checked')].map(cb => cb.dataset.date);
+      if (!selectedDates.length) { alert('Select at least one day.'); return; }
+      const [kind, idxStr] = document.getElementById('batchLogItemSelect').value.split(':');
+      const idx = Number(idxStr);
+      const items = kind === 'combo' ? foodCombos[idx].items : [pinnedFavorites[idx]];
+      const mt = document.getElementById('batchLogMealType').value;
+      applyBatchLogBtn.disabled = true;
+      try {
+        for (const dateStr of selectedDates) {
+          const baseTs = Date.now();
+          const newMeals = items.map((item, i) => ({ desc: item.desc, mt, protein: item.protein, cal: item.cal, carbs: item.carbs, fat: item.fat, ts: baseTs + i }));
+          await writeMeals(dateStr, [...mealsForDate(dateStr), ...newMeals]);
+        }
+      } finally {
+        applyBatchLogBtn.disabled = false;
+      }
+      document.getElementById('batchLogForm').style.display = 'none';
+      document.getElementById('showBatchLogBtn').style.display = '';
+      renderFavorites();
     });
   }
 
