@@ -9095,7 +9095,13 @@ function getOrInitSetState(exerciseName, setCount, setsTarget) {
   if (!workoutSessionState[exerciseName]) {
     const prev = previousSetsFor(exerciseName);
     const suggestion = setsTarget ? suggestedSetValues(exerciseName, setsTarget) : null;
-    workoutSessionState[exerciseName] = Array.from({ length: setCount }, (_, i) => {
+    // Use whichever is larger: the exercise's target set count, or however
+    // many sets were actually logged last time. Otherwise, someone who
+    // consistently does an extra set beyond the plan's stated target (a
+    // 3rd set on an exercise whose plan says 2, say) has to re-add that
+    // same extra set by hand every single session, forever.
+    const initLength = Math.max(setCount, prev ? prev.length : 0, suggestion ? suggestion.sets.length : 0);
+    workoutSessionState[exerciseName] = Array.from({ length: initLength }, (_, i) => {
       const suggested = suggestion && suggestion.sets[i];
       const weight = suggested ? suggested.weight : (prev && prev[i]) ? prev[i].weight : '';
       const reps = suggested ? suggested.reps : (prev && prev[i]) ? prev[i].reps : '';
