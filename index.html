@@ -8397,11 +8397,11 @@ async function logExercise(type, min, dist, incline) {
       if (trimmed) notes[name] = trimmed;
     });
     if (Object.keys(notes).length) item.notes = notes;
-    const footPlacements = {};
-    Object.keys(workoutFootPlacementState).forEach(name => {
-      if (workoutFootPlacementState[name]) footPlacements[name] = workoutFootPlacementState[name];
+    const exerciseVariations = {};
+    Object.keys(workoutVariationState).forEach(name => {
+      if (workoutVariationState[name]) exerciseVariations[name] = workoutVariationState[name];
     });
-    if (Object.keys(footPlacements).length) item.footPlacements = footPlacements;
+    if (Object.keys(exerciseVariations).length) item.exerciseVariations = exerciseVariations;
     // Tag which day this actually was (respects any manual override), so
     // nextPPLDay()/nextWorkoutDay() can advance from what was really
     // trained rather than a blind session count — see their own
@@ -8414,7 +8414,7 @@ async function logExercise(type, min, dist, incline) {
     // this session would still show as "done" on the next workout.
     workoutSessionState = {};
     workoutNotesState = {};
-    workoutFootPlacementState = {};
+    workoutVariationState = {};
     todaysSwaps = {};
     lastAutoFilledMin = null;
     stopRestTimer();
@@ -9029,27 +9029,86 @@ function daysSinceLastExercise() {
 // already been checked off.
 let workoutSessionState = {}; // { exerciseName: [{weight, reps, done, checkedAt}, ...] }
 let workoutNotesState = {}; // { exerciseName: 'note text' } - cleared on the same resets as workoutSessionState
-let workoutFootPlacementState = {}; // { exerciseName: 'placementKey' } - cleared on the same resets as workoutSessionState
-// Exercises where foot/hand placement meaningfully shifts which muscles
-// take the load — currently just Leg Press, but kept as a list so
-// another machine (Hack Squat, Smith Machine Squat) could be added
-// later without restructuring this.
-const FOOT_PLACEMENT_EXERCISES = ['Leg Press'];
-const FOOT_PLACEMENT_OPTIONS = {
-  low_narrow: { label: 'Low & Narrow', targets: 'Quads (default)' },
-  high_wide: { label: 'High & Wide', targets: 'Glutes & Hamstrings' },
-  wide: { label: 'Wide Stance', targets: 'Inner Thighs' },
-  narrow: { label: 'Feet Together', targets: 'Outer Quads' }
+let workoutVariationState = {}; // { exerciseName: 'optionKey' } - cleared on the same resets as workoutSessionState
+// Exercises where grip/handle/foot position meaningfully shifts which
+// muscles take the load, covering the built-in PPL plan's machines with
+// a genuine, well-established variation — deliberately NOT every
+// exercise: fixed-single-path machines (Pec Deck, Reverse Fly) and ones
+// where the position effect is subtle/contested (Leg Extension, Leg
+// Curl toe angle) are left out rather than adding a selector just for
+// the sake of coverage. Each option's "targets" line doubles as the
+// plain-English reason to pick it.
+const EXERCISE_VARIATION_CONFIG = {
+  'Leg Press': {
+    label: 'Foot Placement', icon: '🦶',
+    options: {
+      low_narrow: { label: 'Low & Narrow', targets: 'Quads (default)' },
+      high_wide: { label: 'High & Wide', targets: 'Glutes & Hamstrings' },
+      wide: { label: 'Wide Stance', targets: 'Inner Thighs' },
+      narrow: { label: 'Feet Together', targets: 'Outer Quads' }
+    }
+  },
+  'Chest Press (machine)': {
+    label: 'Handle Position', icon: '🤚',
+    options: {
+      mid: { label: 'Mid (standard)', targets: 'Overall Chest (default)' },
+      high: { label: 'High / Incline', targets: 'Upper Chest' },
+      low: { label: 'Low / Decline', targets: 'Lower Chest' }
+    }
+  },
+  'Triceps Pushdown (cable)': {
+    label: 'Grip', icon: '✊',
+    options: {
+      rope: { label: 'Rope, overhand', targets: 'Lateral Head (default)' },
+      reverse: { label: 'Underhand / Reverse', targets: 'Long Head' },
+      straight: { label: 'Straight Bar', targets: 'All heads, balanced' }
+    }
+  },
+  'Lat Pulldown': {
+    label: 'Grip', icon: '✊',
+    options: {
+      wide: { label: 'Wide Overhand', targets: 'Lat Width (default)' },
+      close: { label: 'Close / Neutral', targets: 'Lower Lats' },
+      underhand: { label: 'Underhand (chin-up)', targets: 'Biceps + Lower Lats' }
+    }
+  },
+  'Seated Row': {
+    label: 'Grip', icon: '✊',
+    options: {
+      close: { label: 'Close / Neutral', targets: 'Mid-Back & Lats (default)' },
+      wide: { label: 'Wide Grip', targets: 'Rear Delts & Upper Back' },
+      underhand: { label: 'Underhand', targets: 'Lower Lats + Biceps' }
+    }
+  },
+  'Bicep Curl': {
+    label: 'Grip', icon: '✊',
+    options: {
+      supinated: { label: 'Underhand (standard)', targets: 'Biceps Brachii (default)' },
+      neutral: { label: 'Neutral / Hammer', targets: 'Brachialis & Forearm' }
+    }
+  },
+  'Calf Raise (machine)': {
+    label: 'Toe Position', icon: '🦶',
+    options: {
+      straight: { label: 'Toes Straight', targets: 'Balanced (default)' },
+      in: { label: 'Toes In', targets: 'Outer Calf' },
+      out: { label: 'Toes Out', targets: 'Inner Calf' }
+    }
+  }
 };
-// Most recent foot placement logged for this exercise, regardless of
+// Most recent variation choice logged for this exercise, regardless of
 // which day/plan it was under — shown as a "last time" hint so a
-// deliberate rotation across placements is easy to keep track of.
-function lastFootPlacementFor(exerciseName) {
+// deliberate rotation across options is easy to keep track of. Also
+// checks the older footPlacements field name (Leg Press only, from
+// before this was generalized) so nothing logged under the old name is
+// silently lost.
+function lastVariationFor(exerciseName) {
   for (let i = entries.length - 1; i >= 0; i--) {
     const dayEx = entries[i].ex || [];
     for (let j = dayEx.length - 1; j >= 0; j--) {
-      const fp = dayEx[j].footPlacements && dayEx[j].footPlacements[exerciseName];
-      if (fp) return fp;
+      const v = (dayEx[j].exerciseVariations && dayEx[j].exerciseVariations[exerciseName])
+        || (dayEx[j].footPlacements && dayEx[j].footPlacements[exerciseName]);
+      if (v) return v;
     }
   }
   return null;
@@ -9915,7 +9974,7 @@ function wireWorkoutPlanEvents() {
       // plan normally does.
       workoutSessionState = {};
       workoutNotesState = {};
-      workoutFootPlacementState = {};
+      workoutVariationState = {};
       todaysSwaps = {};
       zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
@@ -9927,7 +9986,7 @@ function wireWorkoutPlanEvents() {
       splitDayOverride = chip.dataset.splitDay;
       workoutSessionState = {};
       workoutNotesState = {};
-      workoutFootPlacementState = {};
+      workoutVariationState = {};
       todaysSwaps = {};
       zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
@@ -9955,7 +10014,7 @@ function wireWorkoutPlanEvents() {
         pplDayOverride = 'Legs';
         workoutSessionState = {};
         workoutNotesState = {};
-        workoutFootPlacementState = {};
+        workoutVariationState = {};
         todaysSwaps = {};
         feelingCheckDismissed = true;
       } else if (area === 'lower') {
@@ -9966,7 +10025,7 @@ function wireWorkoutPlanEvents() {
         pplDayOverride = normalNext === 'Legs' ? order[(order.indexOf('Legs') + 1) % 3] : normalNext;
         workoutSessionState = {};
         workoutNotesState = {};
-        workoutFootPlacementState = {};
+        workoutVariationState = {};
         todaysSwaps = {};
         feelingCheckDismissed = true;
       } else if (area === 'push') {
@@ -9974,7 +10033,7 @@ function wireWorkoutPlanEvents() {
         splitDayOverride = 'B';
         workoutSessionState = {};
         workoutNotesState = {};
-        workoutFootPlacementState = {};
+        workoutVariationState = {};
         todaysSwaps = {};
         feelingCheckDismissed = true;
       } else if (area === 'pull') {
@@ -9982,7 +10041,7 @@ function wireWorkoutPlanEvents() {
         splitDayOverride = 'A';
         workoutSessionState = {};
         workoutNotesState = {};
-        workoutFootPlacementState = {};
+        workoutVariationState = {};
         todaysSwaps = {};
         feelingCheckDismissed = true;
       } else {
@@ -10088,11 +10147,11 @@ function wireWorkoutPlanEvents() {
       workoutNotesState[textarea.dataset.exercise] = textarea.value;
     });
   });
-  document.querySelectorAll('.foot-placement-chip').forEach(chip => {
+  document.querySelectorAll('.exercise-variation-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       const exName = chip.dataset.exercise;
-      const placement = chip.dataset.placement;
-      workoutFootPlacementState[exName] = workoutFootPlacementState[exName] === placement ? null : placement;
+      const option = chip.dataset.option;
+      workoutVariationState[exName] = workoutVariationState[exName] === option ? null : option;
       renderWorkoutPlan();
     });
   });
@@ -10607,15 +10666,16 @@ function renderWorkoutPlan() {
               </select>
             </div>`;
         })()}
-        ${FOOT_PLACEMENT_EXERCISES.includes(ex.name) ? (() => {
-          const selected = workoutFootPlacementState[ex.name];
-          const last = lastFootPlacementFor(ex.name);
-          return `<div class="foot-placement-row" data-exercise="${ex.name}" style="margin-bottom:8px">
-            <div style="font-size:11px;color:var(--ink-soft);font-weight:600;margin-bottom:5px">🦶 Foot Placement${last && !selected ? ` <span style="font-weight:400">· last time: ${FOOT_PLACEMENT_OPTIONS[last].label}</span>` : ''}</div>
+        ${EXERCISE_VARIATION_CONFIG[ex.name] ? (() => {
+          const config = EXERCISE_VARIATION_CONFIG[ex.name];
+          const selected = workoutVariationState[ex.name];
+          const last = lastVariationFor(ex.name);
+          return `<div class="exercise-variation-row" data-exercise="${ex.name}" style="margin-bottom:8px">
+            <div style="font-size:11px;color:var(--ink-soft);font-weight:600;margin-bottom:5px">${config.icon} ${config.label}${last && !selected ? ` <span style="font-weight:400">· last time: ${config.options[last].label}</span>` : ''}</div>
             <div class="chip-row" style="gap:6px">
-              ${Object.entries(FOOT_PLACEMENT_OPTIONS).map(([key, info]) => `<div class="chip foot-placement-chip${selected === key ? ' on' : ''}" data-exercise="${ex.name}" data-placement="${key}" style="font-size:11px;padding:6px 10px">${info.label}</div>`).join('')}
+              ${Object.entries(config.options).map(([key, info]) => `<div class="chip exercise-variation-chip${selected === key ? ' on' : ''}" data-exercise="${ex.name}" data-option="${key}" style="font-size:11px;padding:6px 10px">${info.label}</div>`).join('')}
             </div>
-            ${selected ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:5px">Targets: ${FOOT_PLACEMENT_OPTIONS[selected].targets}</div>` : ''}
+            ${selected ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:5px">Targets: ${config.options[selected].targets}</div>` : ''}
           </div>`;
         })() : ''}
         <div style="font-size:12px;color:var(--ink-soft);margin-bottom:${(hint || plateau) ? '6px' : '10px'}">${ex.sets}</div>
