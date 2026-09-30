@@ -13351,6 +13351,24 @@ function hydrationPaceCheck(tOz) {
 // Medications sub-tab). Each signal is independently computed from data
 // this file already tracks elsewhere, so there's no new source of truth
 // here — just a surfaced summary of it.
+// A quiet "X days until your next dose" countdown, filling the gap
+// where updateInjBanner() intentionally goes silent once this cycle's
+// shot and weigh-in are both done — that banner's whole job is flagging
+// what's due right now, not what's still ahead, but a mid-week glance at
+// the countdown is still genuinely useful on its own.
+function computeNextDoseCountdown() {
+  const diff = daysSinceStart();
+  if (diff < 0) return null;
+  const cycleStart = new Date(TREATMENT_START);
+  cycleStart.setDate(cycleStart.getDate() + Math.floor(diff / 7) * 7);
+  const lookback = new Date(cycleStart); lookback.setDate(lookback.getDate() - 2);
+  const lookbackStr = lookback.toISOString().slice(0, 10);
+  const injectedThisCycle = entries.some(e => e.injection && e.date >= lookbackStr);
+  const daysLate = diff % 7;
+  if (!injectedThisCycle || daysLate === 0) return null;
+  return { daysUntil: 7 - daysLate };
+}
+
 function computeDueTodayItems() {
   const items = [];
 
@@ -13360,6 +13378,11 @@ function computeDueTodayItems() {
       items.push({ icon: '💊', text: `${escapeHtml(m.name)}: ${refill.label}`, urgent: refill.daysUntil <= 0 });
     }
   });
+
+  const doseCountdown = computeNextDoseCountdown();
+  if (doseCountdown) {
+    items.push({ icon: '💉', text: `${doseCountdown.daysUntil} day${doseCountdown.daysUntil === 1 ? '' : 's'} until your next dose`, urgent: false });
+  }
 
   const workedOutToday = exForDate(todayStr()).some(x => x.type === 'Strength');
   if (!workedOutToday) {
