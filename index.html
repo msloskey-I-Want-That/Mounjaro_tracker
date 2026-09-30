@@ -1088,6 +1088,11 @@ body {
         </button>
       </div>
 
+      <div id="quickLogFoodSection" style="display:none;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Quick Log</div>
+        <div id="quickLogFoodRow" style="display:flex;gap:8px;overflow-x:auto"></div>
+      </div>
+
       <div class="inj-banner" id="injBanner"></div>
 
       <div class="form-card" id="dueTodayCard" style="margin-bottom:14px;display:none">
@@ -4916,10 +4921,58 @@ function computeWeightGoalETA(weightEntries) {
   return { etaDate, weeklyRate: Math.abs(slope * 7) };
 }
 
+// Most frequently logged food descriptions in the last 30 days, with
+// their most recent macro values — surfaces genuine daily habits for
+// instant one-tap logging directly from Home, without requiring anyone
+// to have proactively favorited anything first. Requires at least 3
+// occurrences so this reflects a real, repeated pattern rather than a
+// one-off meal that happened to get logged.
+function topFrequentFoods(limit) {
+  const cutoff = new Date(todayStr()); cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const counts = {};
+  entries.filter(e => e.date >= cutoffStr).forEach(e => {
+    (e.meals || []).forEach(m => {
+      if (!m.desc) return;
+      if (!counts[m.desc]) counts[m.desc] = { count: 0, latest: null };
+      counts[m.desc].count++;
+      counts[m.desc].latest = { desc: m.desc, protein: m.protein, cal: m.cal, carbs: m.carbs, fat: m.fat };
+    });
+  });
+  return Object.values(counts)
+    .filter(c => c.count >= 3)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map(c => c.latest);
+}
+
+function renderQuickLogFood() {
+  const section = document.getElementById('quickLogFoodSection');
+  const row = document.getElementById('quickLogFoodRow');
+  if (!section || !row) return;
+  const items = topFrequentFoods(6);
+  if (!items.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  row.innerHTML = items.map((item, i) => `
+    <button type="button" class="btn btn-secondary btn-sm quick-log-food-btn" data-idx="${i}" style="flex-shrink:0;white-space:nowrap">${escapeHtml(item.desc)}</button>
+  `).join('');
+  row.querySelectorAll('.quick-log-food-btn').forEach(btn => {
+    btn.addEventListener('click', () => quickLogFrequentFood(items[Number(btn.dataset.idx)]));
+  });
+}
+
+async function quickLogFrequentFood(item) {
+  const date = todayStr();
+  const mt = defaultMealType();
+  const meal = { desc: item.desc, mt, protein: item.protein, cal: item.cal, carbs: item.carbs, fat: item.fat, ts: Date.now() };
+  await writeMeals(date, [...mealsForDate(date), meal]);
+}
+
 function updateStats() {
   const diff = daysSinceStart();
 
   try { renderDueToday(); } catch (err) { console.error('Due Today render failed:', err); }
+  try { renderQuickLogFood(); } catch (err) { console.error('Quick Log Food render failed:', err); }
 
   // Computed once here rather than per stat card below — each call
   // scans full history for several different streaks (see
