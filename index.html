@@ -864,6 +864,15 @@ body {
     overflow: visible !important; box-shadow: none !important; border-radius: 0 !important;
   }
   #doctorSummaryBackdrop, #doctorSummaryPrintBtn, #doctorSummaryCloseBtn { display: none !important; }
+  body.printing-trainer-summary .view#view-dashboard,
+  body.printing-trainer-summary .view#view-charts,
+  body.printing-trainer-summary .print-header { display: none !important; }
+  body.printing-trainer-summary #trainerSummaryModal {
+    display: block !important; position: static !important;
+    width: 100% !important; max-width: none !important; max-height: none !important;
+    overflow: visible !important; box-shadow: none !important; border-radius: 0 !important;
+  }
+  #trainerSummaryBackdrop, #trainerSummaryPrintBtn, #trainerSummaryCloseBtn { display: none !important; }
 }
 .print-header {
   display: none;
@@ -977,7 +986,7 @@ body {
 </div>
 
 <!-- ── REST TIMER POPUP (workout sets) ── -->
-<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="cardioTrendsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:706"></div><div id="cardioTrendsModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:707;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
+<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="trainerSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:708"></div><div id="trainerSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:709;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="cardioTrendsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:706"></div><div id="cardioTrendsModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:707;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
 <div id="restTimerWrap" style="display:none;flex-direction:row;align-items:center;gap:8px;position:fixed;bottom:88px;right:14px;background:var(--card);border:1.5px solid var(--teal);border-radius:17px;padding:9px 11px 9px 15px;box-shadow:0 8px 26px rgba(0,0,0,0.28);z-index:601;text-align:center">
   <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.1">
     <span id="restTimerLabel" style="font-size:10px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em">⏱ Rest</span>
@@ -2709,6 +2718,13 @@ body {
               <div class="settings-row-sub">A clean one-page printout — weight, meds, labs, glucose, activity</div>
             </div>
             <button class="btn btn-ghost btn-sm" id="doctorSummaryBtn">View</button>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Trainer Summary</div>
+              <div class="settings-row-sub">A clean one-page printout — PRs, volume trend, consistency</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="trainerSummaryBtn">View</button>
           </div>
         </div>
       </div>
@@ -13658,6 +13674,80 @@ function hideDoctorSummary() {
 }
 window.addEventListener('afterprint', () => document.body.classList.remove('printing-doctor-summary'));
 document.getElementById('doctorSummaryBtn')?.addEventListener('click', showDoctorSummary);
+
+function showTrainerSummary() {
+  const modal = document.getElementById('trainerSummaryModal');
+  const backdrop = document.getElementById('trainerSummaryBackdrop');
+  if (!modal || !backdrop) return;
+
+  const workouts30 = workoutsInLastDays(30);
+  const totalSessions = totalStrengthSessions();
+  const streak = currentLoggingStreak();
+  const planLabel = workoutPlanMode === 'fullbody' ? 'Full Body'
+    : workoutPlanMode === 'ppl' ? 'Push / Pull / Legs'
+    : 'Upper / Lower';
+
+  const weeks = weeklyVolumeHistory(8).slice(1).reverse(); // oldest first, complete weeks only
+  const weeksWithData = weeks.filter(w => w.volume > 0);
+  const avgWeeklyVolume = weeksWithData.length
+    ? Math.round(weeksWithData.reduce((s, w) => s + w.volume, 0) / weeksWithData.length)
+    : null;
+  const volumeRows = weeks.map(w => {
+    const label = `${new Date(w.startStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    return `<tr><td style="padding:3px 8px 3px 0">${label}</td><td style="padding:3px 0;text-align:right">${w.volume ? w.volume.toLocaleString() + ' lbs' : '—'}</td><td style="padding:3px 0 3px 8px;text-align:right;color:var(--ink-soft)">${w.sessions} session${w.sessions === 1 ? '' : 's'}</td></tr>`;
+  }).join('');
+
+  const prs = allExercisePRs().slice(0, 10);
+  const prRows = prs.map(p => `<tr><td style="padding:3px 8px 3px 0">${escapeHtml(p.name)}</td><td style="padding:3px 0;text-align:right;white-space:nowrap">${p.weight} lb × ${p.reps}</td><td style="padding:3px 0 3px 8px;text-align:right;color:var(--ink-soft);white-space:nowrap">${fmtDate(p.date)}</td></tr>`).join('');
+
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  modal.innerHTML = `
+    <div style="padding:20px">
+      <div style="font-size:16px;font-weight:700;color:var(--teal);margin-bottom:2px">Training Summary</div>
+      <div style="font-size:12px;color:var(--ink-soft);border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px">Generated ${today}</div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Consistency</div>
+        <div style="font-size:14px;line-height:1.6;color:var(--ink)">
+          Current plan: <strong>${planLabel}</strong><br>
+          Workouts (last 30 days): <strong>${workouts30}</strong><br>
+          Total strength sessions logged: <strong>${totalSessions}</strong><br>
+          Current logging streak: <strong>${streak} day${streak === 1 ? '' : 's'}</strong>
+        </div>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Weekly Volume</div>
+        ${avgWeeklyVolume != null ? `<div style="font-size:14px;color:var(--ink);margin-bottom:6px">Averaging <strong>${avgWeeklyVolume.toLocaleString()} lbs/week</strong> over the last ${weeksWithData.length} weeks</div>` : ''}
+        ${weeksWithData.length ? `<table style="width:100%;font-size:13px;border-collapse:collapse">${volumeRows}</table>` : '<div style="font-size:13px;color:var(--ink-soft)">Not enough logged history yet.</div>'}
+      </div>
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Personal Records</div>
+        ${prRows ? `<table style="width:100%;font-size:13px;border-collapse:collapse">${prRows}</table>` : '<div style="font-size:13px;color:var(--ink-soft)">Log a few strength sessions and PRs will show up here.</div>'}
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn btn-primary" id="trainerSummaryPrintBtn" style="flex:1">Print / Save as PDF</button>
+        <button type="button" class="btn btn-ghost" id="trainerSummaryCloseBtn">Close</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('trainerSummaryPrintBtn').addEventListener('click', () => {
+    document.body.classList.add('printing-trainer-summary');
+    window.print();
+  });
+  document.getElementById('trainerSummaryCloseBtn').addEventListener('click', hideTrainerSummary);
+  backdrop.addEventListener('click', hideTrainerSummary, { once: true });
+  backdrop.style.display = 'block';
+  modal.style.display = 'block';
+}
+function hideTrainerSummary() {
+  const modal = document.getElementById('trainerSummaryModal');
+  const backdrop = document.getElementById('trainerSummaryBackdrop');
+  if (modal) modal.style.display = 'none';
+  if (backdrop) backdrop.style.display = 'none';
+  document.body.classList.remove('printing-trainer-summary');
+}
+window.addEventListener('afterprint', () => document.body.classList.remove('printing-trainer-summary'));
+document.getElementById('trainerSummaryBtn')?.addEventListener('click', showTrainerSummary);
 
 // ── CSV EXPORT ──
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
