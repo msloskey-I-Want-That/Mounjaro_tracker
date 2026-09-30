@@ -10981,6 +10981,7 @@ async function syncStrava() {
       (byDate[date] = byDate[date] || []).push({
         type: stravaTypeMap(a.sport_type || a.type || ''),
         min: Math.max(1, Math.round((a.moving_time || 0) / 60)),
+        dist: a.distance ? round1(a.distance / 1609.34) : undefined,
         ts: Date.now() + Math.random(),
         sid: 'sv' + a.id
       });
