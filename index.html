@@ -476,7 +476,6 @@ body {
   margin-bottom: 14px;
   box-shadow: var(--shadow-card);
 }
-.workout-fullscreen, .exercise-fullscreen { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 501; width: min(92vw, 440px); max-height: 82vh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-shadow: 0 14px 44px rgba(0,0,0,0.32); }
 .strength-workout-fullscreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 501; width: 100%; height: 100%; max-height: none; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg); box-shadow: none; border-radius: 0; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
 /* Used by openPopupCard() for cards with text-input fields (Add Food's
    search box, Lab Panel's numeric fields) — full-coverage instead of
@@ -8497,7 +8496,7 @@ document.getElementById('addExBtn').addEventListener('click', async () => {
 // mid-workout — elapsed time is always recomputed from that timestamp,
 // never from a running counter, so backgrounding the phone can't throw it off.
 let exerciseModalOpen = false; let exerciseCardHomeParent = null; let exerciseCardHomeNext = null;
-let exTimerInterval = null; function setExerciseFullscreen(open) { exerciseModalOpen = open; const startBtnEl = document.getElementById('exTimerStartBtn'); const card = startBtnEl ? startBtnEl.closest('.form-card') : null; const closeBtn = document.getElementById('exerciseFullscreenCloseBtn'); const exBackdrop = document.getElementById('exerciseFullscreenBackdrop'); if (card) { card.classList.toggle('exercise-fullscreen', open); if (exBackdrop) exBackdrop.style.display = open ? 'block' : 'none'; if (open) { exerciseCardHomeParent = card.parentNode; exerciseCardHomeNext = card.nextSibling; document.body.appendChild(card); } else if (exerciseCardHomeParent) { if (exerciseCardHomeNext && exerciseCardHomeNext.parentNode === exerciseCardHomeParent) { exerciseCardHomeParent.insertBefore(card, exerciseCardHomeNext); } else { exerciseCardHomeParent.appendChild(card); } } } if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open && card) card.scrollTop = 0; }
+let exTimerInterval = null; function setExerciseFullscreen(open) { exerciseModalOpen = open; const startBtnEl = document.getElementById('exTimerStartBtn'); const card = startBtnEl ? startBtnEl.closest('.form-card') : null; const closeBtn = document.getElementById('exerciseFullscreenCloseBtn'); const exBackdrop = document.getElementById('exerciseFullscreenBackdrop'); if (card) { card.classList.toggle('entry-popup-fullscreen', open); if (exBackdrop) exBackdrop.style.display = open ? 'block' : 'none'; if (open) { exerciseCardHomeParent = card.parentNode; exerciseCardHomeNext = card.nextSibling; document.body.appendChild(card); } else if (exerciseCardHomeParent) { if (exerciseCardHomeNext && exerciseCardHomeNext.parentNode === exerciseCardHomeParent) { exerciseCardHomeParent.insertBefore(card, exerciseCardHomeNext); } else { exerciseCardHomeParent.appendChild(card); } } } if (closeBtn) closeBtn.style.display = open ? 'inline-flex' : 'none'; if (open && card) card.scrollTop = 0; }
 
 function exTimerFormat(ms) {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
