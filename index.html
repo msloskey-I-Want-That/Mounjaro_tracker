@@ -10912,6 +10912,7 @@ try {
 
 function stravaTypeMap(sportType) {
   if (/walk|hike/i.test(sportType)) return 'Walk';
+  if (/ride|cycl|bik/i.test(sportType)) return 'Bike';
   if (/weight|workout|crossfit|strength/i.test(sportType)) return 'Strength';
   return 'Cardio';
 }
