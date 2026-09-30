@@ -2301,9 +2301,9 @@ body {
       </div>
 
       <div class="form-card" id="workoutPlanCard">
-        <div id="workoutPlanCardHeader" class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
+        <div id="workoutPlanCardHeader" class="form-section-title" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <span id="workoutPlanTitle">Workout Plan · Planet Fitness</span>
-          <button type="button" id="workoutFullscreenCloseBtn" title="Minimize — workout keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px;margin-right:8px">✕</button><span id="workoutPlanChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
+          <span style="display:flex;align-items:center;flex-shrink:0"><button type="button" id="workoutFullscreenCloseBtn" title="Minimize — workout keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px;margin-right:8px">✕</button><span id="workoutPlanChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></span>
         </div>
         <div id="workoutVolumeSparkline" style="display:none;margin:6px 0 2px"></div>
         <div id="restDayNote" style="display:none;font-size:12px;color:var(--ink-soft);font-style:italic;margin:2px 0 6px"></div>
@@ -10237,8 +10237,8 @@ function renderWorkoutPlan() {
   const titleEl = document.getElementById('workoutPlanTitle');
   if (titleEl) {
     const modeLabel = workoutPlanMode === 'fullbody' ? 'Full Body'
-      : workoutPlanMode === 'ppl' ? 'Push / Pull / Legs'
-      : 'Upper / Lower';
+      : workoutPlanMode === 'ppl' ? 'PPL'
+      : 'Upper/Lower';
     titleEl.textContent = `Workout Plan · Planet Fitness, ${modeLabel}`;
   }
   renderWorkoutVolumeSparkline();
