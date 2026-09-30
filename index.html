@@ -2305,7 +2305,7 @@ body {
           <span id="workoutPlanTitle">Workout Plan · Planet Fitness</span>
           <span style="display:flex;align-items:center;flex-shrink:0"><button type="button" id="workoutFullscreenCloseBtn" title="Minimize — workout keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px;margin-right:8px">✕</button><span id="workoutPlanChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></span>
         </div>
-        <div id="workoutVolumeSparkline" style="display:none;margin:6px 0 2px"></div>
+        <div id="workoutVolumeSparkline" style="display:none;margin:6px 0 2px;overflow-x:hidden"></div>
         <div id="restDayNote" style="display:none;font-size:12px;color:var(--ink-soft);font-style:italic;margin:2px 0 6px"></div>
         <div id="workoutPlanBody"></div>
         <button class="btn btn-secondary btn-sm" id="suggestProgressionBtn" style="width:100%;margin-top:10px"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Suggest Progression</button>
@@ -10165,7 +10165,7 @@ function renderWorkoutVolumeSparkline() {
   const withData = completeWeeks.filter(w => w.volume > 0);
   if (withData.length < 3) { box.style.display = 'none'; return; }
 
-  const width = 220, height = 32, pad = 3;
+  const width = 130, height = 32, pad = 3;
   const maxVol = Math.max(...completeWeeks.map(w => w.volume), 1);
   const stepX = completeWeeks.length > 1 ? (width - pad * 2) / (completeWeeks.length - 1) : 0;
   const points = completeWeeks.map((w, i) => {
@@ -10185,11 +10185,11 @@ function renderWorkoutVolumeSparkline() {
 
   box.style.display = '';
   box.innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px;max-width:100%">
       <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="flex-shrink:0">
         <polyline points="${points}" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
       </svg>
-      <span style="font-size:11px;color:var(--ink-soft);white-space:nowrap">${Math.round(currentWeek.volume).toLocaleString()} lbs so far this week${trendText}</span>
+      <span style="font-size:11px;color:var(--ink-soft);min-width:0">${Math.round(currentWeek.volume).toLocaleString()} lbs so far this week${trendText}</span>
     </div>`;
 }
 
