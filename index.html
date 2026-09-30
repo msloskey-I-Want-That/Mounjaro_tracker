@@ -8397,6 +8397,11 @@ async function logExercise(type, min, dist, incline) {
       if (trimmed) notes[name] = trimmed;
     });
     if (Object.keys(notes).length) item.notes = notes;
+    const footPlacements = {};
+    Object.keys(workoutFootPlacementState).forEach(name => {
+      if (workoutFootPlacementState[name]) footPlacements[name] = workoutFootPlacementState[name];
+    });
+    if (Object.keys(footPlacements).length) item.footPlacements = footPlacements;
     // Tag which day this actually was (respects any manual override), so
     // nextPPLDay()/nextWorkoutDay() can advance from what was really
     // trained rather than a blind session count — see their own
@@ -8409,6 +8414,7 @@ async function logExercise(type, min, dist, incline) {
     // this session would still show as "done" on the next workout.
     workoutSessionState = {};
     workoutNotesState = {};
+    workoutFootPlacementState = {};
     todaysSwaps = {};
     lastAutoFilledMin = null;
     stopRestTimer();
@@ -9023,6 +9029,31 @@ function daysSinceLastExercise() {
 // already been checked off.
 let workoutSessionState = {}; // { exerciseName: [{weight, reps, done, checkedAt}, ...] }
 let workoutNotesState = {}; // { exerciseName: 'note text' } - cleared on the same resets as workoutSessionState
+let workoutFootPlacementState = {}; // { exerciseName: 'placementKey' } - cleared on the same resets as workoutSessionState
+// Exercises where foot/hand placement meaningfully shifts which muscles
+// take the load — currently just Leg Press, but kept as a list so
+// another machine (Hack Squat, Smith Machine Squat) could be added
+// later without restructuring this.
+const FOOT_PLACEMENT_EXERCISES = ['Leg Press'];
+const FOOT_PLACEMENT_OPTIONS = {
+  low_narrow: { label: 'Low & Narrow', targets: 'Quads (default)' },
+  high_wide: { label: 'High & Wide', targets: 'Glutes & Hamstrings' },
+  wide: { label: 'Wide Stance', targets: 'Inner Thighs' },
+  narrow: { label: 'Feet Together', targets: 'Outer Quads' }
+};
+// Most recent foot placement logged for this exercise, regardless of
+// which day/plan it was under — shown as a "last time" hint so a
+// deliberate rotation across placements is easy to keep track of.
+function lastFootPlacementFor(exerciseName) {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const dayEx = entries[i].ex || [];
+    for (let j = dayEx.length - 1; j >= 0; j--) {
+      const fp = dayEx[j].footPlacements && dayEx[j].footPlacements[exerciseName];
+      if (fp) return fp;
+    }
+  }
+  return null;
+}
 let todaysSwaps = {}; // { originalExerciseName: {name, sets} } - session-only substitute exercises, never persisted, cleared on the same resets as workoutSessionState
 let lastAutoFilledMin = null; // so auto-fill never overwrites a value you typed yourself
 let restTimerEndTime = null;
@@ -9884,6 +9915,7 @@ function wireWorkoutPlanEvents() {
       // plan normally does.
       workoutSessionState = {};
       workoutNotesState = {};
+      workoutFootPlacementState = {};
       todaysSwaps = {};
       zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
@@ -9895,6 +9927,7 @@ function wireWorkoutPlanEvents() {
       splitDayOverride = chip.dataset.splitDay;
       workoutSessionState = {};
       workoutNotesState = {};
+      workoutFootPlacementState = {};
       todaysSwaps = {};
       zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
@@ -9922,6 +9955,7 @@ function wireWorkoutPlanEvents() {
         pplDayOverride = 'Legs';
         workoutSessionState = {};
         workoutNotesState = {};
+        workoutFootPlacementState = {};
         todaysSwaps = {};
         feelingCheckDismissed = true;
       } else if (area === 'lower') {
@@ -9932,6 +9966,7 @@ function wireWorkoutPlanEvents() {
         pplDayOverride = normalNext === 'Legs' ? order[(order.indexOf('Legs') + 1) % 3] : normalNext;
         workoutSessionState = {};
         workoutNotesState = {};
+        workoutFootPlacementState = {};
         todaysSwaps = {};
         feelingCheckDismissed = true;
       } else if (area === 'push') {
@@ -9939,6 +9974,7 @@ function wireWorkoutPlanEvents() {
         splitDayOverride = 'B';
         workoutSessionState = {};
         workoutNotesState = {};
+        workoutFootPlacementState = {};
         todaysSwaps = {};
         feelingCheckDismissed = true;
       } else if (area === 'pull') {
@@ -9946,6 +9982,7 @@ function wireWorkoutPlanEvents() {
         splitDayOverride = 'A';
         workoutSessionState = {};
         workoutNotesState = {};
+        workoutFootPlacementState = {};
         todaysSwaps = {};
         feelingCheckDismissed = true;
       } else {
@@ -10049,6 +10086,14 @@ function wireWorkoutPlanEvents() {
   document.querySelectorAll('.exercise-note-input').forEach(textarea => {
     textarea.addEventListener('input', () => {
       workoutNotesState[textarea.dataset.exercise] = textarea.value;
+    });
+  });
+  document.querySelectorAll('.foot-placement-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const exName = chip.dataset.exercise;
+      const placement = chip.dataset.placement;
+      workoutFootPlacementState[exName] = workoutFootPlacementState[exName] === placement ? null : placement;
+      renderWorkoutPlan();
     });
   });
   document.querySelectorAll('.superset-pair-toggle-btn').forEach(btn => {
@@ -10562,6 +10607,17 @@ function renderWorkoutPlan() {
               </select>
             </div>`;
         })()}
+        ${FOOT_PLACEMENT_EXERCISES.includes(ex.name) ? (() => {
+          const selected = workoutFootPlacementState[ex.name];
+          const last = lastFootPlacementFor(ex.name);
+          return `<div class="foot-placement-row" data-exercise="${ex.name}" style="margin-bottom:8px">
+            <div style="font-size:11px;color:var(--ink-soft);font-weight:600;margin-bottom:5px">🦶 Foot Placement${last && !selected ? ` <span style="font-weight:400">· last time: ${FOOT_PLACEMENT_OPTIONS[last].label}</span>` : ''}</div>
+            <div class="chip-row" style="gap:6px">
+              ${Object.entries(FOOT_PLACEMENT_OPTIONS).map(([key, info]) => `<div class="chip foot-placement-chip${selected === key ? ' on' : ''}" data-exercise="${ex.name}" data-placement="${key}" style="font-size:11px;padding:6px 10px">${info.label}</div>`).join('')}
+            </div>
+            ${selected ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:5px">Targets: ${FOOT_PLACEMENT_OPTIONS[selected].targets}</div>` : ''}
+          </div>`;
+        })() : ''}
         <div style="font-size:12px;color:var(--ink-soft);margin-bottom:${(hint || plateau) ? '6px' : '10px'}">${ex.sets}</div>
         ${hint ? `<div style="font-size:12px;color:var(--coral);font-weight:600;margin-bottom:10px">${hint}</div>` : ''}
         ${plateau ? `<div style="font-size:12px;color:#FFB020;font-weight:600;margin-bottom:10px">${plateau}</div>` : ''}
