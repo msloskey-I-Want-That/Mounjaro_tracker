@@ -2678,32 +2678,6 @@ body {
         <div class="settings-card">
           <div class="settings-row">
             <div>
-              <div class="settings-row-label">Strava Client ID</div>
-              <div class="settings-row-sub">From strava.com/settings/api</div>
-            </div>
-            <input type="text" id="setStravaId" placeholder="12345"
-              style="width:110px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg)">
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Strava Client Secret</div>
-              <div class="settings-row-sub">Saved to your private sync data</div>
-            </div>
-            <input type="password" id="setStravaSecret" placeholder="secret"
-              style="width:110px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg)">
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Strava</div>
-              <div class="settings-row-sub" id="stravaStatus">Not connected</div>
-            </div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-ghost btn-sm" id="connectStravaBtn">Connect</button>
-              <button class="btn btn-secondary btn-sm" id="syncStravaBtn">Sync now</button>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div>
               <div class="settings-row-label">Strong (workouts)</div>
               <div class="settings-row-sub" id="strongStatus">Import the CSV from Strong → Settings → Export Data</div>
             </div>
@@ -3042,8 +3016,7 @@ async function fetchRecipeBoxRecipes(force) {
 // ── HEALTH SYNC (from an Apple Health Shortcut) ──
 // The Shortcut opens this app's URL with health data as query params
 // (?steps=X&restHR=Y&sleepHrs=Z&healthMin=W&sleepScore=S&activeCal=C&distanceMi=D&hrv=H) —
-// captured immediately, same
-// pattern as the Strava OAuth code capture further down, then written to
+// captured immediately, then written to
 // today's entry once syncId/db are actually ready to accept writes.
 let pendingHealthSync = null;
 // Diagnostic record of what happened at page load — captured here because
@@ -4728,11 +4701,6 @@ function startListening() {
       if (s.fatSecretClientSecret)  fatSecretClientSecret = s.fatSecretClientSecret;
       if (s.anthropicKey)           anthropicKey = s.anthropicKey;
       stepGoalOverride = s.stepGoal != null ? parseInt(s.stepGoal) || 0 : 0;
-      if (s.stravaId)     stravaId     = s.stravaId;
-      if (s.stravaSecret) stravaSecret = s.stravaSecret;
-      if (s.stravaAccess) stravaAccess = s.stravaAccess;
-      if (s.stravaRefresh) stravaRefresh = s.stravaRefresh;
-      if (s.stravaExp)    stravaExp    = s.stravaExp;
       if (s.theme != null) themeOverride = s.theme;
       pinnedFavorites = Array.isArray(s.favoriteFoods) ? s.favoriteFoods : [];
       pinnedRecipes = Array.isArray(s.recipes) ? s.recipes : [];
@@ -4767,11 +4735,6 @@ function startListening() {
     applyCardVisibility();
     renderAll();
     applyPendingHealthSync();
-    if (stravaRefresh && !stravaAuthCode) {
-      document.getElementById('stravaStatus').textContent = '✓ Connected';
-      if (!stravaAutoSynced) { stravaAutoSynced = true; setTimeout(syncStrava, 1500); }
-    }
-    if (stravaAuthCode && stravaId && stravaSecret) exchangeStravaCode();
   });
 }
 
@@ -4783,8 +4746,6 @@ function syncSettingsInputs() {
   const fsId = document.getElementById('setFatSecretClientId');
   const fsSec = document.getElementById('setFatSecretClientSecret');
   const ak = document.getElementById('setAnthropicKey');
-  const si = document.getElementById('setStravaId');
-  const ss = document.getElementById('setStravaSecret');
   const hIn = document.getElementById('setHeightIn');
   const ageEl = document.getElementById('setAge');
   const sexEl = document.getElementById('setSex');
@@ -4806,8 +4767,6 @@ function syncSettingsInputs() {
   if (wpmEl) wpmEl.value = workoutPlanMode;
   const sg = document.getElementById('setStepGoal');
   if (document.activeElement !== sg) sg.value = stepGoalOverride > 0 ? stepGoalOverride : '';
-  if (document.activeElement !== si && stravaId) si.value = stravaId;
-  if (document.activeElement !== ss && stravaSecret) ss.value = stravaSecret;
 }
 
 function hideLoading() {
@@ -10893,117 +10852,6 @@ document.getElementById('saveHrvBtn').addEventListener('click', async () => {
   }
 });
 
-// ── STRAVA INTEGRATION ──
-let stravaId = '', stravaSecret = '', stravaAccess = '', stravaRefresh = '', stravaExp = 0;
-let stravaAuthCode = null;
-let stravaExchanged = false;
-let stravaAutoSynced = false;
-
-// Capture OAuth callback code before anything else
-try {
-(function captureStravaCode() {
-  const params = new URLSearchParams(location.search);
-  if (params.get('code')) {
-    stravaAuthCode = params.get('code');
-    history.replaceState({}, '', location.pathname);
-  }
-})();
-} catch (err) { console.error('captureStravaCode failed:', err); }
-
-function stravaTypeMap(sportType) {
-  if (/walk|hike/i.test(sportType)) return 'Walk';
-  if (/ride|cycl|bik/i.test(sportType)) return 'Bike';
-  if (/weight|workout|crossfit|strength/i.test(sportType)) return 'Strength';
-  return 'Cardio';
-}
-
-document.getElementById('connectStravaBtn').addEventListener('click', () => {
-  if (!stravaId) { alert('Enter your Strava Client ID and Secret first, then Save Changes.'); return; }
-  const redirect = location.origin + location.pathname;
-  location.href = `https://www.strava.com/oauth/authorize?client_id=${encodeURIComponent(stravaId)}&response_type=code&redirect_uri=${encodeURIComponent(redirect)}&approval_prompt=auto&scope=activity:read_all`;
-});
-
-async function exchangeStravaCode() {
-  if (!stravaAuthCode || stravaExchanged || !stravaId || !stravaSecret) return;
-  stravaExchanged = true;
-  try {
-    const res = await fetch('https://www.strava.com/oauth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_id: stravaId, client_secret: stravaSecret, code: stravaAuthCode, grant_type: 'authorization_code' })
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const d = await res.json();
-    await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'),
-      { stravaAccess: d.access_token, stravaRefresh: d.refresh_token, stravaExp: d.expires_at }, { merge: true });
-    document.getElementById('stravaStatus').textContent = '✓ Connected — syncing…';
-    setTimeout(syncStrava, 800);
-  } catch (err) {
-    console.error(err);
-    document.getElementById('stravaStatus').textContent = 'Connection failed — check ID/Secret and try again';
-  }
-}
-
-async function getStravaToken() {
-  const now = Math.floor(Date.now() / 1000);
-  if (stravaAccess && now < stravaExp - 120) return stravaAccess;
-  if (!stravaRefresh) return null;
-  const res = await fetch('https://www.strava.com/oauth/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ client_id: stravaId, client_secret: stravaSecret, refresh_token: stravaRefresh, grant_type: 'refresh_token' })
-  });
-  if (!res.ok) throw new Error('Token refresh failed');
-  const d = await res.json();
-  stravaAccess = d.access_token; stravaRefresh = d.refresh_token; stravaExp = d.expires_at;
-  await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'),
-    { stravaAccess, stravaRefresh, stravaExp }, { merge: true });
-  return stravaAccess;
-}
-
-async function syncStrava() {
-  const status = document.getElementById('stravaStatus');
-  try {
-    const token = await getStravaToken();
-    if (!token) { status.textContent = 'Not connected'; return; }
-    status.textContent = 'Syncing…';
-    const after = Math.floor(TREATMENT_START.getTime() / 1000);
-    const res = await fetch(`https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=100`, {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const acts = await res.json();
-    let added = 0;
-    const byDate = {};
-    acts.forEach(a => {
-      const date = (a.start_date_local || a.start_date || '').slice(0, 10);
-      if (!date) return;
-      (byDate[date] = byDate[date] || []).push({
-        type: stravaTypeMap(a.sport_type || a.type || ''),
-        min: Math.max(1, Math.round((a.moving_time || 0) / 60)),
-        dist: a.distance ? round1(a.distance / 1609.34) : undefined,
-        ts: Date.now() + Math.random(),
-        sid: 'sv' + a.id
-      });
-    });
-    for (const [date, items] of Object.entries(byDate)) {
-      const existing = exForDate(date);
-      const have = new Set(existing.map(x => x.sid).filter(Boolean));
-      const fresh = items.filter(x => !have.has(x.sid));
-      if (fresh.length) {
-        await writeEx(date, [...existing, ...fresh]);
-        added += fresh.length;
-      }
-    }
-    status.textContent = added ? `✓ Synced — ${added} new activit${added > 1 ? 'ies' : 'y'} imported` : '✓ Up to date';
-  } catch (err) {
-    console.error(err);
-    status.textContent = 'Sync failed — reconnect or check your Strava app settings';
-  }
-}
-
-document.getElementById('syncStravaBtn').addEventListener('click', syncStrava);
-
 // ── STRONG CSV IMPORT ──
 document.getElementById('importStrongBtn').addEventListener('click', () => document.getElementById('strongFile').click());
 
@@ -13822,11 +13670,11 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 // ── JSON FULL BACKUP / RESTORE ──
 // Unlike the CSV export, this preserves full structure (itemized meals,
 // recipes, favorites) so it can be restored exactly, not just read in a
-// spreadsheet. Deliberately excludes Strava tokens and FatSecret's OAuth
-// Client ID/Secret — those are account credentials, not tracking data,
-// and shouldn't end up in a downloadable file. Simple lookup keys (USDA,
-// Spoonacular) are included since they're lower-risk and genuinely useful
-// to have in a restored backup.
+// spreadsheet. Includes every settings field, API keys and OAuth
+// credentials included, since a "full" backup should actually be
+// complete and restorable — the download itself carries a warning that
+// it should be treated like a password file, not shared or uploaded
+// anywhere public.
 document.getElementById('exportJsonBtn').addEventListener('click', () => {
   const backup = {
     app: 'mounjaro-tracker',
@@ -13849,8 +13697,6 @@ document.getElementById('exportJsonBtn').addEventListener('click', () => {
       lossRate: userLossRate,
       workoutPlanMode,
       stepGoal: stepGoalOverride,
-      stravaId,
-      stravaSecret,
       theme: themeOverride,
       accentPalette,
       favoriteFoods: pinnedFavorites,
@@ -13966,10 +13812,6 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async () =>
   payload.workoutPlanMode = document.getElementById('setWorkoutPlanMode').value;
   const sgVal = parseInt(document.getElementById('setStepGoal').value) || 0;
   payload.stepGoal = sgVal;
-  const svId = document.getElementById('setStravaId').value.trim();
-  const svSec = document.getElementById('setStravaSecret').value.trim();
-  if (svId) payload.stravaId = svId;
-  if (svSec) payload.stravaSecret = svSec;
   await setDoc(settingsRef, payload, { merge: true });
   const msg = document.getElementById('setSaveMsg');
   msg.textContent = '✓ Saved and synced';
