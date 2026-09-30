@@ -2292,10 +2292,12 @@ body {
       </div>
 
       <div class="form-card" id="workoutPlanCard">
-        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
+        <div id="workoutPlanCardHeader" class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
           <span id="workoutPlanTitle">Workout Plan · Planet Fitness</span>
           <button type="button" id="workoutFullscreenCloseBtn" title="Minimize — workout keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px;margin-right:8px">✕</button><span id="workoutPlanChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
         </div>
+        <div id="workoutVolumeSparkline" style="display:none;margin:6px 0 2px"></div>
+        <div id="restDayNote" style="display:none;font-size:12px;color:var(--ink-soft);font-style:italic;margin:2px 0 6px"></div>
         <div id="workoutPlanBody"></div>
         <button class="btn btn-secondary btn-sm" id="suggestProgressionBtn" style="width:100%;margin-top:10px"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Suggest Progression</button>
         <div id="progressionResults" style="font-size:13px;color:var(--ink);margin-top:8px;line-height:1.5"></div>
@@ -10173,6 +10175,86 @@ async function removeWorkoutExercise(name) {
   }
 }
 
+// Small inline sparkline of the last several complete weeks' training
+// volume, shown right where a session starts — a glance at whether
+// volume is trending up, flat, or down, without opening the Charts tab.
+// The current, still-in-progress week is shown separately as a running
+// total rather than folded into the line, since a partial week would
+// otherwise always look like a dip.
+function renderWorkoutVolumeSparkline() {
+  const box = document.getElementById('workoutVolumeSparkline');
+  if (!box) return;
+  const allWeeks = weeklyVolumeHistory(9);
+  const currentWeek = allWeeks[0];
+  const completeWeeks = allWeeks.slice(1).reverse(); // oldest first, complete weeks only
+  const withData = completeWeeks.filter(w => w.volume > 0);
+  if (withData.length < 3) { box.style.display = 'none'; return; }
+
+  const width = 220, height = 32, pad = 3;
+  const maxVol = Math.max(...completeWeeks.map(w => w.volume), 1);
+  const stepX = completeWeeks.length > 1 ? (width - pad * 2) / (completeWeeks.length - 1) : 0;
+  const points = completeWeeks.map((w, i) => {
+    const x = pad + i * stepX;
+    const y = height - pad - (w.volume / maxVol) * (height - pad * 2);
+    return `${x},${y}`;
+  }).join(' ');
+
+  const lastComplete = completeWeeks[completeWeeks.length - 1].volume;
+  const priorComplete = completeWeeks.length > 1 ? completeWeeks[completeWeeks.length - 2].volume : null;
+  let trendText = '';
+  if (priorComplete && priorComplete > 0) {
+    const pctChange = Math.round(((lastComplete - priorComplete) / priorComplete) * 100);
+    if (pctChange > 5) trendText = ` (↑${pctChange}%)`;
+    else if (pctChange < -5) trendText = ` (↓${Math.abs(pctChange)}%)`;
+  }
+
+  box.style.display = '';
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="flex-shrink:0">
+        <polyline points="${points}" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      </svg>
+      <span style="font-size:11px;color:var(--ink-soft);white-space:nowrap">${Math.round(currentWeek.volume).toLocaleString()} lbs so far this week${trendText}</span>
+    </div>`;
+}
+
+// Notices which day(s) of the week rarely have a logged Strength session
+// (based on the last 8 weeks), and gently flags today if it happens to be
+// one of them — informational, not a suggestion to skip, since someone
+// on an established rhythm benefits from seeing their own pattern
+// reflected back rather than being nagged against it either way.
+// Requires at least 4 occurrences of today's specific weekday within the
+// window before drawing any conclusion from it.
+function detectTypicalRestDay() {
+  const today = new Date(todayStr());
+  const todayDow = today.getDay();
+  const counts = [0,0,0,0,0,0,0];
+  const totals = [0,0,0,0,0,0,0];
+  const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - 8 * 7);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  let totalSessions = 0;
+  entries.filter(e => e.date >= cutoffStr && e.date < todayStr()).forEach(e => {
+    const dow = new Date(e.date + 'T00:00:00').getDay();
+    if ((e.ex || []).some(x => x.type === 'Strength')) { counts[dow]++; totalSessions++; }
+  });
+  const d = new Date(cutoff);
+  while (d < today) {
+    totals[d.getDay()]++;
+    d.setDate(d.getDate() + 1);
+  }
+  // Requires real overall activity, not just elapsed calendar time — with
+  // little to no logged history at all, every weekday would otherwise
+  // look like a "rest day" by this math, which is backwards: it just
+  // means there's not yet a pattern to reflect back.
+  if (totalSessions < 8 || totals[todayDow] < 4) return null;
+  const rate = counts[todayDow] / totals[todayDow];
+  if (rate <= 0.2) {
+    const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+    return `${dayName}s are usually a rest day for you — no pressure if you skip today.`;
+  }
+  return null;
+}
+
 function renderWorkoutPlan() {
   const box = document.getElementById('workoutPlanBody');
   if (!box) return;
@@ -10183,6 +10265,14 @@ function renderWorkoutPlan() {
       : workoutPlanMode === 'ppl' ? 'Push / Pull / Legs'
       : 'Upper / Lower';
     titleEl.textContent = `Workout Plan · Planet Fitness, ${modeLabel}`;
+  }
+  renderWorkoutVolumeSparkline();
+
+  const restNoteEl = document.getElementById('restDayNote');
+  if (restNoteEl) {
+    const restNote = detectTypicalRestDay();
+    restNoteEl.style.display = restNote ? '' : 'none';
+    restNoteEl.textContent = restNote || '';
   }
 
   let headerHtml, plan, footerHtml;
