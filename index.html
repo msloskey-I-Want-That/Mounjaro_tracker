@@ -3181,6 +3181,7 @@ let themeOverride       = '';        // '' = auto, or 'light' / 'dark'
 let pinnedFavorites     = [];        // user-starred foods, synced to Firestore, always shown
 let pinnedRecipes       = [];        // saved multi-ingredient recipes, synced to Firestore
 let foodCombos          = [];        // groups of existing favorites logged together in one tap
+let comboEditingIdx = null;          // index into foodCombos currently showing its item-macro editor, or null
                                       // (each item stays a separate log entry — unlike a Recipe,
                                       // which sums into one combined entry) — synced to Firestore
 // Set right before adding a favorite/recipe/usual, so renderFavorites()
@@ -12076,9 +12077,28 @@ function renderFavorites() {
       foodCombos.map((c, i) => `
         <div class="chip" data-combo="${i}" style="display:inline-flex;align-items:center;gap:6px">
           <span data-combo-add="${i}">${escapeHtml(c.name)} <span style="opacity:0.65">(${c.items.length})</span></span>
+          <span data-combo-edit="${i}" role="button" tabindex="0" aria-label="Edit combo items" title="Edit macros" style="opacity:0.6;font-size:11px">✎</span>
           <span data-combo-remove="${i}" role="button" tabindex="0" aria-label="Delete combo" style="opacity:0.6;font-size:11px">✕</span>
         </div>`).join('') +
-      `</div>`;
+      `</div>` +
+      (comboEditingIdx != null && foodCombos[comboEditingIdx] ? `
+        <div class="form-card" style="padding:12px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px">Editing: ${escapeHtml(foodCombos[comboEditingIdx].name)}</div>
+          ${foodCombos[comboEditingIdx].items.map((item, ii) => `
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+              <span style="font-size:12px;flex:1;min-width:90px">${escapeHtml(item.desc)}</span>
+              <input type="number" class="combo-item-field" data-field="protein" data-item-idx="${ii}" value="${item.protein || ''}" placeholder="P g" style="width:52px;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;background:var(--input-bg);color:var(--ink)">
+              <input type="number" class="combo-item-field" data-field="cal" data-item-idx="${ii}" value="${item.cal || ''}" placeholder="Cal" style="width:52px;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;background:var(--input-bg);color:var(--ink)">
+              <input type="number" class="combo-item-field" data-field="carbs" data-item-idx="${ii}" value="${item.carbs || ''}" placeholder="C g" style="width:52px;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;background:var(--input-bg);color:var(--ink)">
+              <input type="number" class="combo-item-field" data-field="fat" data-item-idx="${ii}" value="${item.fat || ''}" placeholder="F g" style="width:52px;padding:5px 6px;font-size:12px;border:1px solid var(--line);border-radius:6px;background:var(--input-bg);color:var(--ink)">
+            </div>
+          `).join('')}
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button type="button" class="btn btn-primary btn-sm" id="saveComboEditsBtn" style="flex:1">Save</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="cancelComboEditsBtn">Cancel</button>
+          </div>
+        </div>
+      ` : '');
   }
 
   if (pinnedFavorites.length) {
@@ -12223,6 +12243,36 @@ function renderFavorites() {
   box.querySelectorAll('[data-combo-remove]').forEach(el => {
     el.addEventListener('click', (ev) => { ev.stopPropagation(); deleteCombo(Number(el.dataset.comboRemove)); });
   });
+  box.querySelectorAll('[data-combo-edit]').forEach(el => {
+    el.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const idx = Number(el.dataset.comboEdit);
+      comboEditingIdx = comboEditingIdx === idx ? null : idx;
+      renderFavorites();
+    });
+  });
+  const saveComboEditsBtn = document.getElementById('saveComboEditsBtn');
+  if (saveComboEditsBtn) {
+    saveComboEditsBtn.addEventListener('click', () => {
+      const combo = foodCombos[comboEditingIdx];
+      if (!combo) return;
+      box.querySelectorAll('.combo-item-field').forEach(input => {
+        const itemIdx = Number(input.dataset.itemIdx);
+        const field = input.dataset.field;
+        combo.items[itemIdx][field] = input.value;
+      });
+      comboEditingIdx = null;
+      saveFoodCombosToFirestore();
+      renderFavorites();
+    });
+  }
+  const cancelComboEditsBtn = document.getElementById('cancelComboEditsBtn');
+  if (cancelComboEditsBtn) {
+    cancelComboEditsBtn.addEventListener('click', () => {
+      comboEditingIdx = null;
+      renderFavorites();
+    });
+  }
 
   const showComboBuilderBtn = document.getElementById('showComboBuilderBtn');
   if (showComboBuilderBtn) {
