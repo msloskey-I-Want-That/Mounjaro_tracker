@@ -866,6 +866,21 @@ body {
 .rest-inline.done .rest-inline-fill { background: rgba(92,230,192,0.55); transition: none; }
 .rest-inline-time { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; height: 100%; font-family: 'IBM Plex Mono', monospace; font-weight: 800; font-size: 16px; color: var(--ink); }
 .rest-inline-skip { width: 30px; height: 36px; flex-shrink: 0; background: none; border: none; color: var(--ink-soft); font-size: 15px; cursor: pointer; }
+#muscleMap [data-muscle] { cursor: pointer; }
+#muscleMap .sel { filter: drop-shadow(0 0 3px var(--ink)); }
+.muscle-chip { cursor: pointer; }
+.muscle-chip.selected { border-color: var(--teal); background: var(--teal-tint); }
+.muscle-detail { margin-top: 12px; padding: 12px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--input-bg); }
+.muscle-detail .n { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); }
+.md-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin-bottom: 4px; }
+.md-list { font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
+.md-close { background: none; border: none; color: var(--ink-soft); font-size: 16px; cursor: pointer; padding: 2px 6px; }
+.md-goal { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 600; flex-wrap: wrap; }
+.md-step { width: 32px; height: 32px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font-size: 18px; font-weight: 700; cursor: pointer; line-height: 1; }
+.md-reset { background: none; border: none; color: var(--ink-soft); text-decoration: underline; font-size: 11px; cursor: pointer; margin-left: auto; font-family: inherit; }
+.muscle-balance { font-size: 12px; font-weight: 600; margin-top: 10px; color: #FFB020; }
+.muscle-balance.ok { color: var(--sage); font-weight: 500; }
+[data-theme="light"] .muscle-balance:not(.ok) { color: #9A5B00; }
 .muscle-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .muscle-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 14px; border: 1.5px solid var(--line); font-size: 11px; font-weight: 600; color: var(--ink); }
 .muscle-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
@@ -2552,7 +2567,7 @@ body {
         </div>
       </div>
       <div class="chart-card" id="muscleMapCard">
-        <div class="chart-title">Muscles trained · last 7 days</div>
+        <div class="chart-title" id="muscleMapTitle">Muscles trained · last 7 days</div>
         <div id="muscleMap"></div>
       </div>
       <div class="history-search">
@@ -5021,6 +5036,10 @@ function startListening() {
       if (s.exerciseRestOverride && typeof s.exerciseRestOverride === 'object') {
         exerciseRestOverride = { ...s.exerciseRestOverride };
       }
+      if (s.muscleGoals && typeof s.muscleGoals === 'object') {
+        muscleGoals = { ...s.muscleGoals };
+        try { renderMuscleMap(); } catch (err) { /* History tab not built yet */ }
+      }
     }
     renderMedications();
     syncSettingsInputs();
@@ -5590,12 +5609,29 @@ function computeDailyActivityLevel(e) {
 // straight to that date in the Log tab, rather than this being a purely
 // look-only visual.
 // ── MUSCLE MAP ──
-// Working sets per muscle group over the last N days, using the same
-// exercise -> muscle mapping the swap suggestions use (warm-ups excluded,
-// and an exercise the mapping can't place is simply left out rather than
-// guessed at). Sets are the unit because they're what's actually comparable
-// across a 3x10 machine and a 2x30s plank; ~10/week is a common target.
+// Two views of the same data. VOLUME: working sets over the last 7 days per
+// muscle, shaded against a weekly goal you can change — teal while you build
+// toward it, amber at 1.5x the goal, red at 2x ("a lot — watch recovery").
+// RECOVERY: how long since each muscle was trained, using the real save time
+// of the workout, with a rough 2-3 day recovery window that grows with the
+// sets done; red means it was hit again before that window closed.
+// Everything counts direct working sets only (warm-ups excluded), so a
+// muscle that mostly works as a helper (shoulders in a press) reads lower
+// than it really worked. Treat it as a guide, not a measurement.
 const MUSCLE_MAP_GROUPS = ['Chest', 'Shoulders', 'Triceps', 'Back', 'Rear Delts', 'Biceps', 'Quads', 'Hamstrings', 'Calves', 'Core'];
+const MUSCLE_GOAL_DEFAULTS = { Chest: 10, Back: 10, Quads: 10, Hamstrings: 8, Shoulders: 8, Triceps: 8, Biceps: 8, 'Rear Delts': 6, Calves: 6, Core: 6 };
+const MUSCLE_COLORS = { teal: 'var(--teal)', amber: '#FFB020', red: '#FF4D5E', green: '#5CE6C0' };
+let muscleGoals = {};      // { group: sets/week } — only the ones you've changed; synced in settings
+let muscleMapMode = 'volume';
+try { if (localStorage.getItem('mounjaro-musclemap-mode') === 'recovery') muscleMapMode = 'recovery'; } catch (err) { /* storage unavailable */ }
+let muscleMapSelected = null;
+function muscleGoalFor(g) { const v = Number(muscleGoals[g]); return v >= 1 ? v : MUSCLE_GOAL_DEFAULTS[g]; }
+async function saveMuscleGoals() {
+  if (!syncId) return;
+  try { await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { muscleGoals }, { merge: true }); }
+  catch (err) { console.error('Failed to save muscle goals:', err); }
+}
+
 function muscleSetsLastDays(days) {
   const counts = {}; MUSCLE_MAP_GROUPS.forEach(g => { counts[g] = 0; });
   const cutoff = new Date(todayStr() + 'T00:00:00'); cutoff.setDate(cutoff.getDate() - (days - 1));
@@ -5614,21 +5650,150 @@ function muscleSetsLastDays(days) {
   });
   return { counts, sessions };
 }
-function muscleLevel(n) { return n >= 10 ? 4 : n >= 7 ? 3 : n >= 4 ? 2 : n >= 1 ? 1 : 0; }
-const MUSCLE_LEVEL_OPACITY = [0, 0.34, 0.54, 0.78, 1];
+
+// Every workout, broken down per muscle: { group: [{ t, date, sets, ex: [{ name, sets }] }] } oldest first.
+// t is the real save time when the entry has one (older ones fall back to midday that date).
+function muscleSessionIndex() {
+  const idx = {}; MUSCLE_MAP_GROUPS.forEach(g => { idx[g] = []; });
+  entries.forEach(e => {
+    (e.ex || []).forEach(x => {
+      if (x.type !== 'Strength' || !x.sets) return;
+      const t = (typeof x.ts === 'number' && x.ts > 1e11) ? x.ts : new Date(e.date + 'T12:00:00').getTime();
+      const per = {};
+      Object.entries(x.sets).forEach(([name, sets]) => {
+        const g = muscleGroupFor(name);
+        if (!g || !(g in idx)) return;
+        const n = (sets || []).filter(s => !s.warmup).length;
+        if (!n) return;
+        const p = (per[g] = per[g] || { sets: 0, ex: [] });
+        p.sets += n; p.ex.push({ name, sets: n });
+      });
+      Object.entries(per).forEach(([g, p]) => idx[g].push({ t, date: e.date, sets: p.sets, ex: p.ex }));
+    });
+  });
+  MUSCLE_MAP_GROUPS.forEach(g => idx[g].sort((a, b) => a.t - b.t));
+  return idx;
+}
+function recoveryHoursForSets(n) { return Math.min(72, Math.max(48, 36 + 6 * n)); }
+function muscleRecovery(sessions, now) {
+  if (!sessions.length) return { state: 'none' };
+  const L = sessions[sessions.length - 1];
+  const recH = recoveryHoursForSets(L.sets);
+  const elapsedH = Math.max(0, (now - L.t) / 3600000);
+  if (elapsedH >= recH) return { state: 'ready', elapsedH, recH };
+  // Still inside this session's recovery window. It's "hit again too soon" if the
+  // session before it hadn't finished its own window (with 15% grace, so a normal
+  // Mon/Wed/Fri full-body rhythm isn't flagged).
+  let overlap = false;
+  for (let i = sessions.length - 2; i >= 0; i--) {
+    const P = sessions[i], gapH = (L.t - P.t) / 3600000;
+    if (gapH > 96) break;
+    if (gapH < 0.85 * recoveryHoursForSets(P.sets)) { overlap = true; break; }
+  }
+  return { state: overlap ? 'overlap' : 'recovering', elapsedH, recH, hoursLeft: recH - elapsedH };
+}
+function muscleZone(sets, goal) {
+  if (sets <= 0) return 'none';
+  const f = sets / goal;
+  return f >= 2 ? 'high' : f >= 1.5 ? 'heavy' : f >= 1 ? 'solid' : 'build';
+}
+function daysAgoFor(dateStr) {
+  return Math.round((new Date(todayStr() + 'T00:00:00') - new Date(dateStr + 'T00:00:00')) / 86400000);
+}
+function muscleStats(now) {
+  const idx = muscleSessionIndex(); now = now || Date.now(); const out = {};
+  MUSCLE_MAP_GROUPS.forEach(g => {
+    const s = idx[g], goal = muscleGoalFor(g), weeks = [0, 0, 0, 0], exWeek = {};
+    s.forEach(x => {
+      const d = daysAgoFor(x.date);
+      if (d >= 0 && d < 28) weeks[Math.floor(d / 7)] += x.sets;
+      if (d >= 0 && d < 7) x.ex.forEach(e => { exWeek[e.name] = (exWeek[e.name] || 0) + e.sets; });
+    });
+    out[g] = { group: g, sets: weeks[0], goal, zone: muscleZone(weeks[0], goal), weeks,
+      exercises: Object.entries(exWeek).map(([name, sets]) => ({ name, sets })).sort((a, b) => b.sets - a.sets),
+      last: s.length ? s[s.length - 1] : null, recovery: muscleRecovery(s, now) };
+  });
+  return out;
+}
+function musclePaint(st, mode) {
+  if (mode === 'recovery') {
+    const r = st.recovery;
+    if (r.state === 'none') return null;
+    if (r.state === 'ready') return { fill: MUSCLE_COLORS.green, opacity: 0.55 };
+    const frac = Math.min(1, Math.max(0, r.elapsedH / r.recH));
+    return r.state === 'overlap' ? { fill: MUSCLE_COLORS.red, opacity: 0.98 - 0.3 * frac } : { fill: MUSCLE_COLORS.amber, opacity: 0.95 - 0.5 * frac };
+  }
+  if (st.zone === 'none') return null;
+  if (st.zone === 'build') return { fill: MUSCLE_COLORS.teal, opacity: 0.3 + 0.55 * (st.sets / st.goal) };
+  return { fill: st.zone === 'high' ? MUSCLE_COLORS.red : st.zone === 'heavy' ? MUSCLE_COLORS.amber : MUSCLE_COLORS.teal, opacity: 1 };
+}
+// Push/pull and quad/hamstring balance over the last 2 weeks (a 1-week window
+// would flag every "push day" as lopsided in a push/pull/legs rotation).
+function muscleBalanceFlags() {
+  const { counts: c, sessions } = muscleSetsLastDays(14);
+  if (sessions < 2) return { flags: [], balanced: false };
+  const push = c.Chest + c.Shoulders + c.Triceps, pull = c.Back + c['Rear Delts'] + c.Biceps;
+  const q = c.Quads, h = c.Hamstrings, flags = [];
+  const lopsided = (a, b, min) => Math.max(a, b) >= min && Math.max(a, b) >= 1.5 * Math.min(a, b) && Math.abs(a - b) >= 4;
+  if (lopsided(push, pull, 8)) flags.push(`Push ${push} vs pull ${pull} sets over the last 2 weeks — ${push > pull ? 'pulling' : 'pushing'} is behind.`);
+  if (lopsided(q, h, 6)) flags.push(`Quads ${q} vs hamstrings ${h} over the last 2 weeks — ${q > h ? 'hamstrings are' : 'quads are'} behind.`);
+  return { flags, balanced: !flags.length && (push + pull >= 8 || q + h >= 6) };
+}
+// Time LEFT is always hours (a recovery window never exceeds 72h, so "44h" beats "1.8d"); time SINCE can run to days.
+function fmtHoursLeft(h) { return `${Math.max(1, Math.ceil(h))}h`; }
+function fmtHoursShort(h) { return h < 24 ? `${Math.max(1, Math.round(h))}h` : `${Math.round(h / 24 * 10) / 10}d`; }
+
+function muscleDetailHtml(st) {
+  const r = st.recovery, g = st.group, goalIsCustom = muscleGoals[g] != null && Number(muscleGoals[g]) >= 1;
+  let status = r.state === 'none' ? 'Not trained yet'
+    : r.state === 'ready' ? `Ready — last trained ${fmtHoursShort(r.elapsedH)} ago`
+    : `${r.state === 'overlap' ? '⚠ Hit again before it recovered · ' : ''}about ${fmtHoursLeft(r.hoursLeft)} until recovered`;
+  const last = st.last ? `Last trained ${fmtDate(st.last.date)} · ${st.last.sets} set${st.last.sets === 1 ? '' : 's'}` : '';
+  const ex = st.exercises.length ? st.exercises.map(e => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${escapeHtml(e.name)}</span><span class="n">${e.sets} set${e.sets === 1 ? '' : 's'}</span></div>`).join('') : '<div style="color:var(--ink-soft)">No sets in the last 7 days.</div>';
+  const scale = Math.max(st.goal * 2, ...st.weeks, 1), labels = ['3w ago', '2w ago', 'last wk', 'this wk'];
+  const bars = st.weeks.slice().reverse().map((v, i) => {
+    const z = muscleZone(v, st.goal), col = z === 'high' ? MUSCLE_COLORS.red : z === 'heavy' ? MUSCLE_COLORS.amber : MUSCLE_COLORS.teal;
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div class="n" style="font-size:10px">${v}</div><div style="width:70%;height:${Math.max(2, Math.round(44 * Math.min(1, v / scale)))}px;border-radius:4px 4px 0 0;background:${v ? col : 'var(--line)'};opacity:${v ? 0.9 : 1}"></div><div style="font-size:9px;color:var(--ink-soft)">${labels[i]}</div></div>`;
+  }).join('');
+  return `<div class="muscle-detail">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+      <div style="font-size:15px;font-weight:800">${g}</div>
+      <button type="button" class="md-close" data-muscleclose="1" aria-label="Close details">✕</button>
+    </div>
+    <div style="font-size:12px;font-weight:600;margin-bottom:2px">${status}</div>
+    ${last ? `<div style="font-size:11px;color:var(--ink-soft);margin-bottom:8px">${last}</div>` : '<div style="margin-bottom:8px"></div>'}
+    <div class="md-label">This week</div>
+    <div class="md-list">${ex}</div>
+    <div class="md-label" style="margin-top:10px">Sets per week</div>
+    <div style="position:relative;display:flex;align-items:flex-end;gap:6px;height:76px;padding-top:4px">
+      <div style="position:absolute;left:0;right:0;bottom:${Math.round(14 + 44 * st.goal / scale)}px;border-top:1.5px dashed var(--ink-soft);opacity:0.45"></div>${bars}
+    </div>
+    <div class="md-goal">
+      <span>Weekly goal</span>
+      <button type="button" class="md-step" data-goaladj="-1" aria-label="Lower goal">−</button>
+      <b class="n" style="font-size:15px;min-width:20px;text-align:center">${st.goal}</b>
+      <button type="button" class="md-step" data-goaladj="1" aria-label="Raise goal">+</button>
+      <span style="color:var(--ink-soft)">sets</span>
+      ${goalIsCustom ? '<button type="button" class="md-reset" data-goalreset="1">reset to ' + MUSCLE_GOAL_DEFAULTS[g] + '</button>' : ''}
+    </div>
+  </div>`;
+}
 
 function renderMuscleMap() {
   const box = document.getElementById('muscleMap');
   if (!box) return;
-  const { counts, sessions } = muscleSetsLastDays(7);
-  const fillFor = (g) => {
-    const lvl = muscleLevel(counts[g]);
-    return lvl === 0 ? `fill="var(--line)"` : `fill="var(--teal)" fill-opacity="${MUSCLE_LEVEL_OPACITY[lvl]}"`;
-  };
-  const m = (g, tag, attrs) => `<${tag} ${attrs} ${fillFor(g)} data-muscle="${g}"><title>${g} · ${counts[g]} set${counts[g] === 1 ? '' : 's'}</title></${tag}>`;
-  const n = (tag, attrs) => `<${tag} ${attrs} fill="var(--line)" fill-opacity="0.5"></${tag}>`; // not tracked: head, hands, glutes, feet…
+  const mode = muscleMapMode, stats = muscleStats();
+  const titleEl = document.getElementById('muscleMapTitle');
+  if (titleEl) titleEl.textContent = mode === 'recovery' ? "Recovery · what's fresh" : 'Muscles trained · last 7 days';
+  const sessions7 = muscleSetsLastDays(7).sessions;
+  const sel = muscleMapSelected && stats[muscleMapSelected] ? muscleMapSelected : null;
+  const attrs = g => { const p = musclePaint(stats[g], mode); return p ? `fill="${p.fill}" fill-opacity="${p.opacity.toFixed(2)}"` : `fill="var(--line)"`; };
+  const tip = g => { const st = stats[g]; return mode === 'recovery'
+      ? (st.recovery.state === 'none' ? `${g} · not trained yet` : st.recovery.state === 'ready' ? `${g} · ready` : `${g} · ~${fmtHoursLeft(st.recovery.hoursLeft)} to recover`)
+      : `${g} · ${st.sets} set${st.sets === 1 ? '' : 's'} of ${st.goal}`; };
+  const m = (g, tag, a) => `<${tag} ${a} ${attrs(g)} data-muscle="${g}"${sel === g ? ' class="sel"' : ''}><title>${tip(g)}</title></${tag}>`;
+  const n = (tag, a) => `<${tag} ${a} fill="var(--line)" fill-opacity="0.5"></${tag}>`;
   const e = (cx, cy, rx, ry) => `cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"`;
-  // Front view, centered on x=65
   const front = [
     n('circle', 'cx="65" cy="15" r="11"'), n('rect', 'x="60" y="25" width="10" height="9" rx="3"'),
     n('rect', 'x="44" y="36" width="42" height="64" rx="15"'),
@@ -5642,18 +5807,15 @@ function renderMuscleMap() {
     n('ellipse', e(54, 192, 6.5, 19)), n('ellipse', e(76, 192, 6.5, 19)),
     n('ellipse', e(55, 214, 8, 3.5)), n('ellipse', e(75, 214, 8, 3.5))
   ].join('');
-  // Back view, centered on x=195
+  const backPaint = musclePaint(stats['Back'], mode), backPts = '182,38 208,38 216,60 209,84 201,95 189,95 181,84 174,60';
+  const backShape = !backPaint
+    ? `<polygon points="${backPts}" fill="var(--line)" data-muscle="Back"${sel === 'Back' ? ' class="sel"' : ''}><title>${tip('Back')}</title></polygon>`
+    : `<g opacity="${backPaint.opacity.toFixed(2)}" data-muscle="Back"${sel === 'Back' ? ' class="sel"' : ''}><polygon points="${backPts}" fill="${backPaint.fill}" stroke="${backPaint.fill}" stroke-width="4" stroke-linejoin="round"/><title>${tip('Back')}</title></g>`;
   const back = [
     n('circle', 'cx="195" cy="15" r="11"'), n('rect', 'x="190" y="25" width="10" height="9" rx="3"'),
     n('rect', 'x="174" y="36" width="42" height="64" rx="15"'),
     m('Rear Delts', 'ellipse', e(169, 42, 9, 9)), m('Rear Delts', 'ellipse', e(221, 42, 9, 9)),
-    (() => {
-      const lvl = muscleLevel(counts['Back']), pts = '182,38 208,38 216,60 209,84 201,95 189,95 181,84 174,60';
-      const tip = `<title>Back · ${counts['Back']} set${counts['Back'] === 1 ? '' : 's'}</title>`;
-      return lvl === 0
-        ? `<polygon points="${pts}" fill="var(--line)" data-muscle="Back">${tip}</polygon>`
-        : `<g opacity="${MUSCLE_LEVEL_OPACITY[lvl]}" data-muscle="Back"><polygon points="${pts}" fill="var(--teal)" stroke="var(--teal)" stroke-width="4" stroke-linejoin="round"/>${tip}</g>`;
-    })(),
+    backShape,
     m('Triceps', 'ellipse', e(160, 64, 6.5, 13)), m('Triceps', 'ellipse', e(230, 64, 6.5, 13)),
     n('ellipse', e(157, 91, 5, 13)), n('ellipse', e(233, 91, 5, 13)), n('circle', 'cx="155" cy="108" r="4.5"'), n('circle', 'cx="235" cy="108" r="4.5"'),
     n('ellipse', e(185, 106, 10, 9)), n('ellipse', e(205, 106, 10, 9)),
@@ -5661,21 +5823,64 @@ function renderMuscleMap() {
     m('Calves', 'ellipse', e(184, 191, 7.5, 18)), m('Calves', 'ellipse', e(206, 191, 7.5, 18)),
     n('ellipse', e(185, 214, 8, 3.5)), n('ellipse', e(205, 214, 8, 3.5))
   ].join('');
-  const svg = `<svg viewBox="0 0 260 232" width="100%" style="max-width:340px;display:block;margin:0 auto" role="img" aria-label="Muscle groups trained in the last 7 days, front and back">
+  const svg = `<svg viewBox="0 0 260 232" width="100%" style="max-width:340px;display:block;margin:0 auto" role="img" aria-label="Muscle groups, ${mode === 'recovery' ? 'recovery status' : 'trained in the last 7 days'}, front and back">
     ${front}${back}
     <text x="65" y="229" text-anchor="middle" font-size="8" fill="var(--ink-soft)" letter-spacing="1">FRONT</text>
     <text x="195" y="229" text-anchor="middle" font-size="8" fill="var(--ink-soft)" letter-spacing="1">BACK</text>
   </svg>`;
-  const chips = MUSCLE_MAP_GROUPS.slice().sort((a, b) => counts[b] - counts[a]).map(g => {
-    const lvl = muscleLevel(counts[g]);
-    return `<span class="muscle-chip${lvl === 0 ? ' zero' : ''}"><span class="dot" style="${lvl === 0 ? 'background:var(--line)' : `opacity:${MUSCLE_LEVEL_OPACITY[lvl]}`}"></span>${g} <span class="n">${counts[g]}</span></span>`;
+  // chips
+  const rank = g => { const r = stats[g].recovery; return r.state === 'overlap' ? [0, -r.hoursLeft] : r.state === 'recovering' ? [1, -r.hoursLeft] : r.state === 'ready' ? [2, 0] : [3, 0]; };
+  const order = MUSCLE_MAP_GROUPS.slice().sort((a, b) => mode === 'recovery'
+    ? (rank(a)[0] - rank(b)[0]) || (rank(a)[1] - rank(b)[1])
+    : stats[b].sets - stats[a].sets);
+  const chips = order.map(g => {
+    const st = stats[g], p = musclePaint(st, mode), r = st.recovery;
+    const idle = mode === 'recovery' ? r.state === 'none' : st.sets === 0;
+    const suffix = mode === 'recovery'
+      ? (r.state === 'none' ? '–' : r.state === 'ready' ? '✓' : `${r.state === 'overlap' ? '⚠ ' : ''}${fmtHoursLeft(r.hoursLeft)}`)
+      : `${st.sets}/${st.goal}`;
+    return `<span class="muscle-chip${idle ? ' zero' : ''}${sel === g ? ' selected' : ''}" data-musclechip="${g}"><span class="dot" style="${p ? `background:${p.fill};opacity:${p.opacity.toFixed(2)}` : 'background:var(--line)'}"></span>${g} <span class="n">${suffix}</span></span>`;
   }).join('');
-  const missed = MUSCLE_MAP_GROUPS.filter(g => counts[g] === 0);
-  const note = sessions === 0 ? 'No strength sessions in the last 7 days.'
-    : missed.length === 0 ? 'Every muscle group got work this week.'
-    : `Not hit yet: <strong style="color:var(--ink)">${missed.join(', ')}</strong>`;
-  box.innerHTML = `${svg}<div class="muscle-chips">${chips}</div>
-    <div style="font-size:11px;color:var(--ink-soft);margin-top:8px">${note} · darker = more working sets (10+ is a solid week)</div>`;
+  // notes
+  const bal = muscleBalanceFlags();
+  const balHtml = bal.flags.length ? bal.flags.map(f => `<div class="muscle-balance">⚖️ ${f}</div>`).join('')
+    : bal.balanced ? '<div class="muscle-balance ok">⚖️ Push/pull and quads/hamstrings look balanced over the last 2 weeks.</div>' : '';
+  let note;
+  if (mode === 'recovery') {
+    const over = MUSCLE_MAP_GROUPS.filter(g => stats[g].recovery.state === 'overlap');
+    const fresh = MUSCLE_MAP_GROUPS.filter(g => ['ready', 'none'].includes(stats[g].recovery.state));
+    note = (over.length ? `<div style="color:${MUSCLE_COLORS.red};font-weight:700;margin-bottom:4px">⚠ Hit again before recovered: ${over.join(', ')}</div>` : '')
+      + (fresh.length ? `Ready to train: <strong style="color:var(--ink)">${fresh.join(', ')}</strong>` : 'Everything is still recovering.')
+      + `<div style="margin-top:6px">green = ready · amber = recovering · red = trained again too soon. Recovery is a rough 2–3 day estimate that grows with the sets you did.</div>`;
+  } else {
+    const missed = MUSCLE_MAP_GROUPS.filter(g => stats[g].sets === 0);
+    const heavy = MUSCLE_MAP_GROUPS.filter(g => ['heavy', 'high'].includes(stats[g].zone)).map(g => `${g} (${stats[g].sets})`);
+    note = (sessions7 === 0 ? 'No strength sessions in the last 7 days.'
+      : missed.length === 0 ? 'Every muscle group got work this week.'
+      : `Not hit yet: <strong style="color:var(--ink)">${missed.join(', ')}</strong>`)
+      + (heavy.length ? `<div style="color:${MUSCLE_COLORS.amber};font-weight:700;margin-top:4px">Heavy week — watch recovery: ${heavy.join(', ')}</div>` : '')
+      + `<div style="margin-top:6px">teal = building toward your weekly goal · amber = 1.5× goal · red = 2× or more. Tap any muscle for details or to change its goal.</div>`;
+  }
+  const modeRow = `<div class="chip-row" style="margin-bottom:10px;gap:6px"><div class="chip${mode === 'volume' ? ' on' : ''}" data-musclemode="volume">Volume</div><div class="chip${mode === 'recovery' ? ' on' : ''}" data-musclemode="recovery">Recovery</div></div>`;
+  box.innerHTML = `${modeRow}${svg}<div class="muscle-chips">${chips}</div>${sel ? muscleDetailHtml(stats[sel]) : ''}${mode === 'volume' ? balHtml : ''}<div style="font-size:11px;color:var(--ink-soft);margin-top:8px">${note}</div>`;
+  box.onclick = (ev) => {
+    const t = ev.target.closest ? ev.target : null; if (!t) return;
+    const modeBtn = t.closest('[data-musclemode]');
+    if (modeBtn) { muscleMapMode = modeBtn.dataset.musclemode; try { localStorage.setItem('mounjaro-musclemap-mode', muscleMapMode); } catch (err) { /* ignore */ } renderMuscleMap(); return; }
+    if (t.closest('[data-muscleclose]')) { muscleMapSelected = null; renderMuscleMap(); return; }
+    const adj = t.closest('[data-goaladj]');
+    if (adj && muscleMapSelected) {
+      const cur = muscleGoalFor(muscleMapSelected);
+      muscleGoals = { ...muscleGoals, [muscleMapSelected]: Math.min(40, Math.max(1, cur + Number(adj.dataset.goaladj))) };
+      saveMuscleGoals(); renderMuscleMap(); return;
+    }
+    if (t.closest('[data-goalreset]') && muscleMapSelected) {
+      const next = { ...muscleGoals }; delete next[muscleMapSelected]; muscleGoals = next;
+      saveMuscleGoals(); renderMuscleMap(); return;
+    }
+    const hit = t.closest('[data-muscle]') || t.closest('[data-musclechip]');
+    if (hit) { const g = hit.dataset.muscle || hit.dataset.musclechip; muscleMapSelected = muscleMapSelected === g ? null : g; renderMuscleMap(); }
+  };
 }
 
 function renderConsistencyHeatmap() {
@@ -14688,7 +14893,8 @@ document.getElementById('exportJsonBtn').addEventListener('click', () => {
       hiddenWorkoutExercises,
       exerciseOrderOverride,
       supersetPairs,
-      exerciseRestOverride
+      exerciseRestOverride,
+      muscleGoals
     }
   };
   // Note: this file contains your API keys and OAuth secrets in plain
