@@ -579,6 +579,15 @@ body {
 #mealTypeRow .chip { text-align: center; padding: 9px 2px; font-size: 12.5px; }
 #addFoodCard .field-row .stepper-btn { width: 32px; min-width: 32px; padding: 6px 0 !important; flex-shrink: 0; }
 #addFoodCard .field-row input[type=number] { padding-left: 4px; padding-right: 4px; }
+.prog-card { margin-top: 10px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--input-bg); padding: 4px 12px 10px; }
+.prog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0 4px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.prog-title { font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); }
+.prog-age { font-weight: 600; text-transform: none; letter-spacing: 0; }
+.prog-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.prog-x { background: none; border: none; color: var(--ink-soft); font-size: 15px; width: 32px; height: 32px; cursor: pointer; border-radius: 8px; }
+.prog-chev { font-size: 11px; color: var(--ink-soft); width: 18px; text-align: center; }
+.prog-preview { font-size: 12px; color: var(--ink-soft); line-height: 1.4; padding-bottom: 4px; }
+.prog-body { font-size: 13px; color: var(--ink); line-height: 1.55; white-space: pre-line; padding-top: 2px; }
 .plan-tip { margin-top: 6px; text-align: center; }
 .plan-tip summary { list-style: none; display: inline-block; cursor: pointer; font-size: 11px; font-weight: 600; color: var(--ink-soft); opacity: 0.65; padding: 6px 12px; -webkit-tap-highlight-color: transparent; }
 .plan-tip summary::-webkit-details-marker { display: none; }
@@ -2582,7 +2591,14 @@ body {
         <div id="restDayNote" style="display:none;font-size:12px;color:var(--ink-soft);font-style:italic;margin:2px 0 6px"></div>
         <div id="workoutPlanBody"></div>
         <button class="btn btn-secondary btn-sm" id="suggestProgressionBtn" style="width:100%;margin-top:10px"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Suggest Progression</button>
-        <div id="progressionResults" style="font-size:13px;color:var(--ink);margin-top:8px;line-height:1.5"></div>
+        <div class="prog-card" id="progressionCard" style="display:none">
+          <div class="prog-head" id="progressionToggle" role="button" tabindex="0" aria-expanded="true">
+            <span class="prog-title">✦ Progression<span class="prog-age" id="progressionAge"></span></span>
+            <span class="prog-actions"><button type="button" class="prog-x" id="progressionDismiss" aria-label="Remove this suggestion">✕</button><span class="prog-chev" id="progressionChevron">▼</span></span>
+          </div>
+          <div class="prog-preview" id="progressionPreview" style="display:none"></div>
+          <div class="prog-body" id="progressionResults"></div>
+        </div>
       </div>
       <div class="form-card" id="workoutHistoryCard">
         <div class="form-section-title" id="workoutHistoryToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
@@ -8695,9 +8711,56 @@ async function scanTreadmillScreen(file) {
 // to progress. There's no logged weight/reps data, so this is explicitly
 // scoped to what the data can honestly support (frequency and duration
 // patterns), not invented specific weight numbers.
+// ── PROGRESSION SUGGESTION PANEL ──
+// The AI's answer lives in its own panel under the Suggest Progression button: expanded when it
+// arrives, minimizable to a one-line preview, removable with ✕, and remembered (so it isn't lost when
+// the plan re-renders or the app is reopened). Loading/error messages show in it but are never saved.
+const PROG_KEY = 'mounjaro-progression';
+let progState = null; // { text, ts, collapsed } | null
+function progSave() { try { if (progState) localStorage.setItem(PROG_KEY, JSON.stringify(progState)); else localStorage.removeItem(PROG_KEY); } catch (err) { /* storage unavailable */ } }
+function progAgeLabel(ts) {
+  const d = Math.floor((Date.now() - ts) / 86400000);
+  return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d}d ago`;
+}
+function renderProgressionCard() {
+  const card = document.getElementById('progressionCard'); if (!card) return;
+  if (!progState) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const body = document.getElementById('progressionResults'), prev = document.getElementById('progressionPreview');
+  const collapsed = !!progState.collapsed;
+  body.textContent = progState.text;
+  body.style.display = collapsed ? 'none' : '';
+  prev.style.display = collapsed ? '' : 'none';
+  prev.textContent = progState.text.length > 90 ? progState.text.slice(0, 90).trim() + '…' : progState.text;
+  document.getElementById('progressionChevron').textContent = collapsed ? '▶' : '▼';
+  document.getElementById('progressionAge').textContent = ` · ${progAgeLabel(progState.ts)}`;
+  document.getElementById('progressionToggle').setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+}
+function setProgressionStatus(msg) {
+  const card = document.getElementById('progressionCard'); if (!card) return;
+  card.style.display = '';
+  const body = document.getElementById('progressionResults');
+  body.textContent = msg; body.style.display = '';
+  document.getElementById('progressionPreview').style.display = 'none';
+  document.getElementById('progressionAge').textContent = '';
+  document.getElementById('progressionChevron').textContent = '▼';
+}
+function saveProgression(text) { progState = { text, ts: Date.now(), collapsed: false }; progSave(); renderProgressionCard(); }
+function loadProgression() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PROG_KEY) || 'null');
+    progState = raw && typeof raw.text === 'string' && raw.text ? { text: raw.text, ts: Number(raw.ts) || Date.now(), collapsed: !!raw.collapsed } : null;
+  } catch (err) { progState = null; }
+  renderProgressionCard();
+}
+function toggleProgression() { if (!progState) return; progState.collapsed = !progState.collapsed; progSave(); renderProgressionCard(); }
+document.getElementById('progressionToggle').addEventListener('click', toggleProgression);
+document.getElementById('progressionToggle').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleProgression(); } });
+document.getElementById('progressionDismiss').addEventListener('click', e => { e.stopPropagation(); progState = null; progSave(); renderProgressionCard(); });
+loadProgression();
+
 document.getElementById('suggestProgressionBtn').addEventListener('click', async () => {
-  const box = document.getElementById('progressionResults');
-  if (!anthropicKey) { box.innerHTML = 'Add your Anthropic API key in Settings first to use this.'; return; }
+  if (!anthropicKey) { setProgressionStatus('Add your Anthropic API key in Settings first to use this.'); return; }
   const cutoff = new Date(todayStr());
   cutoff.setDate(cutoff.getDate() - 30);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
@@ -8706,17 +8769,17 @@ document.getElementById('suggestProgressionBtn').addEventListener('click', async
   entries.filter(e => e.date >= cutoffStr && e.date <= today && e.ex && e.ex.length).forEach(e => {
     e.ex.forEach(x => recentWorkouts.push({ date: e.date, type: x.type, minutes: x.min, distance_mi: x.dist || undefined, sets_per_exercise: x.sets || undefined }));
   });
-  if (recentWorkouts.length < 3) { box.innerHTML = 'Not enough logged workouts yet (need at least a few) for a meaningful suggestion.'; return; }
-  box.innerHTML = 'Reviewing your last 30 days…';
+  if (recentWorkouts.length < 3) { setProgressionStatus('Not enough logged workouts yet (need at least a few) for a meaningful suggestion.'); return; }
+  setProgressionStatus('Reviewing your last 30 days…');
   try {
     const planText = describeWorkoutPlanForAI();
     const promptText = `A person follows this workout plan:\n${planText}\n\nHere are their actual logged workouts over the last 30 days (type, minutes, distance if applicable, and sets_per_exercise — an array of {weight, reps} per set — if they logged them):\n${JSON.stringify(recentWorkouts)}\n\nBased on frequency, consistency, duration/distance trends, AND the logged per-set weight/reps where present, suggest whether and how they might progress — this can include a specific weight increase for an exercise if the log shows several consistent sessions at the same weight for all sets, not just general frequency advice. If the data doesn't clearly support a progression yet (e.g. too few sessions, or weight already trending up on its own), say so honestly rather than inventing one. Keep it to 2-4 short sentences, plain prose, no headers or bullets.\n\n${AI_SAFETY_INSTRUCTIONS}`;
     const result = await callClaudeText(promptText, 350);
-    if (!result.ok) { box.innerHTML = `Failed — HTTP ${result.status}. Check your Anthropic API key in Settings.`; return; }
-    box.innerHTML = result.text || 'No response — try again.';
+    if (!result.ok) { setProgressionStatus(`Failed — HTTP ${result.status}. Check your Anthropic API key in Settings.`); return; }
+    if (result.text) saveProgression(result.text); else setProgressionStatus('No response — try again.');
   } catch (err) {
     console.error(err);
-    box.innerHTML = 'Failed — check your connection and Anthropic API key.';
+    setProgressionStatus('Failed — check your connection and Anthropic API key.');
   }
 });
 
