@@ -571,6 +571,13 @@ body {
 .btn-ghost { background: transparent; color: var(--ink-soft); border: 1.5px solid var(--line); }
 .btn-danger { background: var(--coral-tint); color: var(--out); }
 .btn-sm { padding: 10px 14px; font-size: 13px; border-radius: 8px; width: auto; }
+/* Add Food: method tabs, meal buttons on one row, roomier macro fields */
+.add-method-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 12px; }
+.add-method-row .chip { text-align: center; padding: 9px 2px; font-size: 13px; }
+#mealTypeRow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+#mealTypeRow .chip { text-align: center; padding: 9px 2px; font-size: 12.5px; }
+#addFoodCard .field-row .stepper-btn { width: 32px; min-width: 32px; padding: 6px 0 !important; flex-shrink: 0; }
+#addFoodCard .field-row input[type=number] { padding-left: 4px; padding-right: 4px; }
 .quick-save-btn.saved { background: var(--sage) !important; }
 .quick-save-btn:disabled { opacity: 0.7; }
 .ai-asked { font-size: 12px; color: var(--ink-soft); font-weight: 600; margin-bottom: 8px; }
@@ -929,7 +936,7 @@ body {
 }
 .exercise-state-chip .chip-text { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .exercise-state-chip button { background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 12px; padding: 4px; }
-.food-tab-chip.on, .mt-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; font-weight: 800; }
+.food-tab-chip.on, .mt-chip.on, .add-method-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; font-weight: 800; }
 .photo-portion-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; font-weight: 800; }
 .palette-swatch {
   width: 40px; height: 40px; border-radius: 50%;
@@ -2303,6 +2310,13 @@ body {
         </div>
 
         <div class="food-tab-panel" id="foodTabPanel-quick">
+          <div class="add-method-row" id="addMethodRow">
+            <div class="chip add-method-chip on" data-add-method="search">Search</div>
+            <div class="chip add-method-chip" data-add-method="describe">Describe</div>
+            <div class="chip add-method-chip" data-add-method="photo">Photo</div>
+            <div class="chip add-method-chip" data-add-method="label">Label</div>
+          </div>
+          <div class="add-method-panel" data-method="search">
           <div class="field" style="margin-bottom:10px">
             <label for="mDesc">Search or type a food item</label>
             <div style="display:flex;gap:8px">
@@ -2312,9 +2326,10 @@ body {
             </div>
           </div>
           <div id="myFoodResults"></div>
-          <div style="border-top:1px solid var(--line);margin:12px 0 0;padding-top:12px">
+          </div>
+          <div class="add-method-panel" data-method="describe" style="display:none">
             <div class="field" style="margin-bottom:0">
-              <label for="mealDescInput"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Or just describe what you ate</label>
+              <label for="mealDescInput"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Describe what you ate</label>
               <div style="display:flex;gap:8px">
                 <input type="text" id="mealDescInput" placeholder="e.g. 2 slices pepperoni pizza and a coke" style="flex:1">
                 <button class="btn btn-secondary btn-sm" id="estimateMealBtn" style="white-space:nowrap;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Estimate</button>
@@ -2322,9 +2337,9 @@ body {
             </div>
             <div id="mealDescResults" style="font-size:12px;margin-top:6px"></div>
           </div>
-          <div style="border-top:1px solid var(--line);margin:12px 0 0;padding-top:12px">
+          <div class="add-method-panel" data-method="photo" style="display:none">
             <div class="field">
-              <label for="photoDetailsInput"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Or estimate from a photo — add details for accuracy</label>
+              <label for="photoDetailsInput"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Estimate from a photo — add details for accuracy</label>
               <div style="display:flex;gap:8px">
                 <input type="text" id="photoDetailsInput" placeholder="e.g. 12oz ribeye, Texas Roadhouse" style="flex:1">
                 <button class="btn btn-secondary btn-sm" id="estimatePhotoBtn" aria-label="Estimate nutrition from a photo" style="white-space:nowrap;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Estimate</button>
@@ -2341,9 +2356,9 @@ body {
             </div>
             <div id="photoEstimateResults"></div>
           </div>
-          <div style="border-top:1px solid var(--line);margin:12px 0 0;padding-top:12px">
+          <div class="add-method-panel" data-method="label" style="display:none">
             <div class="field" style="margin-bottom:0">
-              <label for="labelScanBtn">📋 Or scan a nutrition label — reads the exact printed numbers instead of guessing</label>
+              <label for="labelScanBtn">📋 Scan a nutrition label — reads the exact printed numbers instead of guessing</label>
               <button class="btn btn-secondary btn-sm" id="labelScanBtn" aria-label="Scan a nutrition facts label" style="width:100%;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83 3.83 11 13.41 20.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg> Scan Nutrition Label</button>
               <input type="file" id="labelFileInput" accept="image/*" style="display:none">
             </div>
@@ -2395,7 +2410,7 @@ body {
             <label for="mProtein">Protein (g)</label>
             <div style="display:flex;align-items:center;gap:6px">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mProtein" data-step="-1" style="padding:6px 12px">−</button>
-              <input type="number" id="mProtein" inputmode="decimal" step="any" placeholder="e.g. 30" style="flex:1;min-width:0;text-align:center">
+              <input type="number" id="mProtein" inputmode="decimal" step="any" placeholder="30" style="flex:1;min-width:0;text-align:center">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mProtein" data-step="1" style="padding:6px 12px">+</button>
             </div>
           </div>
@@ -2403,7 +2418,7 @@ body {
             <label for="mCal">Calories (opt.)</label>
             <div style="display:flex;align-items:center;gap:6px">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mCal" data-step="-10" style="padding:6px 12px">−</button>
-              <input type="number" id="mCal" inputmode="decimal" step="any" placeholder="e.g. 220" style="flex:1;min-width:0;text-align:center">
+              <input type="number" id="mCal" inputmode="decimal" step="any" placeholder="220" style="flex:1;min-width:0;text-align:center">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mCal" data-step="10" style="padding:6px 12px">+</button>
             </div>
           </div>
@@ -2413,7 +2428,7 @@ body {
             <label for="mCarbs">Carbs (g)</label>
             <div style="display:flex;align-items:center;gap:6px">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mCarbs" data-step="-1" style="padding:6px 12px">−</button>
-              <input type="number" id="mCarbs" inputmode="decimal" step="any" placeholder="e.g. 25" style="flex:1;min-width:0;text-align:center">
+              <input type="number" id="mCarbs" inputmode="decimal" step="any" placeholder="20" style="flex:1;min-width:0;text-align:center">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mCarbs" data-step="1" style="padding:6px 12px">+</button>
             </div>
           </div>
@@ -2421,7 +2436,7 @@ body {
             <label for="mFat">Fat (g)</label>
             <div style="display:flex;align-items:center;gap:6px">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mFat" data-step="-1" style="padding:6px 12px">−</button>
-              <input type="number" id="mFat" inputmode="decimal" step="any" placeholder="e.g. 8" style="flex:1;min-width:0;text-align:center">
+              <input type="number" id="mFat" inputmode="decimal" step="any" placeholder="10" style="flex:1;min-width:0;text-align:center">
               <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mFat" data-step="1" style="padding:6px 12px">+</button>
             </div>
           </div>
@@ -7241,6 +7256,21 @@ function clearLogForm() {
 }
 
 document.getElementById('clearBtn').addEventListener('click', clearLogForm);
+
+// ── ADD FOOD: one way in at a time ──
+// Search / Describe / Photo / Label used to be stacked in one long card. Now they're tabs; the
+// Review & Add section below (meal, servings, macros) is shared by all four. Remembers your last pick.
+const ADD_METHOD_KEY = 'mounjaro-add-method';
+function showAddMethod(method, opts) {
+  if (!['search', 'describe', 'photo', 'label'].includes(method)) method = 'search';
+  document.querySelectorAll('.add-method-chip').forEach(ch => ch.classList.toggle('on', ch.dataset.addMethod === method));
+  document.querySelectorAll('.add-method-panel').forEach(p => { p.style.display = p.dataset.method === method ? '' : 'none'; });
+  try { localStorage.setItem(ADD_METHOD_KEY, method); } catch (err) { /* storage unavailable */ }
+  const focusId = { search: 'mDesc', describe: 'mealDescInput' }[method];
+  if (opts && opts.focus && focusId) document.getElementById(focusId).focus();
+}
+document.querySelectorAll('.add-method-chip').forEach(ch => ch.addEventListener('click', () => showAddMethod(ch.dataset.addMethod, { focus: true })));
+try { showAddMethod(localStorage.getItem(ADD_METHOD_KEY) || 'search'); } catch (err) { showAddMethod('search'); }
 
 // ── FOOD LOOKUP (USDA FoodData Central + Open Food Facts barcode) ──
 let lookupSelection = null;
@@ -13880,6 +13910,7 @@ function startEditMeal(date, ts) {
   document.getElementById('mOffPlan').checked = !!meal.offPlan;
   document.getElementById('addMealBtn').textContent = 'Update';
   document.getElementById('cancelMealEditBtn').style.display = '';
+  showAddMethod('search'); // the edit fields live on the Search tab; make sure it's the one showing
   document.getElementById('mDesc').focus();
 }
 
