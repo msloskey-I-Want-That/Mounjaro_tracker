@@ -863,6 +863,31 @@ body {
   .set-field .unit { display: none; }
 }
 /* ── WHAT FITS? ── one-tap suggestions sized to what's left today */
+/* Food log rows */
+.meal-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 12px 0 2px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
+.meal-group-tot { font-family: var(--font-num); font-weight: 700; text-transform: none; letter-spacing: 0; font-size: 11.5px; text-align: right; }
+.meal-swipe { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+.meal-swipe-actions { position: absolute; top: 0; right: 0; bottom: 0; width: 156px; display: flex; opacity: 0; transition: opacity 0.15s; }
+.meal-swipe.open .meal-swipe-actions { opacity: 1; }
+.meal-act { flex: 1; border: none; color: #fff; font-size: 12px; font-weight: 800; font-family: inherit; cursor: pointer; }
+.meal-act.again { background: #2B8FD6; }
+.meal-act.del { background: #E5484D; }
+.meal-row { position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 0 10px 2px; cursor: pointer; transition: transform 0.22s ease; -webkit-tap-highlight-color: transparent; }
+.meal-swipe.open .meal-row { transform: translateX(-156px); }
+.meal-main { flex: 1; min-width: 0; }
+.meal-name { font-size: 14px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.meal-macros { display: flex; flex-wrap: wrap; gap: 1px 10px; margin-top: 3px; font-size: 11.5px; font-weight: 700; }
+.meal-macros .p { color: var(--teal); }
+.meal-macros .c { color: var(--coral); }
+.meal-macros .f { color: var(--sage); }
+.meal-source { font-size: 10px; color: var(--ink-soft); font-weight: 500; margin-top: 2px; }
+.meal-cal { font-family: var(--font-num); font-weight: 800; font-size: 15px; line-height: 1; text-align: right; flex-shrink: 0; }
+.meal-cal small { display: block; font-size: 10px; font-weight: 700; color: var(--ink-soft); margin-top: 3px; }
+.meal-more { width: 40px; height: 40px; flex-shrink: 0; background: none; border: none; color: var(--ink-soft); font-size: 20px; line-height: 1; cursor: pointer; border-radius: 10px; }
+.meal-more:active { background: var(--input-bg); }
+/* What fits? — one line per suggestion instead of two */
+.fits-text { display: flex !important; align-items: baseline; justify-content: space-between; gap: 8px; }
+.fits-macros { margin-top: 0 !important; white-space: nowrap; flex-shrink: 0; }
 .fits-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; margin-bottom: 6px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--input-bg); color: var(--ink); cursor: pointer; text-align: left; font-family: inherit; touch-action: manipulation; }
 .fits-row:active { transform: scale(0.985); }
 .fits-text { flex: 1; min-width: 0; }
@@ -13893,6 +13918,7 @@ function ensureAddFoodOpenOnQuickTab() {
   }
   const quickChip = document.querySelector('.food-tab-chip[data-food-tab="quick"]');
   if (quickChip && !quickChip.classList.contains('on')) quickChip.click();
+  showAddMethod('search'); // the search box is what these paths focus, so make sure its tab is showing
 }
 
 function startEditMeal(date, ts) {
@@ -14209,6 +14235,59 @@ function renderProteinSummary() {
 }
 
 
+// ── FOOD LOG ROWS ──
+// Tap a row to edit it. Swipe it left (or tap ⋯) to reveal "Again" and "Delete" — Delete keeps its
+// undo toast. Replaces the old tiny ✏️ and ✕ that sat side by side and were easy to mis-tap.
+let _mealSwipedAt = 0;
+function closeMealRows(except) {
+  document.querySelectorAll('.meal-swipe.open').forEach(s => { if (s !== except) s.classList.remove('open'); });
+}
+function wireMealRows(list, date) {
+  list.querySelectorAll('.meal-swipe').forEach(sw => {
+    const row = sw.querySelector('.meal-row'), ts = sw.dataset.ts;
+    let x0 = 0, y0 = 0, dx = 0, tracking = false;
+    row.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; dx = 0; tracking = true; }, { passive: true });
+    row.addEventListener('touchmove', e => {
+      if (!tracking) return;
+      const t = e.touches[0]; dx = t.clientX - x0;
+      if (Math.abs(t.clientY - y0) > Math.abs(dx)) tracking = false; // mostly vertical = the page is scrolling
+    }, { passive: true });
+    row.addEventListener('touchend', () => {
+      if (!tracking) return; tracking = false;
+      if (dx < -40) { closeMealRows(sw); sw.classList.add('open'); _mealSwipedAt = Date.now(); }
+      else if (dx > 40 && sw.classList.contains('open')) { sw.classList.remove('open'); _mealSwipedAt = Date.now(); }
+    });
+    const activate = () => {
+      if (Date.now() - _mealSwipedAt < 400) return;            // the click that trails a swipe
+      if (sw.classList.contains('open')) { sw.classList.remove('open'); return; }
+      closeMealRows();
+      startEditMeal(date, ts);
+    };
+    row.addEventListener('click', activate);
+    row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); } });
+    sw.querySelector('.meal-more').addEventListener('click', e => { e.stopPropagation(); const was = sw.classList.contains('open'); closeMealRows(); sw.classList.toggle('open', !was); });
+    sw.querySelector('.meal-act.del').addEventListener('click', () => deleteMeal(date, ts));
+    sw.querySelector('.meal-act.again').addEventListener('click', () => logMealAgain(date, ts));
+  });
+}
+document.addEventListener('click', e => { if (!e.target.closest || !e.target.closest('.meal-swipe.open')) closeMealRows(); });
+
+// "Again": copies a logged food into TODAY (same meal, macros, off-plan flag) — for the meals you repeat.
+async function logMealAgain(fromDate, ts) {
+  const src = mealsForDate(fromDate).find(m => m.ts === Number(ts));
+  if (!src) return;
+  const target = todayStr();
+  const existing = mealsForDate(target);
+  let newTs = Date.now(); while (existing.some(m => m.ts === newTs)) newTs++;
+  const copy = { ...src, ts: newTs };
+  await writeMeals(target, [...existing, copy]);
+  const dateEl = document.getElementById('foodDate');
+  if (dateEl.value !== target) { dateEl.value = target; dateEl.dispatchEvent(new Event('change')); } // show it where it landed
+  showUndoToast(`Logged "${src.desc}" again${target !== fromDate ? ' for today' : ''}`, async () => {
+    await writeMeals(target, mealsForDate(target).filter(m => m.ts !== newTs));
+  });
+}
+
 function renderMealList() {
   const list = document.getElementById('mealList');
   if (!list) return;
@@ -14226,36 +14305,34 @@ function renderMealList() {
   list.innerHTML = sections.map(mt => {
     const items = groups[mt] || [];
     const sub = mealTotals(items);
-    const subStr = items.length ? [sub.protein != null ? sub.protein + 'g P' : '', sub.carbs != null ? sub.carbs + 'g C' : '', sub.calories != null ? sub.calories + ' cal' : ''].filter(Boolean).join(' · ') : '';
+    const subStr = items.length ? [sub.calories != null ? sub.calories + ' cal' : '', sub.protein != null ? sub.protein + 'g P' : '', sub.carbs != null ? sub.carbs + 'g C' : '', sub.fat != null ? sub.fat + 'g F' : ''].filter(Boolean).join(' · ') : '';
     const addLink = mt !== 'Other'
       ? `<div class="add-to-meal-row" data-addmeal="${mt}" style="padding:6px 0 8px;color:var(--teal);font-size:12px;font-weight:700;cursor:pointer">+ Add food to ${mt}</div>`
       : '';
-    return `
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin:10px 0 2px;display:flex;justify-content:space-between">
-        <span>${mt}</span><span style="font-family:var(--font-num);font-weight:700">${subStr}</span>
-      </div>` +
-      items.map(m => `
-        <div class="lab-row">
-          <span style="font-family:var(--font-text)">
-            <div>${m.offPlan ? '🔸 ' : ''}${m.desc}</div>
-            ${m.source ? `<div style="font-size:10px;color:var(--ink-soft);font-weight:500">${m.source}</div>` : ''}
-          </span>
-          <span style="display:flex;align-items:center;gap:10px">
-            ${m.protein ? `<span class="lab-val">${m.protein}g</span>` : ''}
-            ${m.carbs ? `<span style="color:var(--coral)">${m.carbs}c</span>` : ''}
-            ${m.cal ? `<span style="color:var(--ink-soft)">${m.cal} cal</span>` : ''}
-            <button class="entry-edit" data-mealedit="${m.ts}" aria-label="Edit ${m.desc}">✏️</button>
-            <button class="entry-del" data-mealts="${m.ts}" aria-label="Delete ${m.desc}">✕</button>
-          </span>
-        </div>`).join('') +
+    return `<div class="meal-group-head"><span>${mt}</span><span class="meal-group-tot">${subStr}</span></div>` +
+      items.map(m => {
+        const name = escapeHtml(m.desc || '');
+        const macros = [m.protein ? `<span class="p">${m.protein}g P</span>` : '', m.carbs ? `<span class="c">${m.carbs}g C</span>` : '', m.fat ? `<span class="f">${m.fat}g F</span>` : ''].filter(Boolean).join('');
+        return `
+        <div class="meal-swipe" data-ts="${m.ts}">
+          <div class="meal-swipe-actions">
+            <button type="button" class="meal-act again" data-mealagain="${m.ts}" aria-label="Log ${name} again">↻ Again</button>
+            <button type="button" class="meal-act del" data-mealts="${m.ts}" aria-label="Delete ${name}">Delete</button>
+          </div>
+          <div class="meal-row" data-mealedit="${m.ts}" role="button" tabindex="0" aria-label="Edit ${name}">
+            <div class="meal-main">
+              <div class="meal-name">${m.offPlan ? '🔸 ' : ''}${name}</div>
+              ${macros ? `<div class="meal-macros">${macros}</div>` : ''}
+              ${m.source ? `<div class="meal-source">${escapeHtml(m.source)}</div>` : ''}
+            </div>
+            ${m.cal ? `<div class="meal-cal">${m.cal}<small>cal</small></div>` : ''}
+            <button type="button" class="meal-more" data-mealmore="${m.ts}" aria-label="More actions for ${name}">⋯</button>
+          </div>
+        </div>`;
+      }).join('') +
       addLink;
   }).join('');
-  list.querySelectorAll('[data-mealts]').forEach(btn => {
-    btn.addEventListener('click', () => deleteMeal(date, btn.dataset.mealts));
-  });
-  list.querySelectorAll('[data-mealedit]').forEach(btn => {
-    btn.addEventListener('click', () => startEditMeal(date, btn.dataset.mealedit));
-  });
+  wireMealRows(list, date);
   list.querySelectorAll('[data-addmeal]').forEach(el => {
     el.addEventListener('click', () => {
       ensureAddFoodOpenOnQuickTab();
