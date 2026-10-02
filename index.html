@@ -7998,7 +7998,7 @@ const AI_SAFETY_INSTRUCTIONS = `Important constraints: describe only patterns ac
 // genuinely can't do. Both are manual, on-demand calls, never automatic.
 // Sent alongside the data so the AI knows what each field means. (130 matches the fasting-glucose
 // target used elsewhere in the app.)
-const AI_DATA_LEGEND = "Field notes: weight is in lbs and dose in mg. glucose_fasting_mgdl is the first-thing-in-the-morning reading and glucose_2hr_post_meal_mgdl is the reading 2 hours after a meal, both in mg/dL; this person's fasting target is under 130, and glucose is usually only checked on some days, so gaps are normal. meals lists what was eaten (calories and grams of protein/carbs/fat). water_oz is ounces. day_status 'sick' or 'rest' marks a deliberate rest day. 'effort' on a workout is the person's own 1-5 rating of how hard it felt (5 = hardest). injection:true marks the day the weekly dose was taken.";
+const AI_DATA_LEGEND = "Field notes: weight is in lbs and dose in mg. glucose_fasting_mgdl is the first-thing-in-the-morning reading and glucose_2hr_post_meal_mgdl is the reading 2 hours after a meal, both in mg/dL; this person's fasting target is under 130, and glucose is usually only checked on some days, so gaps are normal. meals lists what was eaten (calories and grams of protein/carbs/fat). water_oz is ounces. day_status 'sick' or 'rest' marks a deliberate rest day. 'effort' on a workout is the person's own 1-5 rating of how hard it felt (5 = hardest). strength_sets lists each exercise as weightxreps for every working set (in lbs; warm-up sets are left out), with workout_day being the Push/Pull/Legs (or split) day. injection:true marks the day the weekly dose was taken.";
 
 function gatherRecentHealthData(days) {
   const cutoff = new Date(todayStr());
@@ -8021,6 +8021,24 @@ function gatherRecentHealthData(days) {
       if (e.carbs) row.carbs_g = e.carbs;
       if (e.fat) row.fat_g = e.fat;
       if (e.ex && e.ex.length) row.exercise = e.ex.map(x => `${x.type}${x.min ? ` ${x.min}min` : ''}${x.dist ? ` ${x.dist}mi` : ''}${x.effort ? ` (effort ${x.effort}/5)` : ''}`).join(', ');
+      // Per-set strength detail (so "am I progressing on bench?" is answerable): one compact line per
+      // exercise — weightxreps for each working set, warm-ups left out — plus any variation/note.
+      const strengthEx = (e.ex || []).filter(x => x.type === 'Strength' && x.sets && typeof x.sets === 'object');
+      if (strengthEx.length) {
+        const lines = [];
+        strengthEx.forEach(x => {
+          if (x.planDay && typeof x.planDay === 'string' && !row.workout_day) row.workout_day = x.planDay;
+          Object.entries(x.sets).slice(0, 12).forEach(([name, sets]) => {
+            if (!Array.isArray(sets)) return;
+            const working = sets.filter(s => s && !s.warmup && s.weight > 0 && s.reps > 0).slice(0, 10);
+            if (!working.length) return;
+            const variation = x.exerciseVariations && typeof x.exerciseVariations[name] === 'string' ? ` [${x.exerciseVariations[name]}]` : '';
+            const note = x.notes && x.notes[name] ? ` — note: ${String(x.notes[name]).slice(0, 100)}` : '';
+            lines.push(`${name}${variation}: ${working.map(s => `${s.weight}x${s.reps}`).join(', ')}${note}`);
+          });
+        });
+        if (lines.length) row.strength_sets = lines;
+      }
       if (e.steps) row.steps = e.steps;
       if (e.sleepHrs) row.sleep_hours = e.sleepHrs;
       if (e.sleepScore) row.sleep_score = e.sleepScore;
@@ -8124,7 +8142,7 @@ document.getElementById('aiAskBtn').addEventListener('click', async () => {
     if (!result.ok) { box.innerHTML = `Failed — HTTP ${result.status}. Check your Anthropic API key in Settings.`; return; }
     // Show what the answer was based on, so missing data is visible instead of silently producing a wrong answer.
     const gCount = data.filter(r => r.glucose_fasting_mgdl || r.glucose_2hr_post_meal_mgdl).length;
-    box.innerHTML = (result.text || 'No response — try again.') + `<div class="ai-based-on">Based on ${data.length} day${data.length === 1 ? '' : 's'} of logs · ${gCount} with glucose readings</div>`;
+    box.innerHTML = (result.text || 'No response — try again.') + `<div class="ai-based-on">Based on ${data.length} day${data.length === 1 ? '' : 's'} of logs · ${gCount} with glucose readings · ${data.filter(r => r.strength_sets).length} with strength sets</div>`;
   } catch (err) {
     console.error(err);
     box.innerHTML = 'Failed — check your connection and Anthropic API key.';
