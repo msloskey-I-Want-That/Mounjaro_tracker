@@ -14165,14 +14165,22 @@ function computeCalorieTargets() {
 // text to the final value, so the DOM itself can't tell us where the
 // animation should start from.
 let _lastMacroDisplayValues = {};
+// 1828 -> "1,828" (leaves anything that isn't a plain number alone)
+function fmtThousands(n) {
+  if (n == null || n === '') return '';
+  const x = Number(n);
+  return Number.isFinite(x) ? x.toLocaleString('en-US') : String(n);
+}
+
 function animateNumberTo(el, fromValue, toValue, opts = {}) {
   if (!el) return;
   const duration = opts.duration || 500;
   const decimals = opts.decimals || 0;
+  const show = v => opts.commas ? fmtThousands(Math.round(v)) : v.toFixed(decimals);
   if (!isFinite(fromValue)) fromValue = 0;
   if (!isFinite(toValue)) toValue = 0;
   if (Math.abs(toValue - fromValue) < (decimals ? 0.05 : 1)) {
-    el.textContent = toValue.toFixed(decimals);
+    el.textContent = show(toValue);
     return;
   }
   const startTime = performance.now();
@@ -14180,9 +14188,9 @@ function animateNumberTo(el, fromValue, toValue, opts = {}) {
     const progress = Math.min(1, (now - startTime) / duration);
     const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
     const current = fromValue + (toValue - fromValue) * eased;
-    el.textContent = current.toFixed(decimals);
+    el.textContent = show(current);
     if (progress < 1) requestAnimationFrame(tick);
-    else el.textContent = toValue.toFixed(decimals);
+    else el.textContent = show(toValue);
   }
   requestAnimationFrame(tick);
 }
@@ -14195,7 +14203,7 @@ function macroBarRow(label, logged, goal, color, key) {
     <div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
         <span style="font-size:12px;color:var(--ink-soft)">${label}</span>
-        <span style="font-family:var(--font-num);font-size:12px;color:${color};font-weight:700"><span class="macro-logged-value" data-macro-key="${key}" data-macro-target="${logged}">${logged}</span> / ${goal}${unit}${remaining > 0 ? ` · ${remaining}${unit} left` : ' · met ✓'}</span>
+        <span style="font-family:var(--font-num);font-size:12px;color:${color};font-weight:700"><span class="macro-logged-value" data-macro-key="${key}" data-macro-target="${logged}">${fmtThousands(logged)}</span> / ${fmtThousands(goal)}${unit}${remaining > 0 ? ` · ${fmtThousands(remaining)}${unit} left` : ' · met ✓'}</span>
       </div>
       <div style="height:7px;border-radius:4px;background:var(--line);overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${color};border-radius:4px"></div>
@@ -14245,7 +14253,7 @@ function renderWhatFits() {
     <button type="button" class="fits-row" data-fit-idx="${i}">
       <div class="fits-text">
         <div class="fits-name">${escapeHtml(c.label)}${c.kind === 'combo' && !/combo/i.test(c.label) ? ' <span style="font-weight:500;opacity:0.6">· combo</span>' : ''}</div>
-        <div class="fits-macros"><b class="fits-p">${Math.round(c.p)}g</b>${c.cal != null ? ` · ${Math.round(c.cal)} cal` : ''}</div>
+        <div class="fits-macros"><b class="fits-p">${Math.round(c.p)}g</b>${c.cal != null ? ` · ${fmtThousands(Math.round(c.cal))} cal` : ''}</div>
       </div>
       <div class="fits-add" aria-hidden="true">+</div>
     </button>`).join('');
@@ -14297,7 +14305,7 @@ function renderProteinSummary() {
     const key = span.dataset.macroKey;
     const target = parseFloat(span.dataset.macroTarget) || 0;
     const from = _lastMacroDisplayValues[key] != null ? _lastMacroDisplayValues[key] : 0;
-    animateNumberTo(span, from, target);
+    animateNumberTo(span, from, target, { commas: true });
     _lastMacroDisplayValues[key] = target;
   });
   try { renderWhatFits(); } catch (err) { console.error('What fits render failed:', err); }
@@ -14424,7 +14432,7 @@ function renderMealList() {
   list.innerHTML = sections.map(mt => {
     const items = groups[mt] || [];
     const sub = mealTotals(items);
-    const subStr = items.length ? [sub.calories != null ? sub.calories + ' cal' : '', sub.protein != null ? sub.protein + 'g P' : '', sub.carbs != null ? sub.carbs + 'g C' : '', sub.fat != null ? sub.fat + 'g F' : ''].filter(Boolean).join(' · ') : '';
+    const subStr = items.length ? [sub.calories != null ? fmtThousands(sub.calories) + ' cal' : '', sub.protein != null ? sub.protein + 'g P' : '', sub.carbs != null ? sub.carbs + 'g C' : '', sub.fat != null ? sub.fat + 'g F' : ''].filter(Boolean).join(' · ') : '';
     const addLink = mt !== 'Other'
       ? `<div class="add-to-meal-row" data-addmeal="${mt}" style="padding:6px 0 8px;color:var(--teal);font-size:12px;font-weight:700;cursor:pointer">+ Add food to ${mt}</div>`
       : '';
@@ -14444,7 +14452,7 @@ function renderMealList() {
               ${macros ? `<div class="meal-macros">${macros}</div>` : ''}
               ${m.source ? `<div class="meal-source">${escapeHtml(m.source)}</div>` : ''}
             </div>
-            ${m.cal ? `<div class="meal-cal">${m.cal}<small>cal</small></div>` : ''}
+            ${m.cal ? `<div class="meal-cal">${fmtThousands(m.cal)}<small>cal</small></div>` : ''}
             <button type="button" class="meal-more" data-mealmore="${m.ts}" aria-label="More actions for ${name}">⋯</button>
           </div>
         </div>`;
