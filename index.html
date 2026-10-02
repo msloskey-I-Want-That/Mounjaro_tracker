@@ -10155,8 +10155,8 @@ function fmtRestTime(sec) {
 }
 
 // ── INLINE REST BAR ──
-// The countdown lives right under the set you just finished (a progress
-// bar that fills as you rest) so your eyes never leave the row. It's the
+// The countdown lives right under the set you just finished (a bar that
+// drains as you rest, in step with the number) so your eyes never leave the row. It's the
 // same timer as the corner pill — same beep/vibrate, same ±15 that
 // remembers your preferred rest per exercise — just presented in the list.
 // The pill is kept as a fallback for when that row isn't on screen.
@@ -10165,7 +10165,7 @@ function restInlineHtml(exerciseName, idx) {
   const running = restTimerEndTime != null;
   const remaining = running ? Math.max(0, Math.round((restTimerEndTime - Date.now()) / 1000)) : 0;
   const total = restTimerTotalSeconds || 1;
-  const pct = running ? Math.min(100, Math.max(0, ((total - remaining) / total) * 100)) : 100;
+  const pct = running ? Math.min(100, Math.max(0, (remaining / total) * 100)) : 100; // drains with the countdown; the done state flashes full green
   return `<div class="rest-inline${running ? '' : ' done'}" data-exercise="${exerciseName}" data-set-idx="${idx}">
     ${running ? '<button type="button" class="rest-inline-adj" data-delta="-15" aria-label="15 seconds less rest">−15</button>' : ''}
     <div class="rest-inline-bar"><div class="rest-inline-fill" style="width:${pct}%"></div><span class="rest-inline-time">${running ? fmtRestTime(remaining) : 'Go!'}</span></div>
@@ -10177,7 +10177,7 @@ function updateRestInline(remaining) {
   const el = document.querySelector('.rest-inline');
   if (!el || el.classList.contains('done')) return;
   const total = restTimerTotalSeconds || 1;
-  const pct = Math.min(100, Math.max(0, ((total - remaining) / total) * 100));
+  const pct = Math.min(100, Math.max(0, (remaining / total) * 100));
   const fill = el.querySelector('.rest-inline-fill'), time = el.querySelector('.rest-inline-time');
   if (fill) fill.style.width = pct + '%';
   if (time) time.textContent = fmtRestTime(remaining);
