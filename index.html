@@ -855,6 +855,14 @@ body {
 .rest-note { font-size: 11px; font-weight: 600; color: #B79BE0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 [data-theme="light"] .rest-note { color: #6B4C94; }
 .rest-note button { background: none; border: none; color: var(--ink-soft); text-decoration: underline; font-size: 11px; cursor: pointer; padding: 0; font-family: inherit; }
+.draft-banner { position: fixed; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 78px); z-index: 450; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--card); border: 1.5px solid var(--teal); box-shadow: var(--shadow-hero); font-size: 13px; font-weight: 700; color: var(--ink); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.draft-banner .btn { width: auto; padding: 8px 12px; }
+.sync-status { font-size: 10px; font-weight: 700; white-space: nowrap; color: var(--ink-soft); }
+.sync-status.ok { color: var(--sage); opacity: 0.85; }
+.sync-status.busy { color: var(--ink-soft); }
+.sync-status.warn { color: #FFB020; }
+.sync-status.bad { color: var(--coral); }
+[data-theme="light"] .sync-status.warn { color: #9A5B00; }
 .variation-caption { font-size: 11px; font-weight: 600; color: var(--ink); margin: -3px 0 8px; }
 .set-field input::-webkit-outer-spin-button, .set-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .set-field input { -moz-appearance: textfield; appearance: textfield; }
@@ -1118,7 +1126,7 @@ body {
       <div class="header-icon"><svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/></svg></div>
       <div>
         <div class="header-title">My Health Tracker</div>
-        <div class="header-sub" id="headerSub">Loading…</div>
+        <div style="display:flex;align-items:center;gap:8px"><div class="header-sub" id="headerSub">Loading…</div><span id="syncStatus" class="sync-status"></span></div>
       </div>
     </div>
     <div class="header-right">
@@ -3123,8 +3131,46 @@ body {
 setTimeout(() => { if (typeof hideLoading === 'function') hideLoading(); }, 8000);
 
 import { initializeApp }        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, query, orderBy, enableIndexedDbPersistence }
+import { getFirestore, collection, doc, setDoc as fsSetDoc, getDoc, getDocs, deleteDoc as fsDeleteDoc, onSnapshot, query, orderBy, enableIndexedDbPersistence }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ── SAVE STATUS ──
+// Every cloud write in the app goes through these two wrappers (the real
+// Firestore functions are imported under fs* names), so the header can say
+// honestly what's happening: Saving, Saved, still waiting on the network, or
+// failed. With offline persistence on, a write made without signal doesn't
+// fail — its promise just stays pending until the server confirms — so
+// "pending for a while, or the browser says offline" is what reads as
+// "saved on this phone, will sync".
+let _pendingWrites = 0, _pendingSince = 0, _lastWriteFailed = false, _everSaved = false, _syncRecheck = null;
+function updateSyncPill() {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  const waited = _pendingWrites > 0 ? Date.now() - _pendingSince : 0;
+  const stale = waited > 5000;
+  let text = '', cls = '';
+  if (_lastWriteFailed) { text = "⚠ Couldn't save"; cls = 'bad'; }
+  else if (_pendingWrites > 0 && (offline || stale)) { text = offline ? `Offline · ${_pendingWrites} to sync` : `Syncing ${_pendingWrites}…`; cls = 'warn'; }
+  else if (_pendingWrites > 0) { text = 'Saving…'; cls = 'busy'; }
+  else if (offline) { text = 'Offline'; cls = 'warn'; }
+  else if (_everSaved) { text = '✓ Saved'; cls = 'ok'; }
+  el.textContent = text;
+  el.className = 'sync-status ' + cls;
+  clearTimeout(_syncRecheck);
+  if (_pendingWrites > 0 && !stale) _syncRecheck = setTimeout(updateSyncPill, Math.max(50, 5100 - waited));
+}
+async function _trackedWrite(run) {
+  if (_pendingWrites === 0) _pendingSince = Date.now();
+  _pendingWrites++; _lastWriteFailed = false; updateSyncPill();
+  try { const r = await run(); _everSaved = true; return r; }
+  catch (err) { _lastWriteFailed = true; throw err; }
+  finally { _pendingWrites = Math.max(0, _pendingWrites - 1); updateSyncPill(); }
+}
+async function setDoc(ref, data, opts) { return _trackedWrite(() => fsSetDoc(ref, data, opts)); }
+async function deleteDoc(ref) { return _trackedWrite(() => fsDeleteDoc(ref)); }
+window.addEventListener('online', updateSyncPill);
+window.addEventListener('offline', updateSyncPill);
 
 // ── FIREBASE ──
 const firebaseConfig = {
@@ -4889,6 +4935,7 @@ function startListening() {
     snap => {
       entries = snap.docs.map(d => d.data());
       renderAll();
+      if (!_draftRestoreDone) { try { restoreWorkoutDraft(); } catch (err) { console.error('Draft restore failed:', err); } }
       // Also attempted here, not only from the settings listener: a tracker
       // whose settings doc doesn't exist yet would otherwise capture health
       // params from the URL and never write them. Safe to call twice — it
@@ -8622,6 +8669,7 @@ async function logExercise(type, min, dist, incline) {
     workoutNotesState = {};
     workoutVariationState = {};
     todaysSwaps = {};
+    clearWorkoutDraft();
     lastAutoFilledMin = null;
     stopRestTimer();
     pplDayOverride = null;
@@ -10983,6 +11031,7 @@ function renderWorkoutPlan() {
            <div style="font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:800;color:var(--teal-mid);line-height:1.1">⏱ <span id="workoutElapsedDisplay">0:00</span></div>
            <div style="font-size:11px;color:var(--ink-soft);margin-top:2px">tap to resume full screen</div>
            <div style="font-size:11px;color:var(--ink-soft);margin-top:2px">Workout #${workoutsInLastDays(7) + 1} this week</div>
+           <div id="workoutDraftStatus" style="font-size:11px;color:var(--sage);margin-top:2px">${draftStatusText()}</div>
            ${(() => {
              const currentSets = gatherWorkoutSets();
              const currentVolume = currentSets ? totalSessionWeight(currentSets) : 0;
@@ -14568,11 +14617,109 @@ if ('serviceWorker' in navigator) {
   };
 }
 
+// ── WORKOUT AUTOSAVE ──
+// In-progress sets used to live only in memory until Finish was tapped, so
+// iOS killing the app mid-workout (switching to Spotify is enough) lost
+// everything logged so far. This writes the live session to the phone every
+// couple of seconds and the instant the app is backgrounded, and offers to
+// pick it back up on the next launch. It's cleared the moment Finish saves,
+// and a draft whose workout already made it to the cloud is thrown away
+// rather than restored, so a finished session can't come back as a duplicate.
+const WORKOUT_DRAFT_KEY = 'mounjaro-workout-draft';
+let _lastDraftSig = null, _lastDraftSavedAt = null, _draftCreatedAt = null;
+let _draftRestoreDone = false;
+function draftStatusText() { return _lastDraftSavedAt ? '✓ Autosaved on this phone' : ''; }
+function updateDraftStatusEl() { const el = document.getElementById('workoutDraftStatus'); if (el) el.textContent = draftStatusText(); }
+// Merely opening the plan pre-fills every exercise's weights from your last
+// session, so "has data" isn't enough — a draft only counts once you've
+// actually started, checked a set off, or noted/chosen something.
+function workoutDraftIsMeaningful() {
+  if (workoutStartedAt) return true;
+  const anyDone = Object.values(workoutSessionState).some(sets => (sets || []).some(s => s && s.done));
+  const anyNote = Object.values(workoutNotesState).some(n => (n || '').trim());
+  const anyVariation = Object.values(workoutVariationState).some(Boolean);
+  return anyDone || anyNote || anyVariation;
+}
+function persistWorkoutDraft() {
+  try {
+    if (!_draftRestoreDone && localStorage.getItem(WORKOUT_DRAFT_KEY)) return; // an older draft is still waiting on a restore/discard decision — don't overwrite it
+    if (!workoutDraftIsMeaningful()) { if (_lastDraftSig !== null) clearWorkoutDraft(); return; }
+    if (!_draftCreatedAt) _draftCreatedAt = Date.now();
+    const draft = { v: 1, createdAt: _draftCreatedAt, savedAt: Date.now(), startedAt: workoutStartedAt,
+      sessions: workoutSessionState, notes: workoutNotesState, variations: workoutVariationState, swaps: todaysSwaps,
+      pplDay: pplDayOverride, splitDay: splitDayOverride };
+    const sig = JSON.stringify({ ...draft, savedAt: 0 }); // so an idle session doesn't rewrite storage every tick
+    if (sig === _lastDraftSig) return;
+    localStorage.setItem(WORKOUT_DRAFT_KEY, JSON.stringify(draft));
+    _lastDraftSig = sig; _lastDraftSavedAt = Date.now();
+    updateDraftStatusEl();
+  } catch (err) { /* storage full or unavailable (private mode) — autosave is best-effort */ }
+}
+function clearWorkoutDraft() {
+  try { localStorage.removeItem(WORKOUT_DRAFT_KEY); } catch (err) { /* ignore */ }
+  _lastDraftSig = null; _lastDraftSavedAt = null; _draftCreatedAt = null;
+  updateDraftStatusEl();
+}
+function showDraftBanner(setsDone) {
+  const old = document.getElementById('draftBanner'); if (old) old.remove();
+  const b = document.createElement('div');
+  b.id = 'draftBanner'; b.className = 'draft-banner';
+  b.innerHTML = `<div style="flex:1;min-width:0">↩ Restored your workout in progress<div style="font-size:11px;font-weight:500;opacity:0.8">${setsDone} set${setsDone === 1 ? '' : 's'} logged</div></div>
+    <button type="button" id="draftResumeBtn" class="btn btn-primary btn-sm">Resume</button>
+    <button type="button" id="draftDiscardBtn" class="btn btn-ghost btn-sm">Discard</button>`;
+  document.body.appendChild(b);
+  document.getElementById('draftResumeBtn').addEventListener('click', () => {
+    b.remove();
+    showView('exercise');
+    renderWorkoutPlan();
+    if (workoutStartedAt) setWorkoutFullscreen(true);
+  });
+  document.getElementById('draftDiscardBtn').addEventListener('click', () => {
+    if (!confirm('Discard the workout in progress? The sets logged so far will be lost.')) return;
+    b.remove();
+    workoutSessionState = {}; workoutNotesState = {}; workoutVariationState = {}; todaysSwaps = {};
+    workoutStartedAt = null; stopWorkoutTimer(); pplDayOverride = null; splitDayOverride = null;
+    clearWorkoutDraft();
+    renderWorkoutPlan();
+  });
+}
+function restoreWorkoutDraft() {
+  if (_draftRestoreDone) return;
+  _draftRestoreDone = true;
+  let draft = null;
+  try { draft = JSON.parse(localStorage.getItem(WORKOUT_DRAFT_KEY) || 'null'); } catch (err) { draft = null; }
+  if (!draft || draft.v !== 1) { clearWorkoutDraft(); return; }
+  const tooOld = Date.now() - (draft.savedAt || 0) > 16 * 3600 * 1000;
+  // Finish saves the workout, THEN clears the draft — if the app died in
+  // between, the workout is already in the cloud (a Strength entry stamped
+  // after this draft began), and restoring would let it be finished twice.
+  const alreadySaved = entries.some(e => (e.ex || []).some(x => x.type === 'Strength' && x.ts >= (draft.createdAt || 0)));
+  if (tooOld || alreadySaved) { clearWorkoutDraft(); return; }
+  workoutSessionState = draft.sessions || {};
+  workoutNotesState = draft.notes || {};
+  workoutVariationState = draft.variations || {};
+  todaysSwaps = draft.swaps || {};
+  pplDayOverride = draft.pplDay != null ? draft.pplDay : null;
+  splitDayOverride = draft.splitDay != null ? draft.splitDay : null;
+  workoutStartedAt = draft.startedAt || null;
+  _draftCreatedAt = draft.createdAt || Date.now();
+  if (workoutStartedAt) startWorkoutTimer();
+  const setsDone = Object.values(workoutSessionState).reduce((n, sets) => n + (sets || []).filter(s => s && s.done).length, 0);
+  try { renderWorkoutPlan(); } catch (err) { console.error(err); }
+  showDraftBanner(setsDone);
+}
+setInterval(persistWorkoutDraft, 2000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persistWorkoutDraft(); });
+window.addEventListener('pagehide', persistWorkoutDraft);
+
 // ── BOOT ──
 try { todayDefault(); } catch (err) { console.error('todayDefault failed:', err); }
 initSyncId();
 // Failsafe: never leave the loading screen up more than 6s
 setTimeout(hideLoading, 6000);
+// Restore normally waits for the first data load; if that never arrives (first launch offline), do it anyway.
+try { if (!localStorage.getItem(WORKOUT_DRAFT_KEY)) _draftRestoreDone = true; } catch (err) { _draftRestoreDone = true; }
+setTimeout(() => { try { restoreWorkoutDraft(); } catch (err) { console.error('Draft restore failed:', err); } }, 4000);
 </script>
 </body>
 </html>
