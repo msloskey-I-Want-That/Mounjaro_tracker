@@ -843,6 +843,13 @@ body {
   .set-field input { font-size: 16px; }
   .set-field .unit { display: none; }
 }
+/* ── WHAT FITS? ── one-tap suggestions sized to what's left today */
+.fits-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; margin-bottom: 6px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--input-bg); color: var(--ink); cursor: pointer; text-align: left; font-family: inherit; touch-action: manipulation; }
+.fits-row:active { transform: scale(0.985); }
+.fits-text { flex: 1; min-width: 0; }
+.fits-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fits-macros { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
+.fits-add { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; background: var(--teal); color: #0a2e28; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .variation-caption { font-size: 11px; font-weight: 600; color: var(--ink); margin: -3px 0 8px; }
 .set-field input::-webkit-outer-spin-button, .set-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .set-field input { -moz-appearance: textfield; appearance: textfield; }
@@ -2206,6 +2213,14 @@ body {
         </div>
         <div class="form-section-title" style="margin-bottom:8px">Daily Nutrition</div>
         <div id="proteinSummaryBody"></div>
+      </div>
+
+      <div class="form-card" id="whatFitsCard" style="display:none">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px">
+          <div class="form-section-title" style="margin-bottom:0">What fits?</div>
+          <div id="whatFitsLeft" style="font-size:11px;color:var(--ink-soft);white-space:nowrap"></div>
+        </div>
+        <div id="whatFitsList"></div>
       </div>
 
       <div class="form-card">
@@ -13400,6 +13415,60 @@ function macroBarRow(label, logged, goal, color, key) {
     </div>`;
 }
 
+// "What fits?" — foods you already eat that fit what's left today, ranked
+// by how much they help the protein goal. Pulls from favorites, combos, and
+// whatever you've actually repeated lately (same sources as Quick Log), so
+// it works even if you never curated favorites. Skips anything that would
+// blow the remaining calories, and anything with too little protein to matter.
+function whatFitsCandidates(proteinLeft, calLeft, limit) {
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+  const pool = [], seen = new Set();
+  const add = c => { const k = c.label.trim().toLowerCase(); if (!k || seen.has(k)) return; seen.add(k); pool.push(c); };
+  pinnedFavorites.forEach(f => add({ kind: 'food', label: f.desc, item: f, p: num(f.protein), cal: num(f.cal) }));
+  foodCombos.forEach(c => {
+    let p = 0, cal = 0, hasCal = false;
+    c.items.forEach(i => { p += num(i.protein) || 0; const ic = num(i.cal); if (ic != null) { cal += ic; hasCal = true; } });
+    add({ kind: 'combo', label: c.name, combo: c, p, cal: hasCal ? cal : null });
+  });
+  topFrequentFoods(12).forEach(f => add({ kind: 'food', label: f.desc, item: f, p: num(f.protein), cal: num(f.cal) }));
+  return pool
+    .filter(c => c.p != null && c.p >= 5 && (c.cal == null || c.cal <= calLeft))
+    .map(c => ({ ...c, score: Math.min(c.p, proteinLeft) * 1000 + (c.cal ? (c.p / c.cal) * 100 : 0) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+function renderWhatFits() {
+  const card = document.getElementById('whatFitsCard');
+  const list = document.getElementById('whatFitsList');
+  const leftEl = document.getElementById('whatFitsLeft');
+  if (!card || !list) return;
+  const date = document.getElementById('foodDate').value;
+  const totals = mealTotals(mealsForDate(date));
+  const targets = computeCalorieTargets();
+  const proteinLeft = targets.proteinTarget - (totals.protein || 0);
+  const calLeft = targets.calorieTarget - (totals.calories || 0);
+  if (proteinLeft <= 0 || calLeft <= 0) { card.style.display = 'none'; return; }
+  const picks = whatFitsCandidates(proteinLeft, calLeft, 4);
+  if (!picks.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  if (leftEl) leftEl.textContent = `${proteinLeft}g protein · ${calLeft.toLocaleString()} cal left`;
+  list.innerHTML = picks.map((c, i) => `
+    <button type="button" class="fits-row" data-fit-idx="${i}">
+      <div class="fits-text">
+        <div class="fits-name">${escapeHtml(c.label)}${c.kind === 'combo' && !/combo/i.test(c.label) ? ' <span style="font-weight:400;opacity:0.6">· combo</span>' : ''}</div>
+        <div class="fits-macros">${Math.round(c.p)}g protein${c.cal != null ? ` · ${Math.round(c.cal)} cal` : ''}</div>
+      </div>
+      <div class="fits-add" aria-hidden="true">+</div>
+    </button>`).join('');
+  list.querySelectorAll('.fits-row').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const c = picks[Number(btn.dataset.fitIdx)];
+      if (c.kind === 'combo') quickAddCombo(c.combo); else quickAddFood(c.item);
+    });
+  });
+}
+
 function renderProteinSummary() {
   const box = document.getElementById('proteinSummaryBody');
   if (!box) return;
@@ -13423,6 +13492,7 @@ function renderProteinSummary() {
     animateNumberTo(span, from, target);
     _lastMacroDisplayValues[key] = target;
   });
+  try { renderWhatFits(); } catch (err) { console.error('What fits render failed:', err); }
 }
 
 
