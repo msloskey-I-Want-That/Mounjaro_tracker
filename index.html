@@ -774,6 +774,87 @@ body {
 .ppl-day-chip.on, .split-day-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; font-weight: 800; }
 .ex-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; }
 .chip.ex-chip { padding: 9px 16px; font-size: 14px; font-weight: 700; border-radius: 12px; }
+
+/* ── WORKOUT SET LOGGER ──
+   Each set is one rounded card: a quiet top line (set number, last
+   session's numbers, PR chip, remove) and a main line of big tap
+   targets (weight stepper, reps, check). --accent is set per row from
+   the exercise's color so a finished set picks up that exercise's tint. */
+.set-row {
+  --accent: #5CE6C0;
+  margin-bottom: 8px; padding: 8px 10px 10px;
+  border: 1.5px solid var(--line); border-radius: 14px;
+  background: var(--input-bg);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.set-row.done { border-color: var(--accent); background: rgba(92,230,192,0.10); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.set-row-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; min-height: 24px; }
+.set-number-toggle {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  border: none; background: var(--line); color: var(--ink-soft);
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.set-number-toggle.warmup { background: rgba(255,111,165,0.18); color: var(--coral); font-weight: 800; }
+.set-prev { flex: 1; min-width: 0; font-size: 11px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pr-proximity-hint { font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; color: var(--ink-soft); }
+.pr-proximity-hint.pr-pace { color: #FFB020; background: rgba(255,176,32,0.15); padding: 2px 8px; border-radius: 10px; }
+.set-remove-btn { width: 24px; height: 24px; flex-shrink: 0; border-radius: 8px; border: none; background: none; color: var(--ink-soft); font-size: 14px; cursor: pointer; opacity: 0.55; }
+.set-row-main { display: flex; align-items: center; gap: 8px; }
+.set-weight-group { flex: 1.8; min-width: 0; display: flex; align-items: center; gap: 5px; }
+.set-step-btn {
+  width: 36px; height: 44px; flex-shrink: 0; border-radius: 12px;
+  border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+  font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer;
+  touch-action: manipulation; transition: transform 0.08s;
+}
+.set-step-btn:active { transform: scale(0.92); }
+.set-field { position: relative; flex: 1; min-width: 0; }
+.set-reps-field { flex: 0.95; }
+.set-field input {
+  width: 100%; height: 44px; padding: 0 4px 4px; box-sizing: border-box;
+  border: 1.5px solid var(--line); border-radius: 12px;
+  background: var(--card); color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; text-align: center;
+}
+.set-field .unit { position: absolute; right: 7px; bottom: 3px; font-size: 8px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; pointer-events: none; }
+.set-row.done .set-field input { border-color: var(--accent); font-weight: 800; }
+.set-check-btn {
+  width: 46px; height: 44px; flex-shrink: 0; border-radius: 12px;
+  border: 1.5px solid var(--line); background: var(--card); color: var(--ink-soft);
+  font-size: 19px; font-weight: 800; cursor: pointer; touch-action: manipulation;
+}
+.set-row.done .set-check-btn { background: var(--accent); border-color: var(--accent); color: #0d0d0f; }
+.set-check-btn.set-just-done { animation: set-done-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes set-done-pop { 0% { transform: scale(0.78); } 60% { transform: scale(1.22); } 100% { transform: scale(1); } }
+.progress-segs { display: flex; align-items: center; gap: 4px; width: 100%; margin-bottom: 10px; }
+.progress-seg { flex: 1; height: 5px; border-radius: 3px; background: var(--line); transition: background 0.25s ease; }
+.progress-seg.on { background: var(--seg-color, var(--teal)); }
+.exercise-action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
+.exercise-sets-target { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.variation-caption { font-size: 11px; font-weight: 600; color: var(--ink); margin: -3px 0 8px; }
+.set-field input::-webkit-outer-spin-button, .set-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.set-field input { -moz-appearance: textfield; appearance: textfield; }
+.superset-label { color: #B79BE0; border-color: #7A5C9E; }
+.swap-label { color: #37C6FF; border-color: #37C6FF; }
+[data-theme="light"] .superset-label { color: #6B4C94; border-color: #7A5C9E; }
+[data-theme="light"] .swap-label { color: #0A7FB5; border-color: #0A7FB5; }
+[data-theme="light"] .pr-proximity-hint.pr-pace { color: #9A5B00; background: rgba(255,176,32,0.26); }
+.exercise-action-btn {
+  height: 32px; min-width: 32px; padding: 0 9px; border-radius: 16px;
+  border: 1.5px solid var(--line); background: transparent; color: var(--ink-soft);
+  font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+}
+.exercise-action-btn.on { border-color: var(--teal); color: var(--ink); }
+.exercise-action-btn .pill-text { font-size: 11px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exercise-state-chip {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
+  height: 32px; padding: 0 6px 0 10px; border-radius: 16px; border: 1.5px solid var(--line);
+  font-size: 11px; font-weight: 700;
+}
+.exercise-state-chip .chip-text { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exercise-state-chip button { background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 12px; padding: 4px; }
 .food-tab-chip.on, .mt-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; font-weight: 800; }
 .photo-portion-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; font-weight: 800; }
 .palette-swatch {
@@ -8424,7 +8505,7 @@ async function logExercise(type, min, dist, incline) {
     if (Object.keys(notes).length) item.notes = notes;
     const exerciseVariations = {};
     Object.keys(workoutVariationState).forEach(name => {
-      if (workoutVariationState[name]) exerciseVariations[name] = workoutVariationState[name];
+      if (workoutVariationState[name] && item.sets && item.sets[name]) exerciseVariations[name] = workoutVariationState[name];
     });
     if (Object.keys(exerciseVariations).length) item.exerciseVariations = exerciseVariations;
     // Tag which day this actually was (respects any manual override), so
@@ -9328,8 +9409,8 @@ function bestWeightForExercise(exerciseName) {
 // best, using the same warmup-excluded PR data as PR Hall of Fame.
 function updatePRProximityHint(row) {
   if (!row) return;
-  const hint = row.nextElementSibling;
-  if (!hint || !hint.classList || !hint.classList.contains('pr-proximity-hint')) return;
+  const hint = row.querySelector('.pr-proximity-hint');
+  if (!hint) return; // warm-up sets have no PR chip
   const exerciseName = row.dataset.exercise;
   const weightInput = row.querySelector('.set-weight-input');
   const weight = parseFloat(weightInput ? weightInput.value : '');
@@ -9337,12 +9418,18 @@ function updatePRProximityHint(row) {
   const pr = bestWeightForExercise(exerciseName);
   if (pr === null) { hint.style.display = 'none'; return; }
   const diff = Math.round((pr - weight) * 100) / 100;
-  if (diff <= 0) {
-    hint.textContent = '🏆 New PR pace!';
-    hint.style.color = '#FFB020';
+  // Strictly beating the best is "PR pace" — matching it is just a tie,
+  // which used to count as pace too and made a pre-filled repeat of last
+  // time's weight light up as a record on every single set.
+  if (diff < 0) {
+    hint.textContent = '🏆 PR pace';
+    hint.className = 'pr-proximity-hint pr-pace';
+  } else if (diff === 0) {
+    hint.textContent = '= PR';
+    hint.className = 'pr-proximity-hint';
   } else {
-    hint.textContent = `${diff % 1 === 0 ? diff : diff.toFixed(1)} lb${diff === 1 ? '' : 's'} from a PR`;
-    hint.style.color = 'var(--ink-soft)';
+    hint.textContent = `${diff % 1 === 0 ? diff : diff.toFixed(1)} lb to PR`;
+    hint.className = 'pr-proximity-hint';
   }
   hint.style.display = '';
 }
@@ -9909,21 +9996,33 @@ function workoutAccentColor(index) {
   return WORKOUT_ACCENT_COLORS[index % WORKOUT_ACCENT_COLORS.length];
 }
 
+// Which set was just checked off — consumed by the very next render so
+// that one row's check button gets its pop animation, then cleared by the
+// click handler so later re-renders (rest timer, other sets) don't replay it.
+let lastCheckedSetKey = null;
+
 function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
-  const prevText = prevData ? `${prevData.weight} lb × ${prevData.reps}${prevData.warmup ? ' (W)' : ''}` : '—';
+  const prevText = prevData ? `last ${prevData.weight} lb × ${prevData.reps}${prevData.warmup ? ' (W)' : ''}` : 'no history yet';
   const numberDisplay = setData.warmup ? 'W' : (idx + 1);
-  const doneAccent = accent || '#5CE6C0';
+  const justDone = setData.done && lastCheckedSetKey === `${exerciseName}:${idx}`;
   return `
-    <div class="set-row" data-exercise="${exerciseName}" data-set-idx="${idx}" style="display:grid;grid-template-columns:26px 1fr 62px 54px 38px 26px;gap:8px;align-items:center;margin-bottom:8px;padding:3px 5px;border-radius:7px">
-      <button type="button" class="set-number-toggle" title="Tap to mark as a warm-up set" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:${setData.warmup ? '700' : '400'};color:${setData.warmup ? 'var(--coral)' : 'var(--ink-soft)'};text-align:center;background:none;border:none;padding:0;cursor:pointer;width:100%">${numberDisplay}</button>
-      <span style="font-size:12px;color:var(--ink-soft)">${prevText}</span>
-      <input type="number" class="set-weight-input" inputmode="decimal" step="2.5" value="${setData.weight}" placeholder="lbs"
-        style="width:100%;padding:9px 4px;border:${setData.done ? '2px solid ' + doneAccent : '1.5px solid var(--line)'};border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:${setData.done ? '800' : '400'};background:${setData.done ? doneAccent : 'var(--input-bg)'};color:${setData.done ? '#0d0d0f' : 'var(--ink)'};text-align:center">
-      <input type="number" class="set-reps-input" inputmode="numeric" value="${setData.reps}" placeholder="reps"
-        style="width:100%;padding:9px 4px;border:${setData.done ? '2px solid ' + doneAccent : '1.5px solid var(--line)'};border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:${setData.done ? '800' : '400'};background:${setData.done ? doneAccent : 'var(--input-bg)'};color:${setData.done ? '#0d0d0f' : 'var(--ink)'};text-align:center">
-      <button type="button" class="set-check-btn" style="width:36px;height:36px;border-radius:10px;border:1.5px solid ${setData.done ? doneAccent : 'var(--line)'};background:${setData.done ? doneAccent : 'var(--input-bg)'};color:${setData.done ? '#0d0d0f' : 'var(--ink-soft)'};font-size:18px;font-weight:800;cursor:pointer">✓</button>
-      <button type="button" class="set-remove-btn" data-exercise="${exerciseName}" data-set-idx="${idx}" aria-label="Remove this set" style="width:26px;height:26px;border-radius:8px;border:none;background:none;color:var(--ink-soft);font-size:15px;cursor:pointer;opacity:0.6">✕</button>
-    </div>${setData.warmup ? '' : `<div class="pr-proximity-hint" data-exercise="${exerciseName}" data-set-idx="${idx}" style="display:none;font-size:11px;font-weight:700;margin:-4px 0 8px 34px"></div>`}`;
+    <div class="set-row${setData.done ? ' done' : ''}" data-exercise="${exerciseName}" data-set-idx="${idx}" style="--accent:${accent || '#5CE6C0'}">
+      <div class="set-row-top">
+        <button type="button" class="set-number-toggle${setData.warmup ? ' warmup' : ''}" title="Tap to mark as a warm-up set">${numberDisplay}</button>
+        <span class="set-prev">${prevText}</span>
+        ${setData.warmup ? '' : '<span class="pr-proximity-hint" style="display:none"></span>'}
+        <button type="button" class="set-remove-btn" data-exercise="${exerciseName}" data-set-idx="${idx}" aria-label="Remove this set">✕</button>
+      </div>
+      <div class="set-row-main">
+        <div class="set-weight-group">
+          <button type="button" class="set-step-btn set-weight-minus" aria-label="Decrease weight by 5 pounds">−</button>
+          <div class="set-field"><input type="number" class="set-weight-input" inputmode="decimal" step="2.5" value="${setData.weight}" placeholder="0"><span class="unit">lb</span></div>
+          <button type="button" class="set-step-btn set-weight-plus" aria-label="Increase weight by 5 pounds">+</button>
+        </div>
+        <div class="set-field set-reps-field"><input type="number" class="set-reps-input" inputmode="numeric" value="${setData.reps}" placeholder="0"><span class="unit">reps</span></div>
+        <button type="button" class="set-check-btn${justDone ? ' set-just-done' : ''}" aria-label="${setData.done ? 'Mark set not done' : 'Mark set done'}">✓</button>
+      </div>
+    </div>`;
 }
 
 // Removes a single accidentally-added set mid-workout — undoable via the
@@ -10121,6 +10220,7 @@ function wireWorkoutPlanEvents() {
       const wasDone = workoutSessionState[exName][idx].done;
       workoutSessionState[exName][idx].done = !wasDone;
       if (!wasDone) {
+        lastCheckedSetKey = `${exName}:${idx}`;
         workoutSessionState[exName][idx].checkedAt = Date.now();
         // Superset pairs share one rest period across both exercises —
         // rest only actually starts once BOTH sides of this round are
@@ -10145,6 +10245,38 @@ function wireWorkoutPlanEvents() {
         delete workoutSessionState[exName][idx].checkedAt;
       }
       renderWorkoutPlan();
+      lastCheckedSetKey = null;
+    });
+  });
+  // Big +/- steppers beside the weight field — easier than tapping into a
+  // small number field mid-set. Starts from the previous set's weight (or
+  // last session's) when the field is still empty, so the first tap lands
+  // somewhere sensible instead of at 5.
+  document.querySelectorAll('.set-weight-minus, .set-weight-plus').forEach(btn => {
+    const row = btn.closest('.set-row');
+    const exName = row.dataset.exercise;
+    const idx = Number(row.dataset.setIdx);
+    const delta = btn.classList.contains('set-weight-plus') ? 5 : -5;
+    btn.addEventListener('click', () => {
+      const input = row.querySelector('.set-weight-input');
+      let current = parseFloat(input.value);
+      if (isNaN(current)) {
+        const sets = workoutSessionState[exName] || [];
+        const prevInSession = idx > 0 ? parseFloat(sets[idx - 1] && sets[idx - 1].weight) : NaN;
+        const lastSession = previousSetsFor(exName);
+        const lastSessionWeight = lastSession && lastSession[idx] ? parseFloat(lastSession[idx].weight) : NaN;
+        current = !isNaN(prevInSession) ? prevInSession : (!isNaN(lastSessionWeight) ? lastSessionWeight : 0);
+      }
+      const next = Math.max(0, Math.round((current + delta) * 2) / 2);
+      input.value = String(next);
+      workoutSessionState[exName][idx].weight = String(next);
+      updatePRProximityHint(row);
+    });
+  });
+  document.querySelectorAll('.variation-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = document.querySelector(`.exercise-variation-panel[data-exercise="${CSS.escape(btn.dataset.exercise)}"]`);
+      if (panel) panel.style.display = panel.style.display === 'none' ? '' : 'none';
     });
   });
   document.querySelectorAll('.set-remove-btn').forEach(btn => {
@@ -10230,6 +10362,9 @@ function wireWorkoutPlanEvents() {
         workoutNotesState[suggestion.name] = workoutNotesState[originalName];
         delete workoutNotesState[originalName];
       }
+      // A grip/foot-placement pick belongs to the exercise you're no
+      // longer doing — don't let it ride along and get saved.
+      delete workoutVariationState[originalName];
       renderWorkoutPlan();
     });
   });
@@ -10651,72 +10786,74 @@ function renderWorkoutPlan() {
           </div>
         </div>`;
       }
+      // ── Secondary controls, gathered into one compact action row ──
+      // Superset / swap / variation / note used to be four stacked lines
+      // above the first set; now they're small pills on a single row, with
+      // their pickers hidden until tapped.
+      const planKey = currentPlanKey();
+      const partnerName = supersetPartnerFor(planKey, ex.name);
+      const supersetControl = partnerName
+        ? `<span class="superset-label exercise-state-chip" data-exercise="${ex.name}"><span class="chip-text">⚡ ${escapeHtml(partnerName)}</span><button type="button" class="superset-unpair-btn" data-exercise="${ex.name}" title="Unpair superset" aria-label="Unpair superset">✕</button></span>`
+        : `<button type="button" class="exercise-action-btn superset-pair-toggle-btn" data-exercise="${ex.name}" title="Pair as superset" aria-label="Pair as superset">🔗</button>`;
+      const supersetSelect = partnerName ? '' : `<select class="superset-pair-select" data-exercise="${ex.name}" style="display:none;margin-bottom:8px;width:100%;padding:8px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;background:var(--input-bg);color:var(--ink)">
+            <option value="">Choose partner exercise…</option>
+            ${plan.filter(p => p.name !== ex.name).map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('')}
+          </select>`;
+      const swapSuggestions = ex.swappedFrom ? [] : suggestSwapsFor(ex.name, plan.map(p => p.name));
+      const swapControl = ex.swappedFrom
+        ? `<span class="swap-label exercise-state-chip" data-exercise="${ex.name}"><span class="chip-text">🔄 was ${escapeHtml(ex.swappedFrom)}</span><button type="button" class="swap-revert-btn" data-original="${escapeHtml(ex.swappedFrom)}" title="Revert swap" aria-label="Revert swap">✕</button></span>`
+        : (swapSuggestions.length ? `<button type="button" class="exercise-action-btn swap-toggle-btn" data-exercise="${ex.name}" title="Machine busy? Swap" aria-label="Machine busy? Swap">🔄</button>` : '');
+      const swapSelect = swapSuggestions.length ? `<select class="swap-select" data-exercise="${ex.name}" style="display:none;margin-bottom:8px;width:100%;padding:8px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;background:var(--input-bg);color:var(--ink)">
+            <option value="">Choose an alternative…</option>
+            ${swapSuggestions.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`).join('')}
+          </select>` : '';
+      const vcfg = EXERCISE_VARIATION_CONFIG[ex.name];
+      const vSelected = vcfg ? workoutVariationState[ex.name] : null;
+      const vLast = vcfg ? lastVariationFor(ex.name) : null;
+      const variationControl = vcfg
+        ? `<button type="button" class="exercise-action-btn variation-toggle-btn${vSelected ? ' on' : ''}" data-exercise="${ex.name}" title="${vcfg.label}" aria-label="${vcfg.label}"><span>${vcfg.icon}</span><span style="font-size:9px;opacity:0.7">▾</span></button>`
+        : '';
+      const variationPanel = vcfg ? `<div class="exercise-variation-panel" data-exercise="${ex.name}" style="display:none;margin-bottom:8px">
+            <div class="chip-row" style="gap:6px">
+              ${Object.entries(vcfg.options).map(([key, info]) => `<div class="chip exercise-variation-chip${vSelected === key ? ' on' : ''}" data-exercise="${ex.name}" data-option="${key}" style="font-size:12px;padding:7px 11px">${info.label}</div>`).join('')}
+            </div>
+            <div style="font-size:11px;color:var(--ink-soft);margin-top:6px">${vSelected && vcfg.options[vSelected] ? `Targets: ${vcfg.options[vSelected].targets}` : `${vcfg.icon} ${vcfg.label} — tap one to log it`}</div>
+          </div>` : '';
+      const noteControl = `<button type="button" class="exercise-action-btn exercise-note-toggle-btn${workoutNotesState[ex.name] ? ' on' : ''}" data-exercise="${ex.name}" title="${workoutNotesState[ex.name] ? 'Edit note' : 'Add note'}" aria-label="${workoutNotesState[ex.name] ? 'Edit note' : 'Add note'}">📝</button>`;
+      // The action row stays icon-only so it never wraps. What you did last
+      // time (a nudge to rotate) rides along as plain text beside the sets
+      // target; once something IS chosen, it gets its own caption line instead,
+      // so the name and target muscle are never truncated.
+      const setsTargetText = `${String(ex.sets).replace(/\s*×\s*/g, '×')}${!vSelected && vLast && vcfg && vcfg.options[vLast] ? ` · last: ${vcfg.options[vLast].label}` : ''}`;
+      const variationCaption = vSelected && vcfg && vcfg.options[vSelected]
+        ? `<div class="variation-caption">${vcfg.icon} ${vcfg.options[vSelected].label} <span style="opacity:0.75">· ${vcfg.options[vSelected].targets}</span></div>` : '';
+      const segHtml = `<div class="progress-segs${setState.length > 7 ? ' many' : ''}" role="img" aria-label="${doneCount} of ${setState.length} sets done" title="${doneCount}/${setState.length} sets done" style="--seg-color:${cardColor}">${setState.map(s => `<span class="progress-seg${s.done ? ' on' : ''}"></span>`).join('')}</div>`;
       return `
-      <div class="workout-exercise-block${allDone ? ' workout-exercise-done' : ''}" data-exercise="${ex.name}" style="margin-bottom:18px;padding:16px 16px 12px;border:2px solid ${cardColor};border-radius:16px;background:${allDone ? 'var(--success-tint)' : 'transparent'}">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+      <div class="workout-exercise-block${allDone ? ' workout-exercise-done' : ''}" data-exercise="${ex.name}" style="margin-bottom:18px;padding:16px 16px 12px;border:2px solid ${cardColor};border-radius:16px;background:${allDone ? 'var(--success-tint)' : 'transparent'};box-shadow:${allDone ? '0 0 22px -4px var(--sage)' : 'none'};transition:box-shadow 0.3s ease">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
           <div class="exercise-zoom-btn" data-exercise="${ex.name}" style="font-family:'Inter',sans-serif;font-weight:800;font-size:17px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 4px;margin:-8px 0">
-            <span>${allDone ? '✅ ' : ''}${ex.name}</span>
+            <span>${ex.name}</span>
             <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-soft);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
-          <span style="font-size:13px;font-weight:800;color:#0d0d0f;background:${cardColor};padding:4px 11px;border-radius:20px;flex-shrink:0">${doneCount}/${setState.length}</span>
           <button type="button" class="exercise-history-btn" data-exercise="${ex.name}" title="View history for ${ex.name}" aria-label="View history for ${ex.name}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:4px;flex-shrink:0;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></button>
           <button type="button" class="remove-exercise-btn" data-exercise="${ex.name}" title="Remove from today's list" aria-label="Remove ${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:17px;line-height:1;cursor:pointer;padding:4px;margin-left:2px;flex-shrink:0">✕</button>
         </div>
-        ${(() => {
-          const planKey = currentPlanKey();
-          const partnerName = supersetPartnerFor(planKey, ex.name);
-          if (partnerName) {
-            return `<div class="superset-label" data-exercise="${ex.name}" style="font-size:11px;color:#7A5C9E;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px">⚡ Superset with ${escapeHtml(partnerName)} <button type="button" class="superset-unpair-btn" data-exercise="${ex.name}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:11px;padding:0;text-decoration:underline">unpair</button></div>`;
-          }
-          return `<div class="superset-pair-row" style="margin-bottom:6px">
-              <button type="button" class="superset-pair-toggle-btn" data-exercise="${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:11px;font-weight:600;cursor:pointer;padding:0">🔗 Pair as superset</button>
-              <select class="superset-pair-select" data-exercise="${ex.name}" style="display:none;margin-top:4px;width:100%;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px;background:var(--input-bg);color:var(--ink)">
-                <option value="">Choose partner exercise…</option>
-                ${plan.filter(p => p.name !== ex.name).map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('')}
-              </select>
-            </div>`;
-        })()}
-        ${(() => {
-          if (ex.swappedFrom) {
-            return `<div class="swap-label" data-exercise="${ex.name}" style="font-size:11px;color:#37C6FF;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px">🔄 Swapped in for ${escapeHtml(ex.swappedFrom)} <button type="button" class="swap-revert-btn" data-original="${escapeHtml(ex.swappedFrom)}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:11px;padding:0;text-decoration:underline">revert</button></div>`;
-          }
-          const todaysNames = plan.map(p => p.name);
-          const suggestions = suggestSwapsFor(ex.name, todaysNames);
-          if (!suggestions.length) return '';
-          return `<div class="swap-row" style="margin-bottom:6px">
-              <button type="button" class="swap-toggle-btn" data-exercise="${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:11px;font-weight:600;cursor:pointer;padding:0">🔄 Machine busy? Swap</button>
-              <select class="swap-select" data-exercise="${ex.name}" style="display:none;margin-top:4px;width:100%;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px;background:var(--input-bg);color:var(--ink)">
-                <option value="">Choose an alternative…</option>
-                ${suggestions.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`).join('')}
-              </select>
-            </div>`;
-        })()}
-        ${EXERCISE_VARIATION_CONFIG[ex.name] ? (() => {
-          const config = EXERCISE_VARIATION_CONFIG[ex.name];
-          const selected = workoutVariationState[ex.name];
-          const last = lastVariationFor(ex.name);
-          return `<div class="exercise-variation-row" data-exercise="${ex.name}" style="margin-bottom:8px">
-            <div style="font-size:11px;color:var(--ink-soft);font-weight:600;margin-bottom:5px">${config.icon} ${config.label}${last && !selected ? ` <span style="font-weight:400">· last time: ${config.options[last].label}</span>` : ''}</div>
-            <div class="chip-row" style="gap:6px">
-              ${Object.entries(config.options).map(([key, info]) => `<div class="chip exercise-variation-chip${selected === key ? ' on' : ''}" data-exercise="${ex.name}" data-option="${key}" style="font-size:11px;padding:6px 10px">${info.label}</div>`).join('')}
-            </div>
-            ${selected ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:5px">Targets: ${config.options[selected].targets}</div>` : ''}
-          </div>`;
-        })() : ''}
-        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:${(hint || plateau) ? '6px' : '10px'}">${ex.sets}</div>
-        ${hint ? `<div style="font-size:12px;color:var(--coral);font-weight:600;margin-bottom:10px">${hint}</div>` : ''}
-        ${plateau ? `<div style="font-size:12px;color:#FFB020;font-weight:600;margin-bottom:10px">${plateau}</div>` : ''}
-        <div style="display:grid;grid-template-columns:26px 1fr 62px 54px 38px;gap:8px;font-size:10px;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.03em">
-          <span style="font-weight:700">Set</span><span style="font-weight:700">Previous</span><span>lbs</span><span style="font-weight:700">Reps</span><span></span>
+        ${segHtml}
+        <div class="exercise-action-row">
+          <span class="exercise-sets-target">${setsTargetText}</span>
+          ${variationControl}${supersetControl}${swapControl}${noteControl}
         </div>
+        ${variationCaption}
+        ${supersetSelect}${swapSelect}${variationPanel}
+        <div class="exercise-note-wrap" data-exercise="${ex.name}" style="display:${workoutNotesState[ex.name] ? '' : 'none'};margin-bottom:8px">
+          <textarea class="exercise-note-input" data-exercise="${ex.name}" placeholder="e.g. left shoulder felt off today" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;background:var(--input-bg);color:var(--ink);resize:vertical">${escapeHtml(workoutNotesState[ex.name] || '')}</textarea>
+        </div>
+        ${hint ? `<div style="font-size:12px;color:var(--coral);font-weight:600;margin-bottom:8px">${hint}</div>` : ''}
+        ${plateau ? `<div style="font-size:12px;color:#FFB020;font-weight:600;margin-bottom:8px">${plateau}</div>` : ''}
         <div class="set-rows-container" data-exercise-name="${ex.name}">
           ${setState.map((s, i) => renderSetRowHtml(ex.name, i, s, prevSets && prevSets[i], accent)).join('')}
         </div>
-        <button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${ex.name}" style="margin-top:6px;font-size:12px;padding:6px 12px">+ Add Set</button>
-        <button type="button" class="btn btn-ghost btn-sm exercise-note-toggle-btn" data-exercise="${ex.name}" style="margin-top:6px;margin-left:6px;font-size:12px;padding:6px 12px">${workoutNotesState[ex.name] ? '📝 Edit note' : '📝 Add note'}</button>
-        <div class="exercise-note-wrap" data-exercise="${ex.name}" style="display:${workoutNotesState[ex.name] ? '' : 'none'};margin-top:8px">
-          <textarea class="exercise-note-input" data-exercise="${ex.name}" placeholder="e.g. left shoulder felt off today" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;background:var(--input-bg);color:var(--ink);resize:vertical">${escapeHtml(workoutNotesState[ex.name] || '')}</textarea>
-        </div>
+        <button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${ex.name}" style="width:100%;margin-top:2px;border-style:dashed;font-size:12px;padding:9px">+ Add set</button>
       </div>`;
     }).join('')}
     </div>
