@@ -573,6 +573,7 @@ body {
 .btn-sm { padding: 10px 14px; font-size: 13px; border-radius: 8px; width: auto; }
 .quick-save-btn.saved { background: var(--sage) !important; }
 .quick-save-btn:disabled { opacity: 0.7; }
+.ai-asked { font-size: 12px; color: var(--ink-soft); font-weight: 600; margin-bottom: 8px; }
 .ai-based-on { font-size: 11px; color: var(--ink-soft); margin-top: 10px; font-weight: 600; }
 .save-msg { text-align: center; font-size: 13px; color: var(--in); height: 20px; margin-top: 8px; opacity: 0; transition: opacity 0.3s; }
 .save-msg.show { opacity: 1; }
@@ -8125,6 +8126,17 @@ async function maybeAutoGenerateWeeklyInsights() {
   if (succeeded) localStorage.setItem('mounjaro-weekly-insight-lastgen', today);
 }
 
+// Search / describe / question fields: tapping in selects whatever is already there, so the first
+// keystroke replaces it instead of making you delete the old text first. (A second tap still places
+// the cursor normally, for fixing a typo.)
+['aiAskInput', 'mDesc', 'mealDescInput', 'dayDescInput', 'workoutDescInput', 'historySearch'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('focus', () => setTimeout(() => {
+    try { el.setSelectionRange(0, el.value.length); } catch (err) { /* field type doesn't support selection */ }
+  }, 0));
+});
+
 document.getElementById('aiAskBtn').addEventListener('click', async () => {
   const box = document.getElementById('aiAskResults');
   const question = document.getElementById('aiAskInput').value.trim();
@@ -8142,7 +8154,8 @@ document.getElementById('aiAskBtn').addEventListener('click', async () => {
     if (!result.ok) { box.innerHTML = `Failed — HTTP ${result.status}. Check your Anthropic API key in Settings.`; return; }
     // Show what the answer was based on, so missing data is visible instead of silently producing a wrong answer.
     const gCount = data.filter(r => r.glucose_fasting_mgdl || r.glucose_2hr_post_meal_mgdl).length;
-    box.innerHTML = (result.text || 'No response — try again.') + `<div class="ai-based-on">Based on ${data.length} day${data.length === 1 ? '' : 's'} of logs · ${gCount} with glucose readings · ${data.filter(r => r.strength_sets).length} with strength sets</div>`;
+    box.innerHTML = `<div class="ai-asked">You asked: “${escapeHtml(question)}”</div>` + (result.text || 'No response — try again.') + `<div class="ai-based-on">Based on ${data.length} day${data.length === 1 ? '' : 's'} of logs · ${gCount} with glucose readings · ${data.filter(r => r.strength_sets).length} with strength sets</div>`;
+    document.getElementById('aiAskInput').value = '';
   } catch (err) {
     console.error(err);
     box.innerHTML = 'Failed — check your connection and Anthropic API key.';
