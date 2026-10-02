@@ -855,6 +855,11 @@ body {
 .rest-note { font-size: 11px; font-weight: 600; color: #B79BE0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 [data-theme="light"] .rest-note { color: #6B4C94; }
 .rest-note button { background: none; border: none; color: var(--ink-soft); text-decoration: underline; font-size: 11px; cursor: pointer; padding: 0; font-family: inherit; }
+.muscle-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.muscle-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 14px; border: 1.5px solid var(--line); font-size: 11px; font-weight: 600; color: var(--ink); }
+.muscle-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+.muscle-chip.zero { color: var(--ink-soft); font-weight: 500; }
+.muscle-chip .n { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); }
 .draft-banner { position: fixed; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 78px); z-index: 450; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--card); border: 1.5px solid var(--teal); box-shadow: var(--shadow-hero); font-size: 13px; font-weight: 700; color: var(--ink); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
 .draft-banner .btn { width: auto; padding: 8px 12px; }
 .sync-status { font-size: 10px; font-weight: 700; white-space: nowrap; color: var(--ink-soft); }
@@ -2534,6 +2539,10 @@ body {
           <span style="width:12px;height:12px;border-radius:3px;background:var(--teal);opacity:1;display:inline-block"></span>
           <span>More</span>
         </div>
+      </div>
+      <div class="chart-card" id="muscleMapCard">
+        <div class="chart-title">Muscles trained · last 7 days</div>
+        <div id="muscleMap"></div>
       </div>
       <div class="history-search">
         <span style="color:var(--ink-soft)"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
@@ -5569,6 +5578,95 @@ function computeDailyActivityLevel(e) {
 // of the week, shaded by computeDailyActivityLevel. Tapping a cell jumps
 // straight to that date in the Log tab, rather than this being a purely
 // look-only visual.
+// ── MUSCLE MAP ──
+// Working sets per muscle group over the last N days, using the same
+// exercise -> muscle mapping the swap suggestions use (warm-ups excluded,
+// and an exercise the mapping can't place is simply left out rather than
+// guessed at). Sets are the unit because they're what's actually comparable
+// across a 3x10 machine and a 2x30s plank; ~10/week is a common target.
+const MUSCLE_MAP_GROUPS = ['Chest', 'Shoulders', 'Triceps', 'Back', 'Rear Delts', 'Biceps', 'Quads', 'Hamstrings', 'Calves', 'Core'];
+function muscleSetsLastDays(days) {
+  const counts = {}; MUSCLE_MAP_GROUPS.forEach(g => { counts[g] = 0; });
+  const cutoff = new Date(todayStr() + 'T00:00:00'); cutoff.setDate(cutoff.getDate() - (days - 1));
+  const cutoffStr = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}-${String(cutoff.getDate()).padStart(2, '0')}`;
+  let sessions = 0;
+  entries.filter(e => e.date >= cutoffStr && e.ex && e.ex.length).forEach(e => {
+    e.ex.forEach(x => {
+      if (x.type !== 'Strength' || !x.sets) return;
+      sessions++;
+      Object.entries(x.sets).forEach(([name, sets]) => {
+        const group = muscleGroupFor(name);
+        if (!group || !(group in counts)) return;
+        counts[group] += (sets || []).filter(s => !s.warmup).length;
+      });
+    });
+  });
+  return { counts, sessions };
+}
+function muscleLevel(n) { return n >= 10 ? 4 : n >= 7 ? 3 : n >= 4 ? 2 : n >= 1 ? 1 : 0; }
+const MUSCLE_LEVEL_OPACITY = [0, 0.34, 0.54, 0.78, 1];
+
+function renderMuscleMap() {
+  const box = document.getElementById('muscleMap');
+  if (!box) return;
+  const { counts, sessions } = muscleSetsLastDays(7);
+  const fillFor = (g) => {
+    const lvl = muscleLevel(counts[g]);
+    return lvl === 0 ? `fill="var(--line)"` : `fill="var(--teal)" fill-opacity="${MUSCLE_LEVEL_OPACITY[lvl]}"`;
+  };
+  const m = (g, tag, attrs) => `<${tag} ${attrs} ${fillFor(g)} data-muscle="${g}"><title>${g} · ${counts[g]} set${counts[g] === 1 ? '' : 's'}</title></${tag}>`;
+  const n = (tag, attrs) => `<${tag} ${attrs} fill="var(--line)" fill-opacity="0.5"></${tag}>`; // not tracked: head, hands, glutes, feet…
+  const e = (cx, cy, rx, ry) => `cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"`;
+  // Front view, centered on x=65
+  const front = [
+    n('circle', 'cx="65" cy="15" r="11"'), n('rect', 'x="60" y="25" width="10" height="9" rx="3"'),
+    n('rect', 'x="44" y="36" width="42" height="64" rx="15"'),
+    m('Shoulders', 'ellipse', e(39, 42, 9, 9)), m('Shoulders', 'ellipse', e(91, 42, 9, 9)),
+    m('Chest', 'ellipse', e(55, 52, 10, 9)), m('Chest', 'ellipse', e(75, 52, 10, 9)),
+    m('Core', 'rect', 'x="55" y="64" width="20" height="32" rx="8"'),
+    m('Biceps', 'ellipse', e(30, 64, 6.5, 13)), m('Biceps', 'ellipse', e(100, 64, 6.5, 13)),
+    n('ellipse', e(27, 91, 5, 13)), n('ellipse', e(103, 91, 5, 13)), n('circle', 'cx="25" cy="108" r="4.5"'), n('circle', 'cx="105" cy="108" r="4.5"'),
+    n('rect', 'x="50" y="98" width="30" height="13" rx="6"'),
+    m('Quads', 'ellipse', e(54, 140, 10.5, 28)), m('Quads', 'ellipse', e(76, 140, 10.5, 28)),
+    n('ellipse', e(54, 192, 6.5, 19)), n('ellipse', e(76, 192, 6.5, 19)),
+    n('ellipse', e(55, 214, 8, 3.5)), n('ellipse', e(75, 214, 8, 3.5))
+  ].join('');
+  // Back view, centered on x=195
+  const back = [
+    n('circle', 'cx="195" cy="15" r="11"'), n('rect', 'x="190" y="25" width="10" height="9" rx="3"'),
+    n('rect', 'x="174" y="36" width="42" height="64" rx="15"'),
+    m('Rear Delts', 'ellipse', e(169, 42, 9, 9)), m('Rear Delts', 'ellipse', e(221, 42, 9, 9)),
+    (() => {
+      const lvl = muscleLevel(counts['Back']), pts = '182,38 208,38 216,60 209,84 201,95 189,95 181,84 174,60';
+      const tip = `<title>Back · ${counts['Back']} set${counts['Back'] === 1 ? '' : 's'}</title>`;
+      return lvl === 0
+        ? `<polygon points="${pts}" fill="var(--line)" data-muscle="Back">${tip}</polygon>`
+        : `<g opacity="${MUSCLE_LEVEL_OPACITY[lvl]}" data-muscle="Back"><polygon points="${pts}" fill="var(--teal)" stroke="var(--teal)" stroke-width="4" stroke-linejoin="round"/>${tip}</g>`;
+    })(),
+    m('Triceps', 'ellipse', e(160, 64, 6.5, 13)), m('Triceps', 'ellipse', e(230, 64, 6.5, 13)),
+    n('ellipse', e(157, 91, 5, 13)), n('ellipse', e(233, 91, 5, 13)), n('circle', 'cx="155" cy="108" r="4.5"'), n('circle', 'cx="235" cy="108" r="4.5"'),
+    n('ellipse', e(185, 106, 10, 9)), n('ellipse', e(205, 106, 10, 9)),
+    m('Hamstrings', 'ellipse', e(184, 141, 10.5, 26)), m('Hamstrings', 'ellipse', e(206, 141, 10.5, 26)),
+    m('Calves', 'ellipse', e(184, 191, 7.5, 18)), m('Calves', 'ellipse', e(206, 191, 7.5, 18)),
+    n('ellipse', e(185, 214, 8, 3.5)), n('ellipse', e(205, 214, 8, 3.5))
+  ].join('');
+  const svg = `<svg viewBox="0 0 260 232" width="100%" style="max-width:340px;display:block;margin:0 auto" role="img" aria-label="Muscle groups trained in the last 7 days, front and back">
+    ${front}${back}
+    <text x="65" y="229" text-anchor="middle" font-size="8" fill="var(--ink-soft)" letter-spacing="1">FRONT</text>
+    <text x="195" y="229" text-anchor="middle" font-size="8" fill="var(--ink-soft)" letter-spacing="1">BACK</text>
+  </svg>`;
+  const chips = MUSCLE_MAP_GROUPS.slice().sort((a, b) => counts[b] - counts[a]).map(g => {
+    const lvl = muscleLevel(counts[g]);
+    return `<span class="muscle-chip${lvl === 0 ? ' zero' : ''}"><span class="dot" style="${lvl === 0 ? 'background:var(--line)' : `opacity:${MUSCLE_LEVEL_OPACITY[lvl]}`}"></span>${g} <span class="n">${counts[g]}</span></span>`;
+  }).join('');
+  const missed = MUSCLE_MAP_GROUPS.filter(g => counts[g] === 0);
+  const note = sessions === 0 ? 'No strength sessions in the last 7 days.'
+    : missed.length === 0 ? 'Every muscle group got work this week.'
+    : `Not hit yet: <strong style="color:var(--ink)">${missed.join(', ')}</strong>`;
+  box.innerHTML = `${svg}<div class="muscle-chips">${chips}</div>
+    <div style="font-size:11px;color:var(--ink-soft);margin-top:8px">${note} · darker = more working sets (10+ is a solid week)</div>`;
+}
+
 function renderConsistencyHeatmap() {
   const box = document.getElementById('consistencyHeatmap');
   if (!box) return;
@@ -5630,6 +5728,7 @@ function renderConsistencyHeatmap() {
 
 function renderHistory() {
   renderConsistencyHeatmap();
+  try { renderMuscleMap(); } catch (err) { console.error('Muscle map failed:', err); }
   const search = (document.getElementById('historySearch')?.value || '').toLowerCase();
   const list   = document.getElementById('historyList');
   const sorted = [...entries].sort((a,b) => b.date.localeCompare(a.date));
