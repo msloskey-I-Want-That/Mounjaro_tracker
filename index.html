@@ -579,6 +579,11 @@ body {
 #mealTypeRow .chip { text-align: center; padding: 9px 2px; font-size: 12.5px; }
 #addFoodCard .field-row .stepper-btn { width: 32px; min-width: 32px; padding: 6px 0 !important; flex-shrink: 0; }
 #addFoodCard .field-row input[type=number] { padding-left: 4px; padding-right: 4px; }
+.plan-tip { margin-top: 6px; text-align: center; }
+.plan-tip summary { list-style: none; display: inline-block; cursor: pointer; font-size: 11px; font-weight: 600; color: var(--ink-soft); opacity: 0.65; padding: 6px 12px; -webkit-tap-highlight-color: transparent; }
+.plan-tip summary::-webkit-details-marker { display: none; }
+.plan-tip[open] summary { opacity: 1; }
+.plan-tip-body { font-size: 11px; color: var(--ink-soft); line-height: 1.5; margin-top: 2px; }
 .quick-save-btn.saved { background: var(--sage) !important; }
 .quick-save-btn:disabled { opacity: 0.7; }
 .ai-asked { font-size: 12px; color: var(--ink-soft); font-weight: 600; margin-bottom: 8px; }
@@ -11363,6 +11368,9 @@ function detectTypicalRestDay() {
   return null;
 }
 
+// The "how this works" help under the workout plan: collapsed by default (it's only useful the first few times); remembers if you open it.
+const PLAN_TIP_KEY = 'mounjaro-plan-tip-open';
+
 function renderWorkoutPlan() {
   const box = document.getElementById('workoutPlanBody');
   if (!box) return;
@@ -11698,10 +11706,14 @@ function renderWorkoutPlan() {
          <button type="button" class="btn btn-primary btn-sm" id="finishPlanBtn" style="margin-top:8px;width:100%;padding:12px;font-size:14px;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800;text-transform:uppercase;letter-spacing:0.02em">Finish Workout</button>`
       : `<button type="button" class="btn btn-secondary btn-sm" id="startPlanBtn" style="margin-top:10px;width:100%">Start this workout</button>`
     }
-    </div><div style="font-size:11px;color:var(--ink-soft);margin-top:8px;text-align:center">
-      ${footerHtml}
-    </div>
+    </div><details class="plan-tip" id="planTip"${localStorage.getItem(PLAN_TIP_KEY) === '1' ? ' open' : ''}>
+        <summary>ⓘ How this works</summary>
+        <div class="plan-tip-body">${footerHtml}</div>
+      </details>
   `;
+
+  const planTip = document.getElementById('planTip');
+  if (planTip) planTip.addEventListener('toggle', () => { try { localStorage.setItem(PLAN_TIP_KEY, planTip.open ? '1' : '0'); } catch (err) { /* storage unavailable */ } });
 
   const sfBlock = document.getElementById('workoutStartFinishBlock'); if (sfBlock && box.firstChild !== sfBlock) box.insertBefore(sfBlock, box.firstChild); wireWorkoutPlanEvents();
   syncRestTimerPresentation();
