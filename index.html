@@ -571,6 +571,8 @@ body {
 .btn-ghost { background: transparent; color: var(--ink-soft); border: 1.5px solid var(--line); }
 .btn-danger { background: var(--coral-tint); color: var(--out); }
 .btn-sm { padding: 10px 14px; font-size: 13px; border-radius: 8px; width: auto; }
+.quick-save-btn.saved { background: var(--sage) !important; }
+.quick-save-btn:disabled { opacity: 0.7; }
 .save-msg { text-align: center; font-size: 13px; color: var(--in); height: 20px; margin-top: 8px; opacity: 0; transition: opacity 0.3s; }
 .save-msg.show { opacity: 1; }
 
@@ -1675,6 +1677,7 @@ body {
               <input type="number" id="fGlucose2hr" inputmode="numeric" placeholder="e.g. 165">
             </div>
           </div>
+          <button type="button" class="btn btn-primary quick-save-btn" id="quickSaveBtn" style="margin-top:14px;width:100%;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#04203a;font-weight:800">Save</button>
         </div>
 
 
@@ -7071,9 +7074,9 @@ function updateLogContextStrip() {
   box.innerHTML = parts.join(' &nbsp;·&nbsp; ');
 }
 
-document.getElementById('saveBtn').addEventListener('click', async () => {
+async function saveLogEntry() {
   const date = document.getElementById('fDate').value;
-  if (!date) { alert('Please select a date.'); return; }
+  if (!date) { alert('Please select a date.'); return false; }
 
   const gRaw  = document.getElementById('fGlucose').value;
   const g2Raw = document.getElementById('fGlucose2hr').value;
@@ -7113,7 +7116,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     warnings.push(`Systolic of ${sysRaw} looks unusual (expected 60–250).`);
   if (diaRaw && (parseFloat(diaRaw) < 40 || parseFloat(diaRaw) > 150))
     warnings.push(`Diastolic of ${diaRaw} looks unusual (expected 40–150).`);
-  if (warnings.length && !confirm(warnings.join('\n') + '\n\nSave anyway?')) return;
+  if (warnings.length && !confirm(warnings.join('\n') + '\n\nSave anyway?')) return false;
 
   // Low-glucose safety note (informational, never blocks the save)
   const lowVals = [gRaw, g2Raw].filter(v => v && parseFloat(v) < 70);
@@ -7132,7 +7135,10 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     dose:       document.getElementById('fDose').value || null,
     sys:        sysRaw || null,
     dia:        diaRaw || null,
-    injection:  document.getElementById('fInjection').checked,
+    // Unchecked = leave it alone. Saving just a glucose reading used to send injection:false,
+    // which a merge-save wrote over an injection already logged for that day (breaking the dose
+    // countdown). Un-flagging a day still works via edit mode, which replaces the whole entry.
+    injection:  document.getElementById('fInjection').checked || null,
     site:       document.getElementById('fInjection').checked ? selectedSite() : null,
     notes:      document.getElementById('fNotes').value || '',
     protein:    document.getElementById('fProtein').value || null,
@@ -7150,6 +7156,14 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   if (editingLoaded && existingEntry) {
     if (existingEntry.ex && existingEntry.ex.length) entry.ex = existingEntry.ex;
     if (existingEntry.water != null) entry.water = existingEntry.water;
+  }
+
+  // The form doesn't show Apple Health values (steps, sleep, HRV, resting HR…), sick/rest-day flags,
+  // off-plan markers and so on, so a full replace used to silently drop them. Carry over anything
+  // the form doesn't own.
+  if (editingLoaded && existingEntry) {
+    const FORM_OWNED = ['date', 'glucose', 'glucose2hr', 'weight', 'waist', 'chest', 'arms', 'dose', 'sys', 'dia', 'injection', 'site', 'notes', 'protein', 'calories', 'carbs', 'fat', 'tags', 'tagSeverity'];
+    Object.keys(existingEntry).forEach(k => { if (!FORM_OWNED.includes(k) && !(k in entry)) entry[k] = existingEntry[k]; });
   }
 
   // Remove nulls / empty (keep tags array + injection flag as-is when editing)
@@ -7173,7 +7187,30 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   msg.classList.add('show');
   setTimeout(() => msg.classList.remove('show'), 2000);
   clearLogForm();
-});
+  return true;
+}
+
+// One runner for both Save buttons (the quick one up in the Quick Log card and the full one at the
+// bottom): ignores a second tap while a save is in flight, and says plainly if it fails.
+let _logSaving = false, _quickSavedTimer = null;
+async function runLogSave(btn) {
+  if (_logSaving) return;
+  _logSaving = true; btn.disabled = true;
+  // a fresh attempt wipes the previous "✓ Saved" at once — otherwise a declined or failed save
+  // would still be wearing the last one's confirmation
+  const q = document.getElementById('quickSaveBtn');
+  clearTimeout(_quickSavedTimer); q.textContent = 'Save'; q.classList.remove('saved');
+  let ok = false;
+  try { ok = await saveLogEntry(); }
+  catch (err) { console.error('Log save failed:', err); alert("Couldn't save that — check your connection and try again."); }
+  finally { _logSaving = false; btn.disabled = false; }
+  if (ok && btn.id === 'quickSaveBtn') {
+    btn.textContent = '✓ Saved'; btn.classList.add('saved');
+    _quickSavedTimer = setTimeout(() => { btn.textContent = 'Save'; btn.classList.remove('saved'); }, 1800);
+  }
+}
+document.getElementById('saveBtn').addEventListener('click', () => runLogSave(document.getElementById('saveBtn')));
+document.getElementById('quickSaveBtn').addEventListener('click', () => runLogSave(document.getElementById('quickSaveBtn')));
 
 function clearLogForm() {
   document.getElementById('fGlucose').value = '';
