@@ -95,7 +95,13 @@ html { height: 100%; }
   --font-text: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-num: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
 }
-button, input, select, textarea { font-family: inherit; font-weight: inherit; } /* browsers give controls their own face and weight 400 unless told otherwise */
+button, input, select, textarea { font-family: inherit; font-weight: inherit; }
+input, select, textarea { min-width: 0; } /* a field narrower than its natural width should shrink, not push its row wider */
+/* iOS Safari zooms the WHOLE page whenever you tap into a field whose text is smaller than 16px,
+   and leaves it zoomed (right edge cut off, tab bar pushed off-screen) until you pinch back out.
+   Keeping every text field at 16px or more prevents that. The set-row weight/reps boxes are 18px already. */
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]):not([type=submit]):not([type=file]):not([type=hidden]):not([type=color]):not(.set-weight-input):not(.set-reps-input),
+select, textarea { font-size: 16px !important; } /* browsers give controls their own face and weight 400 unless told otherwise */
 body {
   font-family: var(--font-text);
   font-weight: 500;                    /* default text one notch heavier than regular */
@@ -290,7 +296,7 @@ body {
 /* ── STAT GRID ── */
 .stat-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
   gap: 10px;
   margin-bottom: 16px;
 }
@@ -372,7 +378,7 @@ body {
 .badge-category-title:first-child { margin-top: 0; }
 .badge-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3,minmax(0,1fr));
   gap: 10px;
 }
 .badge-tile {
@@ -522,7 +528,7 @@ body {
 .field input:focus, .field select:focus {
   outline: none; border-color: var(--teal);
 }
-.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; }
 .field .check-field, .check-field {
   display: flex !important;
   align-items: center; gap: 10px;
@@ -1046,9 +1052,9 @@ body {
   .view.active { display: block !important; }
   #bottom-nav { position: relative; height: auto; padding-bottom: 0; border-top: none; border-bottom: 1px solid var(--line); background: var(--card); }
   #bottom-nav .nav-item { flex-direction: row; gap: 6px; font-size: 13px; padding: 12px 16px; }
-  .stat-grid { grid-template-columns: repeat(3, 1fr); }
+  .stat-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
   .timeline-row { flex-wrap: nowrap; }
-  .field-row { grid-template-columns: 1fr 1fr; }
+  .field-row { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
 }
 </style>
 </head>
@@ -3838,7 +3844,7 @@ function renderDoseComparisonFor(afterPeriodKey) {
     <div style="font-size:11px;color:var(--ink-soft);margin-bottom:10px;text-align:center">
       Comparing ${data.windowDays}-day windows right before and after the switch
     </div>
-    <div style="display:grid;grid-template-columns:1fr 90px 90px;gap:0 8px;margin-bottom:6px">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 90px 90px;gap:0 8px;margin-bottom:6px">
       <div></div>
       <div style="font-size:10px;color:var(--ink-soft);text-align:center;text-transform:uppercase">${data.beforePeriod.dose}mg</div>
       <div style="font-size:10px;color:var(--teal);text-align:center;text-transform:uppercase;font-weight:800">${data.afterPeriod.dose}mg</div>
@@ -8823,7 +8829,7 @@ function renderWorkoutHistory() {
           <span>🏋️ ${s.totalVolume.toLocaleString()} lb</span>
           ${s.prCount ? `<span>🏆 ${s.prCount} PR${s.prCount === 1 ? '' : 's'}</span>` : ''}
         </div>
-        <div style="display:grid;grid-template-columns:1fr auto;gap:5px 12px;font-size:13px">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;font-size:13px">
           ${s.exercises.map(ex => `
             <div style="color:var(--ink-soft)">${ex.setCount} × ${escapeHtml(ex.name)}</div>
             <div style="font-family:var(--font-num);font-weight:700;text-align:right">${ex.bestWeight != null ? `${ex.bestWeight} lb × ${ex.bestReps}` : '—'}</div>
@@ -9197,7 +9203,7 @@ try {
     if (anchorCard) {
       const newCard=document.createElement('div'); newCard.className='form-card';
       const title=document.createElement('div'); title.className='form-section-title'; title.textContent='From Apple Health'; newCard.appendChild(title);
-      const grid=document.createElement('div'); grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px'; newCard.appendChild(grid);
+      const grid=document.createElement('div'); grid.style.cssText='display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:6px'; newCard.appendChild(grid);
       const cardsToHide=new Set();
       metrics.forEach(m=>{
         const valueEl=document.getElementById(m.valueId);
@@ -13506,7 +13512,7 @@ function renderRecipeBuilder() {
             <button type="button" class="btn btn-ghost btn-sm ring-remove" data-i="${i}" aria-label="Remove ingredient" style="white-space:nowrap">✕</button>
           </div>
           <div id="ringResults-${i}"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:6px">
             <input type="number" inputmode="numeric" class="ring-protein" data-i="${i}" placeholder="P g" value="${ing.protein || ''}">
             <input type="number" inputmode="numeric" class="ring-cal" data-i="${i}" placeholder="Cal" value="${ing.cal || ''}">
             <input type="number" inputmode="numeric" class="ring-carbs" data-i="${i}" placeholder="C g" value="${ing.carbs || ''}">
