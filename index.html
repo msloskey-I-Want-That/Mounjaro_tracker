@@ -850,6 +850,11 @@ body {
 .fits-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fits-macros { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
 .fits-add { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; background: var(--teal); color: #0a2e28; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.rest-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rest-pill { border: 1.5px solid var(--line); background: transparent; color: var(--ink-soft); border-radius: 14px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.rest-note { font-size: 11px; font-weight: 600; color: #B79BE0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+[data-theme="light"] .rest-note { color: #6B4C94; }
+.rest-note button { background: none; border: none; color: var(--ink-soft); text-decoration: underline; font-size: 11px; cursor: pointer; padding: 0; font-family: inherit; }
 .variation-caption { font-size: 11px; font-weight: 600; color: var(--ink); margin: -3px 0 8px; }
 .set-field input::-webkit-outer-spin-button, .set-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .set-field input { -moz-appearance: textfield; appearance: textfield; }
@@ -1296,6 +1301,7 @@ body {
           </div>
           <div class="sc-value" id="scLoggingStreak">—</div>
           <div class="sc-sub" id="scLoggingStreakSub">log something daily to keep it going</div>
+          <div id="scLoggingStreakRest" style="margin-top:6px"></div>
           <div class="sc-badge-hint" id="scLoggingStreakBadgeHint" style="display:none"></div>
         </div>
         <div class="stat-card" data-card-key="dose">
@@ -1585,6 +1591,13 @@ body {
                   <span>Injection day</span>
                 </label>
               </div>
+            </div>
+          </div>
+          <div class="field" style="margin-top:2px">
+            <label>Day status <span style="font-weight:400;color:var(--ink-soft)">· pauses your streak instead of breaking it</span></label>
+            <div class="chip-row" id="dayStatusRow">
+              <div class="chip" data-daystatus="sick">😷 Sick</div>
+              <div class="chip" data-daystatus="rest">🛌 Rest day</div>
             </div>
           </div>
           <div id="injSiteWrap" style="display:none;margin-top:4px">
@@ -3891,6 +3904,7 @@ function longestStreak(predicate, asOfDate) {
   while (d <= end) {
     const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     if (predicate(dateStr, byDate[dateStr])) { current++; if (current > best) best = current; }
+    else if (byDate[dateStr] && byDate[dateStr].restDay) { /* sick/rest day: pauses the run — neither extends nor breaks it */ }
     else { current = 0; }
     d.setDate(d.getDate() + 1);
   }
@@ -3918,8 +3932,8 @@ function currentLoggingStreak() {
   let streak = 0;
   while (true) {
     const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    if (!loggedOn(dateStr)) break;
-    streak++;
+    if (loggedOn(dateStr)) streak++;
+    else if (!(byDate[dateStr] && byDate[dateStr].restDay)) break; // a sick/rest day just pauses the count
     d.setDate(d.getDate() - 1);
   }
   return streak;
@@ -3935,6 +3949,61 @@ function streakFlameStyle(days) {
   if (days < 100) return { size: 24, color: '#FF6B00', bg: 'rgba(255,107,0,0.20)' };
   return { size: 27, color: '#FF3D00', bg: 'rgba(255,61,0,0.22)' };
 }
+// ── SICK / REST DAYS ──
+// A flagged day neither counts toward nor breaks a streak (see longestStreak
+// and currentLoggingStreak) — built for the rough post-injection days where
+// the right call is to rest, not to protect a number. Logging something on
+// that day still counts normally; the flag only protects when nothing else does.
+function dayStatusFor(date) {
+  const e = entries.find(x => x.date === date);
+  return (e && e.restDay) || null;
+}
+document.addEventListener('click', (ev) => {
+  const chip = ev.target.closest && ev.target.closest('#dayStatusRow .chip');
+  if (!chip) return;
+  const date = document.getElementById('fDate').value || todayStr();
+  const next = chip.dataset.daystatus;
+  setDayStatus(date, dayStatusFor(date) === next ? null : next); // tapping the active one clears it
+});
+document.getElementById('fDate').addEventListener('change', () => renderDayStatusChips());
+
+async function setDayStatus(date, status) {
+  const prev = dayStatusFor(date);
+  upsertLocalEntry(date, e => { e.restDay = status || null; });
+  renderDayStatusChips();
+  try { updateStats(); } catch (err) { console.error(err); }
+  try { renderWorkoutPlan(); } catch (err) { console.error(err); }
+  try { if (typeof renderConsistencyHeatmap === 'function') renderConsistencyHeatmap(); } catch (err) { console.error(err); }
+  try {
+    await setDoc(doc(db, 'trackers', syncId, 'entries', date), { date, restDay: status || null }, { merge: true });
+  } catch (err) {
+    console.error(err);
+    upsertLocalEntry(date, e => { e.restDay = prev || null; });
+    renderDayStatusChips(); try { updateStats(); } catch (e2) {}
+    alert('Couldn\'t save that — check your connection and try again.');
+  }
+}
+function renderDayStatusChips() {
+  const row = document.getElementById('dayStatusRow');
+  const fd = document.getElementById('fDate');
+  if (!row || !fd) return;
+  const status = dayStatusFor(fd.value || todayStr());
+  row.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('on', ch.dataset.daystatus === status));
+}
+function renderStreakRestControl(streakVal) {
+  const box = document.getElementById('scLoggingStreakRest');
+  if (!box) return;
+  const today = todayStr();
+  const status = dayStatusFor(today);
+  if (status) {
+    box.innerHTML = `<div class="rest-note">${status === 'sick' ? '😷 Sick' : '🛌 Rest'} · paused <button type="button" data-restundo="1">undo</button></div>`;
+  } else if (streakVal > 0) {
+    box.innerHTML = `<div class="rest-pills"><button type="button" class="rest-pill" data-reststatus="sick" title="Pause today without breaking your streak">😷 Sick</button><button type="button" class="rest-pill" data-reststatus="rest">🛌 Rest</button></div>`;
+  } else { box.innerHTML = ''; return; }
+  box.querySelectorAll('[data-reststatus]').forEach(b => b.addEventListener('click', (ev) => { ev.stopPropagation(); setDayStatus(today, b.dataset.reststatus); }));
+  box.querySelectorAll('[data-restundo]').forEach(b => b.addEventListener('click', (ev) => { ev.stopPropagation(); setDayStatus(today, null); }));
+}
+
 function updateStreakFlameIcon(days) {
   const card = document.querySelector('[data-card-key="loggingStreak"]');
   if (!card) return;
@@ -5352,9 +5421,12 @@ function updateStats() {
     const streakEl = document.getElementById('scLoggingStreak');
     const streakSubEl = document.getElementById('scLoggingStreakSub');
     if (streakEl) streakEl.textContent = `${streakVal} day${streakVal === 1 ? '' : 's'}`;
-    if (streakSubEl) streakSubEl.textContent = streakVal > 0 ? 'log something today to keep it going' : 'log something to start a new streak';
+    const restToday = dayStatusFor(todayStr());
+    if (streakSubEl) streakSubEl.textContent = restToday ? 'resting — your streak is safe' : (streakVal > 0 ? 'log something today to keep it going' : 'log something to start a new streak');
     applyBadgeHint('scLoggingStreakBadgeHint', 'Consistency', badgeCatsForHints);
     updateStreakFlameIcon(streakVal);
+    renderStreakRestControl(streakVal);
+    renderDayStatusChips();
   } catch (err) { console.error('Logging streak computation failed:', err); }
 
   // This Week recap + Patterns Noticed — merged into one card so Home
@@ -5480,7 +5552,7 @@ function renderConsistencyHeatmap() {
       if (cellDate > today) { cells.push(null); continue; }
       const dateStr = cellDate.toISOString().slice(0, 10);
       const level = computeDailyActivityLevel(entriesByDate[dateStr]);
-      cells.push({ dateStr, level, col, row, isToday: dateStr === todayStr() });
+      cells.push({ dateStr, level, col, row, isToday: dateStr === todayStr(), restDay: !!(entriesByDate[dateStr] && entriesByDate[dateStr].restDay) });
     }
   }
 
@@ -5491,8 +5563,9 @@ function renderConsistencyHeatmap() {
   const cellsHtml = cells.filter(Boolean).map(c => {
     const x = c.col * (cellSize + gap);
     const y = 16 + c.row * (cellSize + gap);
-    const fill = c.level === 0 ? 'var(--line)' : 'var(--teal)';
-    const opacity = c.level === 0 ? 1 : Math.min(1, 0.25 + c.level * 0.2);
+    const paused = c.level === 0 && c.restDay;
+    const fill = paused ? '#9B7BC4' : (c.level === 0 ? 'var(--line)' : 'var(--teal)');
+    const opacity = paused ? 0.6 : (c.level === 0 ? 1 : Math.min(1, 0.25 + c.level * 0.2));
     const stroke = c.isToday ? 'var(--coral)' : 'none';
     const strokeWidth = c.isToday ? '2' : '0';
     return `<rect data-date="${c.dateStr}" x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="3" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="${strokeWidth}" style="cursor:pointer"/>`;
@@ -5598,6 +5671,7 @@ function editEntry(date) {
   document.getElementById('fInjection').checked = !!e.injection;
   document.getElementById('injSiteWrap').style.display = e.injection ? 'block' : 'none';
   setSite(e.site || null);
+  renderDayStatusChips();
   if (e.injection) updateLastSiteHint();
   document.getElementById('fNotes').value      = e.notes      || '';
   document.getElementById('fProtein').value    = e.protein    || '';
@@ -10000,6 +10074,11 @@ function showRestTimerDone() {
 }
 
 function focusNextSetInput() { if (!restTimerContext) return; const ctx = restTimerContext; restTimerContext = null; const names = Object.keys(workoutSessionState); let tName = null, tIdx = -1; const sets = workoutSessionState[ctx.exerciseName] || []; tIdx = sets.findIndex((s, i) => i > ctx.setIdx && !s.done); if (tIdx !== -1) { tName = ctx.exerciseName; } else { const exIdx = names.indexOf(ctx.exerciseName); for (let i = exIdx + 1; i < names.length; i++) { const firstUndone = workoutSessionState[names[i]].findIndex(s => !s.done); if (firstUndone !== -1) { tName = names[i]; tIdx = firstUndone; break; } } } if (!tName) return; const row = document.querySelector('.set-row[data-exercise="' + CSS.escape(tName) + '"][data-set-idx="' + tIdx + '"]'); const wIn = row && row.querySelector('.set-weight-input'); if (wIn) { wIn.focus(); wIn.select(); } } function workoutNudgeHtml() {
+  const todayEntry = entries.find(x => x.date === todayStr());
+  if (todayEntry && todayEntry.restDay) {
+    const sick = todayEntry.restDay === 'sick';
+    return `<div style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line)">${sick ? '😷 Sick day — rest up. Your streak is paused, not broken.' : '🛌 Rest day — your streak is paused, not broken.'}</div>`;
+  }
   const days = daysSinceLastWorkout();
   let text, color;
   if (days === null) { text = 'No strength workouts logged yet — let\'s start the streak today.'; color = 'var(--ink-soft)'; }
