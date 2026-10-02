@@ -9577,6 +9577,11 @@ function clearSupersetPair(planKey, exerciseName) {
 let workoutExerciseSortable = null;
 let reorderingExercises = false;
 const REST_SECONDS = 120; // matches the 2:00 shown in the reference screenshot
+// One flat 2:00 rest for every exercise (built-in, custom, or added later),
+// and +15/−15 only change the countdown you're on — they no longer rewrite
+// that exercise's default. Set to false to go back to per-exercise presets
+// (Pec Deck 75s, Leg Press 150s…) that remember whatever you last adjusted.
+let FLAT_REST = true;
 
 function parseSetCount(setsStr) {
   const match = setsStr.match(/^(\d+)/);
@@ -10084,6 +10089,7 @@ function lastWarmupWeightFor(exerciseName) {
 // (a heavy Leg Press set needs longer than a Bicep Curl), rather than one
 // flat timer for everything.
 function getExerciseRestSeconds(exerciseName) {
+  if (FLAT_REST) return REST_SECONDS;
   if (exerciseRestOverride[exerciseName] != null) return exerciseRestOverride[exerciseName];
   const builtIn = workoutPlanMode === 'fullbody' ? WORKOUT_PLAN_FULLBODY
     : workoutPlanMode === 'ppl' ? [...WORKOUT_PLAN_PPL.Push, ...WORKOUT_PLAN_PPL.Pull, ...WORKOUT_PLAN_PPL.Legs]
@@ -10270,7 +10276,7 @@ async function adjustRestTimer(deltaSeconds) {
   restTimerTotalSeconds = newTotal;
   restTimerEndTime += actualDelta * 1000;
   updateRestTimerDisplay();
-  if (restTimerContext && restTimerContext.exerciseName) {
+  if (!FLAT_REST && restTimerContext && restTimerContext.exerciseName) {
     exerciseRestOverride = { ...exerciseRestOverride, [restTimerContext.exerciseName]: newTotal };
     await saveWorkoutPlanCustomizations();
   }
