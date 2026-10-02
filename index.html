@@ -573,6 +573,7 @@ body {
 .btn-sm { padding: 10px 14px; font-size: 13px; border-radius: 8px; width: auto; }
 .quick-save-btn.saved { background: var(--sage) !important; }
 .quick-save-btn:disabled { opacity: 0.7; }
+.ai-based-on { font-size: 11px; color: var(--ink-soft); margin-top: 10px; font-weight: 600; }
 .save-msg { text-align: center; font-size: 13px; color: var(--in); height: 20px; margin-top: 8px; opacity: 0; transition: opacity 0.3s; }
 .save-msg.show { opacity: 1; }
 
@@ -7995,6 +7996,10 @@ const AI_SAFETY_INSTRUCTIONS = `Important constraints: describe only patterns ac
 // Both send a compact slice of your own logged entries to Claude and ask
 // for plain-English observations — the one thing a fixed chart or number
 // genuinely can't do. Both are manual, on-demand calls, never automatic.
+// Sent alongside the data so the AI knows what each field means. (130 matches the fasting-glucose
+// target used elsewhere in the app.)
+const AI_DATA_LEGEND = "Field notes: weight is in lbs and dose in mg. glucose_fasting_mgdl is the first-thing-in-the-morning reading and glucose_2hr_post_meal_mgdl is the reading 2 hours after a meal, both in mg/dL; this person's fasting target is under 130, and glucose is usually only checked on some days, so gaps are normal. meals lists what was eaten (calories and grams of protein/carbs/fat). water_oz is ounces. day_status 'sick' or 'rest' marks a deliberate rest day. 'effort' on a workout is the person's own 1-5 rating of how hard it felt (5 = hardest). injection:true marks the day the weekly dose was taken.";
+
 function gatherRecentHealthData(days) {
   const cutoff = new Date(todayStr());
   cutoff.setDate(cutoff.getDate() - days);
@@ -8015,13 +8020,30 @@ function gatherRecentHealthData(days) {
       if (e.calories) row.calories = e.calories;
       if (e.carbs) row.carbs_g = e.carbs;
       if (e.fat) row.fat_g = e.fat;
-      if (e.ex && e.ex.length) row.exercise = e.ex.map(x => `${x.type} ${x.min}min${x.dist ? ` ${x.dist}mi` : ''}`).join(', ');
+      if (e.ex && e.ex.length) row.exercise = e.ex.map(x => `${x.type}${x.min ? ` ${x.min}min` : ''}${x.dist ? ` ${x.dist}mi` : ''}${x.effort ? ` (effort ${x.effort}/5)` : ''}`).join(', ');
       if (e.steps) row.steps = e.steps;
       if (e.sleepHrs) row.sleep_hours = e.sleepHrs;
       if (e.sleepScore) row.sleep_score = e.sleepScore;
       if (e.activeCal) row.active_cal = e.activeCal;
       if (e.distanceMi) row.distance_mi = e.distanceMi;
       if (e.hrv) row.hrv_ms = e.hrv;
+      if (e.restHR) row.resting_hr_bpm = e.restHR;
+      // Glucose is the heart of this app — it was never being sent, so the AI (correctly) said it saw none.
+      if (e.glucose) row.glucose_fasting_mgdl = e.glucose;
+      if (e.glucose2hr) row.glucose_2hr_post_meal_mgdl = e.glucose2hr;
+      if (e.sys) row.blood_pressure = e.dia ? `${e.sys}/${e.dia}` : `${e.sys}`;
+      if (e.waist) row.waist_in = e.waist;
+      if (e.chest) row.chest_in = e.chest;
+      if (e.arms) row.arms_in = e.arms;
+      if (e.water) row.water_oz = e.water;
+      if (e.restDay) row.day_status = e.restDay;
+      if (e.injection && e.site) row.injection_site = e.site;
+      if (e.notes) row.notes = String(e.notes).slice(0, 200);
+      const dayMeals = mealsForDate(e.date);
+      if (dayMeals.length) {
+        row.meals = dayMeals.slice(0, 8).map(m => [m.mt ? `${m.mt}:` : '', String(m.desc || '').slice(0, 60),
+          m.cal ? `${m.cal}cal` : '', m.protein ? `${m.protein}gP` : '', m.carbs ? `${m.carbs}gC` : '', m.fat ? `${m.fat}gF` : ''].filter(Boolean).join(' '));
+      }
       return row;
     });
 }
@@ -8047,7 +8069,7 @@ async function generateWeeklyInsights(isAuto) {
     const doseContext = doseTimeline.length
       ? doseTimeline.map(p => `${p.dose}mg from ${p.startDate} to ${p.endDate || 'present'}`).join('; ')
       : 'no dose history logged yet';
-    const promptText = `Here is a person's full dose history for context, with exact change dates: ${doseContext}.\n\nHere is their last 14 days of self-tracked GLP-1 (Mounjaro/tirzepatide) treatment data, as JSON (missing fields just weren't logged that day, not necessarily zero):\n\n${JSON.stringify(data)}\n\nIdentify 2-4 genuinely useful patterns a person might not notice on their own — for example between dose timing and symptom severity (you have the exact dose-change dates above, so you can reason precisely about how many days after an increase a symptom appeared, not just that a dose exists), protein intake and specific days, or exercise and sleep. If there truly isn't enough data for a pattern, say so plainly rather than inventing one. Keep it to 3-5 short sentences total, no headers or bullet points, just plain prose.\n\n${AI_SAFETY_INSTRUCTIONS}`;
+    const promptText = `Here is a person's full dose history for context, with exact change dates: ${doseContext}.\n\nHere is their last 14 days of self-tracked GLP-1 (Mounjaro/tirzepatide) treatment data, as JSON (missing fields just weren't logged that day, not necessarily zero):\n\n${JSON.stringify(data)}\n\n${AI_DATA_LEGEND}\n\nIdentify 2-4 genuinely useful patterns a person might not notice on their own — for example between dose timing and symptom severity (you have the exact dose-change dates above, so you can reason precisely about how many days after an increase a symptom appeared, not just that a dose exists), protein intake and specific days, glucose readings alongside what was eaten or when the dose was taken, or exercise and sleep. If there truly isn't enough data for a pattern, say so plainly rather than inventing one. Keep it to 3-5 short sentences total, no headers or bullet points, just plain prose.\n\n${AI_SAFETY_INSTRUCTIONS}`;
     const result = await callClaudeText(promptText, 400);
     if (!result.ok) {
       if (!isAuto) box.innerHTML = `Failed — HTTP ${result.status}. Check your Anthropic API key in Settings.`;
@@ -8090,14 +8112,19 @@ document.getElementById('aiAskBtn').addEventListener('click', async () => {
   const question = document.getElementById('aiAskInput').value.trim();
   if (!question) { box.innerHTML = 'Type a question first.'; return; }
   if (!anthropicKey) { box.innerHTML = 'Add your Anthropic API key in Settings first to use this.'; return; }
-  const data = gatherRecentHealthData(120);
+  // Use as much history as fits: 120 days normally, stepping down if a heavily-logged period would make the
+  // request huge (slow and costly). The "Based on N days" line under the answer always shows what was used.
+  let data = [];
+  for (const span of [120, 90, 60, 30]) { data = gatherRecentHealthData(span); if (JSON.stringify(data).length <= 100000) break; }
   if (!data.length) { box.innerHTML = 'No logged data yet to answer from.'; return; }
   box.innerHTML = 'Thinking…';
   try {
-    const promptText = `Here is up to 120 days of a person's self-tracked GLP-1 (Mounjaro/tirzepatide) treatment data, as JSON (missing fields just weren't logged that day, not necessarily zero):\n\n${JSON.stringify(data)}\n\nThe person's question: "${question}"\n\nAnswer using only what's actually in the data above. If the data can't answer the question, say so plainly rather than guessing. Keep the answer conversational and to the point — a few sentences at most.\n\n${AI_SAFETY_INSTRUCTIONS}`;
+    const promptText = `Here is up to 120 days of a person's self-tracked GLP-1 (Mounjaro/tirzepatide) treatment data, as JSON (missing fields just weren't logged that day, not necessarily zero):\n\n${JSON.stringify(data)}\n\n${AI_DATA_LEGEND}\n\nThe person's question: "${question}"\n\nAnswer using only what's actually in the data above. If the data can't answer the question, say so plainly rather than guessing. Keep the answer conversational and to the point — a few sentences at most.\n\n${AI_SAFETY_INSTRUCTIONS}`;
     const result = await callClaudeText(promptText, 400);
     if (!result.ok) { box.innerHTML = `Failed — HTTP ${result.status}. Check your Anthropic API key in Settings.`; return; }
-    box.innerHTML = result.text || 'No response — try again.';
+    // Show what the answer was based on, so missing data is visible instead of silently producing a wrong answer.
+    const gCount = data.filter(r => r.glucose_fasting_mgdl || r.glucose_2hr_post_meal_mgdl).length;
+    box.innerHTML = (result.text || 'No response — try again.') + `<div class="ai-based-on">Based on ${data.length} day${data.length === 1 ? '' : 's'} of logs · ${gCount} with glucose readings</div>`;
   } catch (err) {
     console.error(err);
     box.innerHTML = 'Failed — check your connection and Anthropic API key.';
