@@ -858,6 +858,14 @@ body {
 /* The center popups use the translucent card color but, unlike the cards, had no blur —
    so whatever was behind them showed through the text. Same frosted-glass blur as .form-card. */
 #exerciseHistoryModal, #cardioTrendsModal, #workoutSummaryModal { backdrop-filter: blur(26px) saturate(150%); -webkit-backdrop-filter: blur(26px) saturate(150%); }
+/* inline rest bar, under the set you just finished */
+.rest-inline { display: flex; align-items: center; gap: 6px; margin: -2px 0 8px; }
+.rest-inline-adj { height: 36px; min-width: 46px; flex-shrink: 0; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; touch-action: manipulation; }
+.rest-inline-bar { position: relative; flex: 1; min-width: 0; height: 36px; border-radius: 10px; background: var(--input-bg); border: 1.5px solid var(--line); overflow: hidden; }
+.rest-inline-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(55,198,255,0.5); transition: width 1s linear; }
+.rest-inline.done .rest-inline-fill { background: rgba(92,230,192,0.55); transition: none; }
+.rest-inline-time { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; height: 100%; font-family: 'IBM Plex Mono', monospace; font-weight: 800; font-size: 16px; color: var(--ink); }
+.rest-inline-skip { width: 30px; height: 36px; flex-shrink: 0; background: none; border: none; color: var(--ink-soft); font-size: 15px; cursor: pointer; }
 .muscle-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .muscle-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 14px; border: 1.5px solid var(--line); font-size: 11px; font-weight: 600; color: var(--ink); }
 .muscle-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
@@ -9533,7 +9541,7 @@ async function playCelebrationSound() {
     beep(783.99, 0.22, 0.22); // G5, held a touch longer
   } catch (err) { /* audio unavailable — the visual celebration still shows */ }
 }
-let restTimerAutoHideTimer = null; let restTimerContext = null;
+let restTimerAutoHideTimer = null; let restTimerContext = null; let restInlineKey = null; // 'Exercise:setIdx' of the set the inline rest bar sits under
 let workoutStartedAt = null; let workoutTimerInterval = null; let workoutModalOpen = false; let workoutCardHomeParent = null; let workoutCardHomeNext = null; let entryPopupCard = null; let entryPopupHomeParent = null; let entryPopupHomeNext = null; // in-memory only, same as workoutSessionState — resets on reload
 // User-added/removed exercises per plan ('A', 'B', or 'fullbody'), synced to
 // Firestore so they stick around instead of resetting every session.
@@ -10146,13 +10154,63 @@ function fmtRestTime(sec) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+// ── INLINE REST BAR ──
+// The countdown lives right under the set you just finished (a progress
+// bar that fills as you rest) so your eyes never leave the row. It's the
+// same timer as the corner pill — same beep/vibrate, same ±15 that
+// remembers your preferred rest per exercise — just presented in the list.
+// The pill is kept as a fallback for when that row isn't on screen.
+function restInlineHtml(exerciseName, idx) {
+  if (restInlineKey !== `${exerciseName}:${idx}`) return '';
+  const running = restTimerEndTime != null;
+  const remaining = running ? Math.max(0, Math.round((restTimerEndTime - Date.now()) / 1000)) : 0;
+  const total = restTimerTotalSeconds || 1;
+  const pct = running ? Math.min(100, Math.max(0, ((total - remaining) / total) * 100)) : 100;
+  return `<div class="rest-inline${running ? '' : ' done'}" data-exercise="${exerciseName}" data-set-idx="${idx}">
+    ${running ? '<button type="button" class="rest-inline-adj" data-delta="-15" aria-label="15 seconds less rest">−15</button>' : ''}
+    <div class="rest-inline-bar"><div class="rest-inline-fill" style="width:${pct}%"></div><span class="rest-inline-time">${running ? fmtRestTime(remaining) : 'Go!'}</span></div>
+    ${running ? '<button type="button" class="rest-inline-adj" data-delta="15" aria-label="15 seconds more rest">+15</button>' : ''}
+    <button type="button" class="rest-inline-skip" aria-label="${running ? 'Skip rest' : 'Dismiss'}">✕</button>
+  </div>`;
+}
+function updateRestInline(remaining) {
+  const el = document.querySelector('.rest-inline');
+  if (!el || el.classList.contains('done')) return;
+  const total = restTimerTotalSeconds || 1;
+  const pct = Math.min(100, Math.max(0, ((total - remaining) / total) * 100));
+  const fill = el.querySelector('.rest-inline-fill'), time = el.querySelector('.rest-inline-time');
+  if (fill) fill.style.width = pct + '%';
+  if (time) time.textContent = fmtRestTime(remaining);
+}
+function showRestInlineDone() {
+  const el = document.querySelector('.rest-inline');
+  if (!el) return;
+  el.classList.add('done');
+  el.querySelectorAll('.rest-inline-adj').forEach(b => b.remove());
+  const fill = el.querySelector('.rest-inline-fill'), time = el.querySelector('.rest-inline-time');
+  if (fill) fill.style.width = '100%';
+  if (time) time.textContent = 'Go!';
+}
+function clearRestInline() {
+  restInlineKey = null;
+  document.querySelectorAll('.rest-inline').forEach(e => e.remove());
+}
+// After any re-render: if a timer is running but its row is no longer in the
+// list (set removed, different exercise zoomed in…), fall back to the pill so
+// the countdown is never invisible.
+function syncRestTimerPresentation() {
+  const wrap = document.getElementById('restTimerWrap');
+  if (!wrap || restTimerEndTime == null) return;
+  wrap.style.display = document.querySelector('.rest-inline') ? 'none' : 'flex';
+}
+
 function startRestTimer(seconds) {
   const duration = seconds || REST_SECONDS;
   restTimerEndTime = Date.now() + duration * 1000;
   restTimerTotalSeconds = duration;
   clearTimeout(restTimerAutoHideTimer);
   const wrap = document.getElementById('restTimerWrap');
-  if (wrap) { wrap.style.display = 'flex'; wrap.classList.remove('rest-timer-done'); }
+  if (wrap) { wrap.style.display = restInlineKey ? 'none' : 'flex'; wrap.classList.remove('rest-timer-done'); }
   const label = document.getElementById('restTimerLabel');
   if (label) label.textContent = '⏱ Rest';
   const skipBtn = document.getElementById('restTimerSkipBtn');
@@ -10181,6 +10239,7 @@ function stopRestTimer() {
 
 function hideRestTimerPopup() {
   clearTimeout(restTimerAutoHideTimer);
+  clearRestInline();
   const wrap = document.getElementById('restTimerWrap');
   if (wrap) { wrap.style.display = 'none'; wrap.classList.remove('rest-timer-done'); }
 }
@@ -10190,11 +10249,12 @@ function updateRestTimerDisplay() {
   const remaining = Math.max(0, Math.round((restTimerEndTime - Date.now()) / 1000));
   const el = document.getElementById('restTimerDisplay');
   if (el) el.textContent = fmtRestTime(remaining);
+  updateRestInline(remaining);
   if (remaining <= 0) {
     if (restTimerInterval) { clearInterval(restTimerInterval); restTimerInterval = null; }
     restTimerEndTime = null;
     playRestEndAlert();
-    showRestTimerDone(); focusNextSetInput();
+    showRestTimerDone(); showRestInlineDone(); focusNextSetInput();
   }
 }
 
@@ -10325,7 +10385,7 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
         <div class="set-field set-reps-field"><input type="number" class="set-reps-input" inputmode="numeric" value="${setData.reps}" placeholder="0"><span class="unit">reps</span></div>
         <button type="button" class="set-check-btn${justDone ? ' set-just-done' : ''}" aria-label="${setData.done ? 'Mark set not done' : 'Mark set done'}">✓</button>
       </div>
-    </div>`;
+    </div>${restInlineHtml(exerciseName, idx)}`;
 }
 
 // Removes a single accidentally-added set mid-workout — undoable via the
@@ -10337,11 +10397,24 @@ async function removeWorkoutSet(exerciseName, idx) {
   if (!sets || !sets[idx]) return;
   const removed = sets[idx];
   workoutSessionState[exerciseName] = sets.filter((_, i) => i !== idx);
+  // Sets are addressed by position, so removing one slides the later ones up
+  // a slot — the rest bar (and the auto-focus target) have to follow the set
+  // they belong to, not stay on the index, or they'd jump to its neighbor.
+  if (restInlineKey && restInlineKey.startsWith(exerciseName + ':')) {
+    const k = Number(restInlineKey.slice(exerciseName.length + 1));
+    if (k === idx) restInlineKey = null; // its own set is gone: the corner pill takes over
+    else if (idx < k) restInlineKey = `${exerciseName}:${k - 1}`;
+  }
+  if (restTimerContext && restTimerContext.exerciseName === exerciseName && idx < restTimerContext.setIdx) restTimerContext.setIdx -= 1;
   renderWorkoutPlan();
   showUndoToast(`Removed set ${idx + 1}`, () => {
     const current = [...(workoutSessionState[exerciseName] || [])];
     current.splice(idx, 0, removed);
     workoutSessionState[exerciseName] = current;
+    if (restInlineKey && restInlineKey.startsWith(exerciseName + ':')) {
+      const k = Number(restInlineKey.slice(exerciseName.length + 1));
+      if (idx <= k) restInlineKey = `${exerciseName}:${k + 1}`;
+    }
     renderWorkoutPlan();
   });
 }
@@ -10534,7 +10607,7 @@ function wireWorkoutPlanEvents() {
         const partner = supersetPartnerFor(planKey, exName);
         const partnerSetDone = partner ? !!(workoutSessionState[partner] && workoutSessionState[partner][idx] && workoutSessionState[partner][idx].done) : true;
         if (!partner || partnerSetDone) {
-          restTimerContext = { exerciseName: exName, setIdx: idx }; unlockAudioContext(); startRestTimer(getExerciseRestSeconds(exName));
+          restTimerContext = { exerciseName: exName, setIdx: idx }; restInlineKey = `${exName}:${idx}`; unlockAudioContext(); startRestTimer(getExerciseRestSeconds(exName));
         }
         autoFillWorkoutDuration();
         // Checking off (not un-checking) the last remaining set for
@@ -10582,6 +10655,8 @@ function wireWorkoutPlanEvents() {
       if (panel) panel.style.display = panel.style.display === 'none' ? '' : 'none';
     });
   });
+  document.querySelectorAll('.rest-inline-adj').forEach(btn => btn.addEventListener('click', () => adjustRestTimer(Number(btn.dataset.delta))));
+  document.querySelectorAll('.rest-inline-skip').forEach(btn => btn.addEventListener('click', () => stopRestTimer()));
   document.querySelectorAll('.set-remove-btn').forEach(btn => {
     btn.addEventListener('click', () => removeWorkoutSet(btn.dataset.exercise, Number(btn.dataset.setIdx)));
   });
@@ -11199,6 +11274,7 @@ function renderWorkoutPlan() {
   `;
 
   const sfBlock = document.getElementById('workoutStartFinishBlock'); if (sfBlock && box.firstChild !== sfBlock) box.insertBefore(sfBlock, box.firstChild); wireWorkoutPlanEvents();
+  syncRestTimerPresentation();
   updateWorkoutElapsedDisplay(); // avoids a flash back to 0:00 until the next interval tick, since this element is rebuilt fresh on every render
 
   const startBtn = document.getElementById('startPlanBtn');
