@@ -864,6 +864,39 @@ body {
 }
 /* ── WHAT FITS? ── one-tap suggestions sized to what's left today */
 /* Food log rows */
+/* Food tab: date stepper, status strip, protein hero, water bar */
+.date-stepper { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.ds-btn { width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font-size: 24px; font-weight: 700; line-height: 1; cursor: pointer; font-family: inherit; }
+.ds-btn:disabled { opacity: 0.3; cursor: default; }
+.ds-label { position: relative; flex: 1; min-width: 0; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); cursor: pointer; }
+.ds-main { font-size: 15px; font-weight: 800; line-height: 1.1; }
+.ds-sub { font-size: 11px; color: var(--ink-soft); font-weight: 600; line-height: 1.1; }
+.ds-sub:empty { display: none; }
+.ds-label input[type=date] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.ds-today { height: 44px; padding: 0 12px; flex-shrink: 0; border-radius: 12px; border: none; background: linear-gradient(135deg, #37C6FF, #5CE6C0); color: #0a2e28; font-weight: 800; font-size: 13px; cursor: pointer; font-family: inherit; }
+.food-strip { position: sticky; top: 0; z-index: 25; display: none; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 10px; padding: 8px 8px 8px 14px; border-radius: 14px; border: 1.5px solid var(--line); background: rgba(18, 20, 38, 0.93); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
+.food-strip.show { display: flex; }
+[data-theme="light"] .food-strip { background: rgba(255, 255, 255, 0.95); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12); }
+.food-strip-text { font-size: 13px; font-weight: 600; color: var(--ink-soft); min-width: 0; }
+.food-strip-text b { color: var(--ink); font-family: var(--font-num); font-weight: 800; }
+.food-strip-add { flex-shrink: 0; border: none; border-radius: 10px; padding: 8px 14px; background: linear-gradient(135deg, #37C6FF, #5CE6C0); color: #0a2e28; font-weight: 800; font-size: 13px; cursor: pointer; font-family: inherit; }
+.nut-hero { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+.nut-ring { position: relative; width: 108px; height: 108px; flex-shrink: 0; }
+.nut-ring-fg { animation: ringIn 0.7s ease-out; }
+@keyframes ringIn { from { stroke-dashoffset: var(--ring-c); } }
+.nut-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.nut-ring-num { font-family: var(--font-num); font-size: 28px; font-weight: 800; line-height: 1; color: var(--ink); }
+.nut-ring-center small { font-size: 11px; color: var(--ink-soft); font-weight: 700; margin-top: 3px; }
+.nut-hero-side { min-width: 0; }
+.nut-hero-label { font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+.nut-hero-big { font-family: var(--font-num); font-size: 30px; font-weight: 800; line-height: 1.1; color: var(--teal); margin-top: 2px; }
+.nut-hero-big span { font-size: 15px; color: var(--ink-soft); font-weight: 700; }
+.nut-hero-big.met { color: var(--sage); font-size: 22px; }
+.nut-hero-cal { margin-top: 6px; font-size: 13px; color: var(--ink-soft); font-weight: 600; }
+.nut-hero-cal b { font-family: var(--font-num); font-size: 17px; font-weight: 800; color: var(--ink); }
+.water-bar { height: 8px; border-radius: 5px; background: var(--line); margin-top: 10px; overflow: hidden; }
+.water-bar-fill { height: 100%; width: 0; background: var(--teal); border-radius: 5px; transition: width 0.4s ease; }
+.water-bar-fill.met { background: var(--sage); }
 .meal-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 12px 0 2px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
 .meal-group-tot { font-family: var(--font-num); font-weight: 700; text-transform: none; letter-spacing: 0; font-size: 11.5px; text-align: right; }
 .meal-swipe { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
@@ -2298,13 +2331,21 @@ body {
 
     <!-- Food -->
     <div class="view" id="view-food">
-      <div class="form-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
-          <div class="field" style="margin-bottom:0;flex:1">
-            <label for="foodDate">Date</label>
-            <input type="date" id="foodDate">
-          </div>
-        </div>
+      <div class="food-strip" id="foodStrip" aria-live="polite">
+        <div class="food-strip-text" id="foodStripText"></div>
+        <button type="button" class="food-strip-add" id="foodStripAdd">＋ Add</button>
+      </div>
+      <div class="date-stepper">
+        <button type="button" class="ds-btn" id="foodDatePrev" aria-label="Previous day">‹</button>
+        <label class="ds-label" for="foodDate">
+          <span class="ds-main" id="foodDateMain">Today</span>
+          <span class="ds-sub" id="foodDateSub"></span>
+          <input type="date" id="foodDate">
+        </label>
+        <button type="button" class="ds-btn" id="foodDateNext" aria-label="Next day">›</button>
+        <button type="button" class="ds-today" id="foodDateToday" style="display:none">Today</button>
+      </div>
+      <div class="form-card" id="nutritionCard">
         <div class="form-section-title" style="margin-bottom:8px">Daily Nutrition</div>
         <div id="proteinSummaryBody"></div>
       </div>
@@ -2507,6 +2548,7 @@ body {
           <button class="btn btn-secondary btn-sm" id="water16Btn">+16</button>
           <button class="btn btn-ghost btn-sm" id="waterMinusBtn">−8</button>
         </div>
+        <div class="water-bar"><div class="water-bar-fill" id="waterBarFill"></div></div>
         <div style="font-size:11px;color:var(--ink-soft);margin-top:6px" id="waterHint">target: 64–80 oz daily · tap the number to edit directly</div>
       </div>
 
@@ -7055,6 +7097,7 @@ const views   = document.querySelectorAll('.view');
 const navItems = document.querySelectorAll('.nav-item');
 
 function showView(name) {
+  if (name === 'food') setTimeout(() => { try { updateFoodStripVisibility(); } catch (err) { /* view not ready */ } }, 60);
   views.forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
   navItems.forEach(n => n.classList.toggle('active', n.dataset.view === name));
   if (name === 'charts') setTimeout(renderCharts, 50);
@@ -12127,8 +12170,10 @@ function renderWater() {
   const wIn = document.getElementById('waterInput');
   if (document.activeElement !== wIn) wIn.value = oz;
   const hint = document.getElementById('waterHint');
-  hint.textContent = oz >= 64 ? '✓ target hit — nice' : `${64 - oz} oz to minimum target (64–80 oz)`;
+  hint.textContent = oz >= 64 ? '✓ target hit — nice' : `${oz} / 64 oz · ${Math.round(64 - oz)} to go (target 64–80)`;
   hint.style.color = oz >= 64 ? 'var(--in)' : 'var(--ink-soft)';
+  const waterFill = document.getElementById('waterBarFill');
+  if (waterFill) { waterFill.style.width = Math.min(100, (oz / 64) * 100) + '%'; waterFill.classList.toggle('met', oz >= 64); }
 
   // Dashboard card (always today)
   const t = entries.find(x => x.date === todayStr());
@@ -14216,14 +14261,34 @@ function renderProteinSummary() {
   const targets = computeCalorieTargets();
   const hasProfile = userHeightIn > 0 && userAge > 0;
 
+  const pVal = totals.protein || 0, pTarget = targets.proteinTarget;
+  const pPct = pTarget > 0 ? Math.min(100, (pVal / pTarget) * 100) : 0;
+  const RING_C = 2 * Math.PI * 42;
+  const pLeft = Math.round(pTarget - pVal), proteinMet = pLeft <= 0;
+  const calLeft = Math.round(targets.calorieTarget - (totals.calories || 0));
+  const fmtN = n => Math.abs(n).toLocaleString('en-US');
   box.innerHTML = `
+    <div class="nut-hero">
+      <div class="nut-ring" role="img" aria-label="Protein ${pVal} of ${pTarget} grams">
+        <svg viewBox="0 0 100 100" width="108" height="108">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="var(--line)" stroke-width="9"/>
+          <circle class="nut-ring-fg" cx="50" cy="50" r="42" fill="none" stroke="${proteinMet ? 'var(--sage)' : 'var(--teal)'}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${RING_C.toFixed(1)}" stroke-dashoffset="${(RING_C * (1 - pPct / 100)).toFixed(1)}" style="--ring-c:${RING_C.toFixed(1)}" transform="rotate(-90 50 50)"/>
+        </svg>
+        <div class="nut-ring-center"><span class="macro-logged-value nut-ring-num" data-macro-key="${date}:protein" data-macro-target="${pVal}">${pVal}</span><small>of ${pTarget}g</small></div>
+      </div>
+      <div class="nut-hero-side">
+        <div class="nut-hero-label">Protein</div>
+        <div class="nut-hero-big${proteinMet ? ' met' : ''}">${proteinMet ? (pLeft < 0 ? `✓ +${-pLeft}g over` : '✓ Goal met') : `${pLeft}g <span>to go</span>`}</div>
+        <div class="nut-hero-cal"><b>${calLeft >= 0 ? fmtN(calLeft) : '+' + fmtN(calLeft)}</b> cal ${calLeft >= 0 ? 'left' : 'over'}</div>
+      </div>
+    </div>
     ${macroBarRow('Calories', totals.calories || 0, targets.calorieTarget, 'var(--ink)', `${date}:calories`)}
-    ${macroBarRow('Protein', totals.protein || 0, targets.proteinTarget, 'var(--teal)', `${date}:protein`)}
     ${macroBarRow('Carbs', totals.carbs || 0, targets.carbTarget, 'var(--coral)', `${date}:carbs`)}
     ${macroBarRow('Fat', totals.fat || 0, targets.fatTarget, 'var(--sage)', `${date}:fat`)}
-    ${!hasProfile ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:4px">Add your height and age in Settings for a personalized Calorie/Fat/Carb target — using estimated defaults for now.</div>` : ''}
+    ${!hasProfile ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:4px">Using estimated calorie/carb/fat targets — add your height and age in Settings to personalize them.</div>` : ''}
     ${targets.flooredForSafety ? `<div style="font-size:11px;color:var(--coral);margin-top:4px">Your calculated deficit target was under 1,200 cal — raised to 1,200 as a safety floor.</div>` : ''}
   `;
+  updateFoodStrip(pVal, pTarget, calLeft);
   box.querySelectorAll('.macro-logged-value').forEach(span => {
     const key = span.dataset.macroKey;
     const target = parseFloat(span.dataset.macroTarget) || 0;
@@ -14234,6 +14299,55 @@ function renderProteinSummary() {
   try { renderWhatFits(); } catch (err) { console.error('What fits render failed:', err); }
 }
 
+
+// ── FOOD TAB: date stepper + the status strip that stays on screen while you add food ──
+function dateStrShift(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function updateFoodDateLabel() {
+  const el = document.getElementById('foodDate'); if (!el) return;
+  const v = el.value || todayStr(), today = todayStr();
+  const d = new Date(v + 'T00:00:00');
+  const short = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...(d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) });
+  document.getElementById('foodDateMain').textContent = v === today ? 'Today' : v === dateStrShift(today, -1) ? 'Yesterday' : short;
+  document.getElementById('foodDateSub').textContent = v === today || v === dateStrShift(today, -1) ? short : '';
+  document.getElementById('foodDateNext').disabled = v >= today;
+  document.getElementById('foodDateToday').style.display = v === today ? 'none' : '';
+}
+function shiftFoodDate(days) {
+  const el = document.getElementById('foodDate');
+  const next = dateStrShift(el.value || todayStr(), days);
+  if (next > todayStr()) return; // no logging into the future
+  el.value = next; el.dispatchEvent(new Event('change'));
+}
+document.getElementById('foodDatePrev').addEventListener('click', () => shiftFoodDate(-1));
+document.getElementById('foodDateNext').addEventListener('click', () => shiftFoodDate(1));
+document.getElementById('foodDateToday').addEventListener('click', () => { const el = document.getElementById('foodDate'); el.value = todayStr(); el.dispatchEvent(new Event('change')); });
+document.getElementById('foodDate').addEventListener('change', updateFoodDateLabel);
+
+// The strip shows protein + calories left once the Daily Nutrition card has scrolled out of view, so
+// you can see what you just added without scrolling back up. "＋ Add" jumps to the search box.
+function updateFoodStrip(pVal, pTarget, calLeft) {
+  const t = document.getElementById('foodStripText'); if (!t) return;
+  const protein = pVal >= pTarget ? '✓ protein goal met' : `<b>${pVal}/${pTarget}g</b> protein`;
+  t.innerHTML = `${protein} · <b>${Math.abs(calLeft).toLocaleString('en-US')}</b> cal ${calLeft >= 0 ? 'left' : 'over'}`;
+  updateFoodStripVisibility();
+}
+function updateFoodStripVisibility() {
+  const strip = document.getElementById('foodStrip'), card = document.getElementById('nutritionCard'),
+        main = document.getElementById('app-main'), view = document.getElementById('view-food');
+  if (!strip || !card || !main || !view) return;
+  const onFood = getComputedStyle(view).display !== 'none';
+  strip.classList.toggle('show', onFood && card.getBoundingClientRect().bottom < main.getBoundingClientRect().top + 8);
+}
+document.getElementById('app-main').addEventListener('scroll', updateFoodStripVisibility, { passive: true });
+document.getElementById('foodStripAdd').addEventListener('click', () => {
+  ensureAddFoodOpenOnQuickTab();
+  const desc = document.getElementById('mDesc');
+  desc.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  desc.focus();
+});
 
 // ── FOOD LOG ROWS ──
 // Tap a row to edit it. Swipe it left (or tap ⋯) to reveal "Again" and "Delete" — Delete keeps its
@@ -14291,6 +14405,7 @@ async function logMealAgain(fromDate, ts) {
 function renderMealList() {
   const list = document.getElementById('mealList');
   if (!list) return;
+  updateFoodDateLabel();
   const date = document.getElementById('foodDate').value;
   const meals = mealsForDate(date);
   const groups = {};
