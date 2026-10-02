@@ -10,8 +10,6 @@
 <meta name="theme-color" id="metaThemeColor" content="#100E26">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js';s.onload=function(){if(typeof renderCharts==='function')renderCharts();};document.head.appendChild(s);"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js';document.head.appendChild(s);"></script>
@@ -89,8 +87,19 @@
 [data-theme="light"] .sc-icon { background: rgba(28,26,46,0.06) !important; }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html { height: 100%; }
+/* Type: Apple's own fonts, matching iOS Health. Numbers use the rounded system face
+   (ui-rounded = SF Pro Rounded) at heavy weight; words use the regular system face.
+   Both ship with iOS/iPadOS, so nothing is downloaded. Other platforms fall back to
+   their system UI font. */
+:root {
+  --font-text: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-num: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+button, input, select, textarea { font-family: inherit; font-weight: inherit; } /* browsers give controls their own face and weight 400 unless told otherwise */
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-text);
+  font-weight: 500;                    /* default text one notch heavier than regular */
+  font-variant-numeric: tabular-nums;  /* equal-width digits: timers and weights don't jitter as they change */
   color: var(--ink);
   height: 100%;
   overflow: hidden;
@@ -152,31 +161,29 @@ body {
   border-radius: 2px;
   margin: 0 auto 20px;
 }
-.modal-title { font-size: 20px; font-weight: 700; color: var(--teal); margin-bottom: 8px; }
+.modal-title { font-size: 20px; font-weight: 800; color: var(--teal); margin-bottom: 8px; }
 .modal-sub { font-size: 14px; color: var(--ink-soft); margin-bottom: 20px; line-height: 1.5; }
 .sync-id-display {
   background: var(--teal-tint);
   border: 1px solid var(--teal);
   border-radius: 10px;
   padding: 14px 16px;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family:var(--font-num);
   font-size: 13px;
   color: var(--teal);
   word-break: break-all;
   margin-bottom: 12px;
-  letter-spacing: 0.03em;
-}
+  letter-spacing: 0.03em;font-weight:700}
 .modal-input {
   width: 100%;
   padding: 14px;
   border: 1.5px solid var(--line);
   border-radius: 10px;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family:var(--font-num);
   font-size: 13px;
   background: var(--input-bg);
   color: var(--ink);
-  margin-bottom: 12px;
-}
+  margin-bottom: 12px;font-weight:700}
 .modal-input:focus { outline: none; border-color: var(--teal); }
 
 /* ── APP SHELL ── */
@@ -205,7 +212,7 @@ body {
   font-size: 17px;
   color: var(--ink);
 }
-.header-title { color: var(--ink); font-weight: 700; font-size: 16px; line-height: 1.2; }
+.header-title { color: var(--ink); font-weight: 800; font-size: 16px; line-height: 1.2; }
 .header-sub { color: var(--ink-soft); font-size: 11px; }
 .header-right { display: flex; gap: 8px; }
 .icon-btn {
@@ -249,8 +256,8 @@ body {
   gap: 3px;
   border: none; background: none;
   color: var(--ink-soft);
-  font-size: 9px; font-family: 'Inter', sans-serif;
-  font-weight: 500;
+  font-size: 9px; font-family:var(--font-text);
+  font-weight: 600;
   cursor: pointer;
   padding: 8px 2px;
   transition: color 0.15s;
@@ -330,8 +337,8 @@ body {
   margin-bottom: 4px;
 }
 .sc-value {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 22px; font-weight: 600; color: var(--ink);
+  font-family:var(--font-num);
+  font-size: 22px; font-weight: 700; color: var(--ink);
   line-height: 1.1;
 }
 .sc-value.big { font-size: 28px; color: var(--teal); }
@@ -352,7 +359,7 @@ body {
 .sc-icon-row .sc-label { margin-bottom: 0; }
 .gauge-track { position: relative; height: 8px; border-radius: 4px; margin: 8px 0 4px; }
 .badge-category-title {
-  font-size: 12px; font-weight: 600;
+  font-size: 12px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ink-soft); margin: 18px 0 10px;
   position: relative; padding-left: 12px;
@@ -384,9 +391,9 @@ body {
   background: var(--teal-tint);
 }
 .badge-tile.locked .badge-icon-circle { background: var(--line); filter: grayscale(1); }
-.badge-title { font-size: 11px; font-weight: 600; color: var(--ink); line-height: 1.25; margin-bottom: 3px; }
+.badge-title { font-size: 11px; font-weight: 700; color: var(--ink); line-height: 1.25; margin-bottom: 3px; }
 .badge-status { font-size: 10px; color: var(--ink-soft); }
-.badge-status.earned { color: var(--in); font-weight: 600; }
+.badge-status.earned { color: var(--in); font-weight: 700; }
 #badgeCelebration {
   background: linear-gradient(135deg, var(--teal) 0%, var(--teal-mid) 100%);
   color: white; border-radius: var(--radius);
@@ -413,7 +420,7 @@ body {
   0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
   100% { transform: translate(var(--tx), var(--ty)) rotate(var(--rot)); opacity: 0; }
 }
-#badgeCelebration .bc-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+#badgeCelebration .bc-title { font-weight: 800; font-size: 14px; margin-bottom: 4px; }
 #badgeCelebration .bc-list { font-size: 12px; opacity: 0.9; }
 #milestoneCelebration {
   background: linear-gradient(135deg, var(--coral) 0%, #FF9466 100%);
@@ -423,7 +430,7 @@ body {
   position: relative; overflow: visible;
 }
 #milestoneCelebration.bc-pop-in { animation: bc-pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
-#milestoneCelebration .bc-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+#milestoneCelebration .bc-title { font-weight: 800; font-size: 14px; margin-bottom: 4px; }
 #milestoneCelebration .bc-list { font-size: 12px; opacity: 0.9; }
 .gauge-tick {
   position: absolute; top: -3px; width: 2px; height: 14px;
@@ -443,7 +450,7 @@ body {
   box-shadow: var(--shadow-card);
 }
 .timeline-title {
-  font-size: 11px; font-weight: 600;
+  font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ink-soft); margin-bottom: 10px;
   position: relative; padding-left: 12px;
@@ -464,8 +471,8 @@ body {
   transition: all 0.2s;
 }
 .timeline-phase.done { background: var(--teal-tint); border-color: var(--teal); color: var(--teal); }
-.timeline-phase.current { background: var(--teal); border-color: var(--teal); color: white; font-weight: 700; }
-.timeline-phase .ph-dose { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+.timeline-phase.current { background: var(--teal); border-color: var(--teal); color: white; font-weight: 800; }
+.timeline-phase .ph-dose { font-family:var(--font-num); font-size: 12px; font-weight: 700; margin-bottom: 2px; }
 
 /* ── LOG FORM ── */
 .form-card {
@@ -486,7 +493,7 @@ body {
    effectively pushed out of sight rather than actually disappearing. */
 .entry-popup-fullscreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 501; width: 100%; height: 100%; max-height: none; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--card); box-shadow: none; border-radius: 0; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
 .form-section-title {
-  font-size: 12px; font-weight: 600;
+  font-size: 12px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ink-soft); margin-bottom: 12px;
   position: relative; padding-left: 12px;
@@ -507,12 +514,11 @@ body {
   padding: 12px 14px;
   border: 1.5px solid var(--line);
   border-radius: 10px;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family:var(--font-num);
   font-size: 15px;
   background: var(--input-bg);
   color: var(--ink);
-  appearance: none;
-}
+  appearance: none;font-weight:700}
 .field input:focus, .field select:focus {
   outline: none; border-color: var(--teal);
 }
@@ -547,8 +553,8 @@ body {
   width: 100%;
   padding: 14px;
   border: none; border-radius: 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 15px; font-weight: 600;
+  font-family:var(--font-text);
+  font-size: 15px; font-weight: 700;
   cursor: pointer;
   transition: opacity 0.15s, transform 0.1s;
 }
@@ -575,9 +581,8 @@ body {
 }
 .history-search input {
   flex: 1; border: none; background: none;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 14px; color: var(--ink);
-}
+  font-family:var(--font-num);
+  font-size: 14px; color: var(--ink);font-weight:700}
 .history-search input:focus { outline: none; }
 .entry-card {
   background: var(--card);
@@ -591,9 +596,9 @@ body {
   justify-content: space-between;
   margin-bottom: 8px;
 }
-.entry-date { font-weight: 600; font-size: 14px; color: var(--teal); }
+.entry-date { font-weight: 700; font-size: 14px; color: var(--teal); }
 .entry-badge {
-  font-size: 10px; font-weight: 600;
+  font-size: 10px; font-weight: 700;
   padding: 2px 8px; border-radius: 20px;
   background: var(--teal-tint); color: var(--teal);
 }
@@ -603,13 +608,12 @@ body {
   margin-bottom: 6px;
 }
 .metric-pill {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family:var(--font-num);
   font-size: 12px;
   padding: 4px 10px;
   border-radius: 20px;
   border: 1px solid var(--line);
-  background: var(--input-bg);
-}
+  background: var(--input-bg);font-weight:700}
 .metric-pill.in-range { background: var(--success-tint); border-color: var(--in); color: var(--in); }
 .metric-pill.out-range { background: var(--coral-tint); border-color: var(--out); color: var(--out); }
 .metric-pill.neutral { color: var(--ink-soft); }
@@ -645,7 +649,7 @@ body {
   box-shadow: var(--shadow-card);
 }
 .chart-title {
-  font-size: 12px; font-weight: 600;
+  font-size: 12px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ink-soft); margin-bottom: 12px;
   position: relative; padding-left: 12px;
@@ -669,7 +673,7 @@ body {
 /* ── SETTINGS ── */
 .settings-section { margin-bottom: 20px; }
 .settings-title {
-  font-size: 12px; font-weight: 600;
+  font-size: 12px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ink-soft); margin-bottom: 10px;
   padding-left: 4px;
@@ -688,17 +692,16 @@ body {
   gap: 12px;
 }
 .settings-row:last-child { border-bottom: none; }
-.settings-row-label { font-size: 14px; font-weight: 500; }
+.settings-row-label { font-size: 14px; font-weight: 600; }
 .settings-row-sub { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
 .sync-id-pill {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family:var(--font-num);
   font-size: 11px; color: var(--teal);
   background: var(--teal-tint);
   padding: 4px 8px; border-radius: 6px;
   cursor: pointer; max-width: 120px;
   overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  white-space: nowrap;font-weight:700}
 
 .wk-table {
   width: 100%;
@@ -716,8 +719,7 @@ body {
 .wk-table td {
   padding: 8px 10px;
   border-bottom: 1px solid var(--divider);
-  font-family: 'IBM Plex Mono', monospace;
-}
+  font-family:var(--font-num);font-weight:700}
 .wk-table td.good { color: var(--in); }
 .wk-table td.warn { color: var(--out); }
 
@@ -736,14 +738,14 @@ body {
 }
 .ms-dot.hit { background: var(--teal); border-color: var(--teal); color: #fff; }
 .ms-dot.missed { background: var(--coral-tint); border-color: var(--coral); color: var(--out); }
-.ms-dot.current { background: var(--teal-tint); border-color: var(--teal); color: var(--teal); font-weight: 700; }
+.ms-dot.current { background: var(--teal-tint); border-color: var(--teal); color: var(--teal); font-weight: 800; }
 .ms-body { flex: 1; }
 .ms-head { display: flex; justify-content: space-between; font-size: 13px; }
-.ms-name { font-weight: 600; }
-.ms-date { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-soft); }
+.ms-name { font-weight: 700; }
+.ms-date { font-family:var(--font-num); font-size: 11px; color: var(--ink-soft);font-weight:700}
 .ms-detail { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
-.ms-detail .hit-val { color: var(--in); font-weight: 600; }
-.ms-detail .miss-val { color: var(--out); font-weight: 600; }
+.ms-detail .hit-val { color: var(--in); font-weight: 700; }
+.ms-detail .miss-val { color: var(--out); font-weight: 700; }
 
 .inj-banner {
   display: none;
@@ -751,7 +753,7 @@ body {
   padding: 14px 16px;
   border-radius: var(--radius);
   margin-bottom: 14px;
-  font-size: 14px; font-weight: 600;
+  font-size: 14px; font-weight: 700;
   cursor: pointer;
 }
 .inj-banner.due { display: flex; background: var(--teal-tint); color: var(--teal); border: 1.5px solid var(--teal); }
@@ -770,10 +772,10 @@ body {
   user-select: none;
   transition: all 0.15s;
 }
-.chip.on { background: var(--teal); border-color: var(--teal); color: white; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+.chip.on { background: var(--teal); border-color: var(--teal); color: white; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 .ppl-day-chip.on, .split-day-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; font-weight: 800; }
 .ex-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; }
-.chip.ex-chip { padding: 9px 16px; font-size: 14px; font-weight: 700; border-radius: 12px; }
+.chip.ex-chip { padding: 9px 16px; font-size: 14px; font-weight: 800; border-radius: 12px; }
 
 /* ── WORKOUT SET LOGGER ──
    Each set is one rounded card: a quiet top line (set number, last
@@ -792,12 +794,12 @@ body {
 .set-number-toggle {
   width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
   border: none; background: var(--line); color: var(--ink-soft);
-  font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
+  font-family:var(--font-num); font-size: 12px; font-weight: 700;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
 .set-number-toggle.warmup { background: rgba(255,111,165,0.18); color: var(--coral); font-weight: 800; }
 .set-prev { flex: 1; min-width: 0; font-size: 11px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pr-proximity-hint { font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; color: var(--ink-soft); }
+.pr-proximity-hint { font-size: 11px; font-weight: 800; white-space: nowrap; flex-shrink: 0; color: var(--ink-soft); }
 .pr-proximity-hint.pr-pace { color: #FFB020; background: rgba(255,176,32,0.15); padding: 2px 8px; border-radius: 10px; }
 .set-remove-btn { width: 24px; height: 24px; flex-shrink: 0; border-radius: 8px; border: none; background: none; color: var(--ink-soft); font-size: 14px; cursor: pointer; opacity: 0.55; }
 .set-row-main { display: flex; align-items: center; gap: 8px; }
@@ -805,7 +807,7 @@ body {
 .set-step-btn {
   width: 32px; height: 44px; flex-shrink: 0; border-radius: 12px;
   border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
-  font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer;
+  font-size: 20px; font-weight: 800; line-height: 1; cursor: pointer;
   touch-action: manipulation; transition: transform 0.08s;
 }
 .set-step-btn:active { transform: scale(0.92); }
@@ -818,7 +820,7 @@ body {
   width: 100%; height: 44px; padding: 0 4px 4px; box-sizing: border-box;
   border: 1.5px solid var(--line); border-radius: 12px;
   background: var(--card); color: var(--ink);
-  font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; text-align: center;
+  font-family:var(--font-num); font-size: 18px; font-weight: 700; text-align: center;
 }
 .set-field .unit { position: absolute; right: 7px; bottom: 3px; font-size: 8px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; pointer-events: none; }
 .set-row.done .set-field input { border-color: var(--accent); font-weight: 800; }
@@ -847,12 +849,12 @@ body {
 .fits-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; margin-bottom: 6px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--input-bg); color: var(--ink); cursor: pointer; text-align: left; font-family: inherit; touch-action: manipulation; }
 .fits-row:active { transform: scale(0.985); }
 .fits-text { flex: 1; min-width: 0; }
-.fits-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fits-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fits-macros { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
 .fits-add { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; background: var(--teal); color: #0a2e28; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .rest-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.rest-pill { border: 1.5px solid var(--line); background: transparent; color: var(--ink-soft); border-radius: 14px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; }
-.rest-note { font-size: 11px; font-weight: 600; color: #B79BE0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rest-pill { border: 1.5px solid var(--line); background: transparent; color: var(--ink-soft); border-radius: 14px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.rest-note { font-size: 11px; font-weight: 700; color: #B79BE0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 [data-theme="light"] .rest-note { color: #6B4C94; }
 .rest-note button { background: none; border: none; color: var(--ink-soft); text-decoration: underline; font-size: 11px; cursor: pointer; padding: 0; font-family: inherit; }
 /* The center popups use the translucent card color but, unlike the cards, had no blur —
@@ -860,41 +862,41 @@ body {
 #exerciseHistoryModal, #cardioTrendsModal, #workoutSummaryModal { backdrop-filter: blur(26px) saturate(150%); -webkit-backdrop-filter: blur(26px) saturate(150%); }
 /* inline rest bar, under the set you just finished */
 .rest-inline { display: flex; align-items: center; gap: 6px; margin: -2px 0 8px; }
-.rest-inline-adj { height: 36px; min-width: 46px; flex-shrink: 0; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; touch-action: manipulation; }
+.rest-inline-adj { height: 36px; min-width: 46px; flex-shrink: 0; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit; touch-action: manipulation; }
 .rest-inline-bar { position: relative; flex: 1; min-width: 0; height: 36px; border-radius: 10px; background: var(--input-bg); border: 1.5px solid var(--line); overflow: hidden; }
 .rest-inline-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(55,198,255,0.5); transition: width 1s linear; }
 .rest-inline.done .rest-inline-fill { background: rgba(92,230,192,0.55); transition: none; }
-.rest-inline-time { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; height: 100%; font-family: 'IBM Plex Mono', monospace; font-weight: 800; font-size: 16px; color: var(--ink); }
+.rest-inline-time { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; height: 100%; font-family:var(--font-num); font-weight: 800; font-size: 16px; color: var(--ink); }
 .rest-inline-skip { width: 30px; height: 36px; flex-shrink: 0; background: none; border: none; color: var(--ink-soft); font-size: 15px; cursor: pointer; }
 #muscleMap [data-muscle] { cursor: pointer; }
 #muscleMap .sel { filter: drop-shadow(0 0 3px var(--ink)); }
 .muscle-chip { cursor: pointer; }
 .muscle-chip.selected { border-color: var(--teal); background: var(--teal-tint); }
 .muscle-detail { margin-top: 12px; padding: 12px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--input-bg); }
-.muscle-detail .n { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); }
-.md-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin-bottom: 4px; }
+.muscle-detail .n { font-family:var(--font-num); color: var(--ink-soft);font-weight:700}
+.md-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin-bottom: 4px; }
 .md-list { font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
 .md-close { background: none; border: none; color: var(--ink-soft); font-size: 16px; cursor: pointer; padding: 2px 6px; }
-.md-goal { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 600; flex-wrap: wrap; }
-.md-step { width: 32px; height: 32px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font-size: 18px; font-weight: 700; cursor: pointer; line-height: 1; }
+.md-goal { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 700; flex-wrap: wrap; }
+.md-step { width: 32px; height: 32px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font-size: 18px; font-weight: 800; cursor: pointer; line-height: 1; }
 .md-reset { background: none; border: none; color: var(--ink-soft); text-decoration: underline; font-size: 11px; cursor: pointer; margin-left: auto; font-family: inherit; }
-.muscle-balance { font-size: 12px; font-weight: 600; margin-top: 10px; color: #FFB020; }
-.muscle-balance.ok { color: var(--sage); font-weight: 500; }
+.muscle-balance { font-size: 12px; font-weight: 700; margin-top: 10px; color: #FFB020; }
+.muscle-balance.ok { color: var(--sage); font-weight: 600; }
 [data-theme="light"] .muscle-balance:not(.ok) { color: #9A5B00; }
 .muscle-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.muscle-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 14px; border: 1.5px solid var(--line); font-size: 11px; font-weight: 600; color: var(--ink); }
+.muscle-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 14px; border: 1.5px solid var(--line); font-size: 11px; font-weight: 700; color: var(--ink); }
 .muscle-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
-.muscle-chip.zero { color: var(--ink-soft); font-weight: 500; }
-.muscle-chip .n { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); }
-.draft-banner { position: fixed; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 78px); z-index: 450; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--card); border: 1.5px solid var(--teal); box-shadow: var(--shadow-hero); font-size: 13px; font-weight: 700; color: var(--ink); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.muscle-chip.zero { color: var(--ink-soft); font-weight: 600; }
+.muscle-chip .n { font-family:var(--font-num); color: var(--ink-soft);font-weight:700}
+.draft-banner { position: fixed; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 78px); z-index: 450; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--card); border: 1.5px solid var(--teal); box-shadow: var(--shadow-hero); font-size: 13px; font-weight: 800; color: var(--ink); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
 .draft-banner .btn { width: auto; padding: 8px 12px; }
-.sync-status { font-size: 10px; font-weight: 700; white-space: nowrap; color: var(--ink-soft); }
+.sync-status { font-size: 10px; font-weight: 800; white-space: nowrap; color: var(--ink-soft); }
 .sync-status.ok { color: var(--sage); opacity: 0.85; }
 .sync-status.busy { color: var(--ink-soft); }
 .sync-status.warn { color: #FFB020; }
 .sync-status.bad { color: var(--coral); }
 [data-theme="light"] .sync-status.warn { color: #9A5B00; }
-.variation-caption { font-size: 11px; font-weight: 600; color: var(--ink); margin: -3px 0 8px; }
+.variation-caption { font-size: 11px; font-weight: 700; color: var(--ink); margin: -3px 0 8px; }
 .set-field input::-webkit-outer-spin-button, .set-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .set-field input { -moz-appearance: textfield; appearance: textfield; }
 .superset-label { color: #B79BE0; border-color: #7A5C9E; }
@@ -905,7 +907,7 @@ body {
 .exercise-action-btn {
   height: 32px; min-width: 32px; padding: 0 9px; border-radius: 16px;
   border: 1.5px solid var(--line); background: transparent; color: var(--ink-soft);
-  font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer;
+  font-size: 14px; font-weight: 700; font-family:var(--font-text); cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
 }
 .exercise-action-btn.on { border-color: var(--teal); color: var(--ink); }
@@ -913,7 +915,7 @@ body {
 .exercise-state-chip {
   display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
   height: 32px; padding: 0 6px 0 10px; border-radius: 16px; border: 1.5px solid var(--line);
-  font-size: 11px; font-weight: 700;
+  font-size: 11px; font-weight: 800;
 }
 .exercise-state-chip .chip-text { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .exercise-state-chip button { background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 12px; padding: 4px; }
@@ -930,7 +932,7 @@ body {
 .palette-swatch:active { transform: scale(0.92); }
 .palette-swatch.on { border-color: var(--ink); }
 .palette-swatch.on::after {
-  content: '✓'; color: white; font-size: 15px; font-weight: 700;
+  content: '✓'; color: white; font-size: 15px; font-weight: 800;
   text-shadow: 0 1px 2px rgba(0,0,0,0.4);
 }
 .tag-pill {
@@ -959,13 +961,12 @@ body {
   gap: 10px;
 }
 .lookup-result:active { border-color: var(--teal); background: var(--teal-tint); }
-.lr-name { font-size: 13px; font-weight: 500; flex: 1; }
+.lr-name { font-size: 13px; font-weight: 600; flex: 1; }
 .lr-brand { font-size: 11px; color: var(--ink-soft); }
 .lr-macros {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family:var(--font-num);
   font-size: 12px; color: var(--teal);
-  white-space: nowrap;
-}
+  white-space: nowrap;font-weight:700}
 .portion-row {
   display: flex; align-items: center; gap: 10px;
   margin-top: 10px; padding: 10px 12px;
@@ -977,12 +978,11 @@ body {
   width: 80px; padding: 8px 10px;
   border: 1.5px solid var(--teal);
   border-radius: 8px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 14px; text-align: right;
-}
+  font-family:var(--font-num);
+  font-size: 14px; text-align: right;font-weight:700}
 .lookup-status { font-size: 12px; color: var(--ink-soft); padding: 8px 4px; text-align: center; }
 .search-source-label {
-  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.05em; color: var(--ink-soft);
   margin: 10px 0 6px; padding-top: 8px; border-top: 1px solid var(--line);
 }
@@ -991,11 +991,10 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px 4px;
   border-bottom: 1px solid var(--divider);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 13px;
-}
+  font-family:var(--font-num);
+  font-size: 13px;font-weight:700}
 .lab-row:last-child { border-bottom: none; }
-.lab-row .lab-val { color: var(--teal); font-weight: 600; }
+.lab-row .lab-val { color: var(--teal); font-weight: 700; }
 
 /* ── PRINT ── */
 @media print {
@@ -1092,7 +1091,7 @@ body {
     <div class="modal-handle"></div>
     <div class="modal-title">Quick Weigh-In</div>
     <div class="modal-sub" id="quickWeighInSub">Log today's weight in one tap.</div>
-    <input class="modal-input" type="number" inputmode="decimal" step="0.1" id="quickWeighInInput" placeholder="e.g. 238.5" style="font-family:'IBM Plex Mono',monospace;font-size:20px;text-align:center">
+    <input class="modal-input" type="number" inputmode="decimal" step="0.1" id="quickWeighInInput" placeholder="e.g. 238.5" style="font-family:var(--font-num);font-size:20px;text-align:center;font-weight:700">
     <div id="quickWeighInInjectionSection" style="display:none;margin-bottom:12px">
       <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);margin-bottom:10px;cursor:pointer">
         <input type="checkbox" id="quickWeighInInjectionCheck" style="width:18px;height:18px">
@@ -1100,7 +1099,7 @@ body {
       </label>
       <div class="chip-row" id="quickWeighInSiteRow" style="display:none"></div>
     </div>
-    <button class="btn btn-primary" id="quickWeighInSaveBtn" style="background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#04203a;font-weight:700">Save</button>
+    <button class="btn btn-primary" id="quickWeighInSaveBtn" style="background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#04203a;font-weight:800">Save</button>
     <button class="btn btn-ghost" id="quickWeighInCancelBtn" style="margin-top:8px">Cancel</button>
   </div>
 </div>
@@ -1108,7 +1107,7 @@ body {
 <!-- ── BARCODE SCANNER ── -->
 <div class="modal-overlay hidden" id="scanModal" style="align-items:center;justify-content:center">
   <div style="background:var(--card);border-radius:20px;padding:20px;width:92%;max-width:420px;text-align:center">
-    <div style="font-weight:700;color:var(--teal);margin-bottom:10px">Scan Barcode</div>
+    <div style="font-weight:800;color:var(--teal);margin-bottom:10px">Scan Barcode</div>
     <div style="position:relative;border-radius:14px;overflow:hidden;background:#000">
       <video id="scanVideo" playsinline style="width:100%;display:block;max-height:50vh;object-fit:cover"></video>
       <div style="position:absolute;inset:20% 12%;border:2px solid rgba(255,255,255,0.7);border-radius:10px;pointer-events:none"></div>
@@ -1140,11 +1139,11 @@ body {
 <div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="trainerSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:708"></div><div id="trainerSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:709;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="cardioTrendsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:706"></div><div id="cardioTrendsModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:707;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
 <div id="restTimerWrap" style="display:none;flex-direction:row;align-items:center;gap:8px;position:fixed;bottom:88px;right:14px;background:var(--card);border:1.5px solid var(--teal);border-radius:17px;padding:9px 11px 9px 15px;box-shadow:0 8px 26px rgba(0,0,0,0.28);z-index:601;text-align:center">
   <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.1">
-    <span id="restTimerLabel" style="font-size:10px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em">⏱ Rest</span>
-    <span id="restTimerDisplay" style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:var(--teal)">2:00</span>
+    <span id="restTimerLabel" style="font-size:10px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em">⏱ Rest</span>
+    <span id="restTimerDisplay" style="font-family:var(--font-num);font-size:26px;font-weight:800;color:var(--teal)">2:00</span>
   </div>
-  <button type="button" class="btn btn-secondary btn-sm" id="restTimerMinusBtn" aria-label="Subtract 15 seconds, remembered for this exercise" style="padding:7px 9px;font-size:13px;font-weight:700;min-width:auto">−15</button>
-  <button type="button" class="btn btn-secondary btn-sm" id="restTimerPlusBtn" aria-label="Add 15 seconds, remembered for this exercise" style="padding:7px 9px;font-size:13px;font-weight:700;min-width:auto">+15</button>
+  <button type="button" class="btn btn-secondary btn-sm" id="restTimerMinusBtn" aria-label="Subtract 15 seconds, remembered for this exercise" style="padding:7px 9px;font-size:13px;font-weight:800;min-width:auto">−15</button>
+  <button type="button" class="btn btn-secondary btn-sm" id="restTimerPlusBtn" aria-label="Add 15 seconds, remembered for this exercise" style="padding:7px 9px;font-size:13px;font-weight:800;min-width:auto">+15</button>
   <button type="button" class="btn btn-secondary btn-sm" id="restTimerSkipBtn" style="padding:7px 13px;font-size:12px">Skip</button>
 </div>
 
@@ -1227,20 +1226,20 @@ body {
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <button type="button" class="btn btn-secondary" id="quickWaterBtn" style="flex:1;flex-direction:column;padding:12px 6px;gap:5px">
           <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 8 7 13a7 7 0 0 1-14 0c0-5 7-13 7-13z"/></svg>
-          <span style="font-size:11px;font-weight:600">+8oz Water</span>
+          <span style="font-size:11px;font-weight:700">+8oz Water</span>
         </button>
         <button type="button" class="btn btn-secondary" id="quickWeightBtn" style="flex:1;flex-direction:column;padding:12px 6px;gap:5px">
           <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><line x1="5" y1="7" x2="19" y2="7"/><path d="M5 7 2 13a3 3 0 0 0 6 0z"/><path d="M19 7l-3 6a3 3 0 0 0 6 0z"/></svg>
-          <span style="font-size:11px;font-weight:600">Log Weight</span>
+          <span style="font-size:11px;font-weight:700">Log Weight</span>
         </button>
         <button type="button" class="btn btn-secondary" id="quickWorkoutBtn" style="flex:1;flex-direction:column;padding:12px 6px;gap:5px">
           <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/></svg>
-          <span style="font-size:11px;font-weight:600">Start Workout</span>
+          <span style="font-size:11px;font-weight:700">Start Workout</span>
         </button>
       </div>
 
       <div id="quickLogFoodSection" style="display:none;margin-bottom:14px">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Quick Log</div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Quick Log</div>
         <div id="quickLogFoodRow" style="display:flex;gap:8px;overflow-x:auto"></div>
       </div>
 
@@ -1257,21 +1256,21 @@ body {
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:34px;height:34px;border-radius:50%;background:rgba(55,198,255,0.16);display:flex;align-items:center;justify-content:center;color:#37C6FF;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/></svg></div>
               <div style="min-width:0">
-                <div style="font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:700;color:var(--teal);line-height:1.1" id="ringProteinVal">—</div>
+                <div style="font-family:var(--font-num);font-size:21px;font-weight:800;color:var(--teal);line-height:1.1" id="ringProteinVal">—</div>
                 <div style="font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em" id="ringProteinSub">Protein</div>
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,176,32,0.16);display:flex;align-items:center;justify-content:center;color:#FFB020;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="8" cy="7" rx="2.5" ry="3.5"/><ellipse cx="16" cy="15" rx="2.5" ry="3.5"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="6" r="1"/></svg></div>
               <div style="min-width:0">
-                <div style="font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:700;color:var(--coral);line-height:1.1" id="ringStepsVal">—</div>
+                <div style="font-family:var(--font-num);font-size:21px;font-weight:800;color:var(--coral);line-height:1.1" id="ringStepsVal">—</div>
                 <div style="font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em" id="ringStepsSub">Steps</div>
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:34px;height:34px;border-radius:50%;background:rgba(92,230,192,0.22);display:flex;align-items:center;justify-content:center;color:#5CE6C0;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 8 7 13a7 7 0 0 1-14 0c0-5 7-13 7-13z"/></svg></div>
               <div style="min-width:0">
-                <div style="font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:700;color:var(--sage);line-height:1.1" id="ringWaterVal">—</div>
+                <div style="font-family:var(--font-num);font-size:21px;font-weight:800;color:var(--sage);line-height:1.1" id="ringWaterVal">—</div>
                 <div style="font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em" id="ringWaterSub">Water</div>
               </div>
             </div>
@@ -1288,10 +1287,10 @@ body {
       </div>
 
       <div class="form-card" id="weeklyRecapCard" style="display:none">
-        <div class="form-section-title"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;background:linear-gradient(135deg,#37C6FF,#5CE6C0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent"><svg width="15" height="15" viewBox="0 0 24 24" stroke="#5CE6C0" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> This Week</span></div>
+        <div class="form-section-title"><span style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;background:linear-gradient(135deg,#37C6FF,#5CE6C0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent"><svg width="15" height="15" viewBox="0 0 24 24" stroke="#5CE6C0" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> This Week</span></div>
         <div id="weeklyRecapBody" style="display:flex;justify-content:space-around;text-align:center;gap:8px"></div>
         <div id="patternsSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
-          <div style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="#7A5C9E" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg> Patterns Noticed</div>
+          <div style="font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="#7A5C9E" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg> Patterns Noticed</div>
           <div style="font-size:11px;color:var(--ink-soft);margin-bottom:8px">Plain comparisons across your own recent numbers — correlation, not causation, and not medical advice.</div>
           <div id="patternsBody" style="font-size:13px;color:var(--ink);line-height:1.5;display:flex;flex-direction:column;gap:10px"></div>
         </div>
@@ -1593,8 +1592,8 @@ body {
       <div class="timeline-card">
         <div class="timeline-title" id="msTitle">Milestone Progress</div>
         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
-          <span id="msLabel" style="font-weight:600;color:var(--teal)">—</span>
-          <span id="msTarget" style="font-family:'IBM Plex Mono',monospace;color:var(--ink-soft)">—</span>
+          <span id="msLabel" style="font-weight:700;color:var(--teal)">—</span>
+          <span id="msTarget" style="font-family:var(--font-num);color:var(--ink-soft);font-weight:700">—</span>
         </div>
         <div style="height:10px;background:var(--line);border-radius:5px;overflow:hidden">
           <div id="msBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--teal-mid),var(--teal));border-radius:5px;transition:width 0.5s"></div>
@@ -1614,7 +1613,7 @@ body {
     <div class="view" id="view-log">
       <div class="form-card" id="quickLogCard">
           <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
-            <span><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polygon points="13 2 3 14 11 14 9 22 21 10 13 10 13 2"/></svg> Quick Log <span style="font-weight:400;font-size:11px;color:var(--ink-soft);text-transform:none">(most days)</span></span>
+            <span><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polygon points="13 2 3 14 11 14 9 22 21 10 13 10 13 2"/></svg> Quick Log <span style="font-weight:500;font-size:11px;color:var(--ink-soft);text-transform:none">(most days)</span></span>
             <span id="quickLogChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
           </div>
           <div class="field-row">
@@ -1633,7 +1632,7 @@ body {
             </div>
           </div>
           <div class="field" style="margin-top:2px">
-            <label>Day status <span style="font-weight:400;color:var(--ink-soft)">· pauses your streak instead of breaking it</span></label>
+            <label>Day status <span style="font-weight:500;color:var(--ink-soft)">· pauses your streak instead of breaking it</span></label>
             <div class="chip-row" id="dayStatusRow">
               <div class="chip" data-daystatus="sick">😷 Sick</div>
               <div class="chip" data-daystatus="rest">🛌 Rest day</div>
@@ -1676,7 +1675,7 @@ body {
       <div class="form-card" id="stepsOverrideCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Steps (from Apple Health)</span><span id="stepsOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewSteps">—</div>
+          <div style="font-family:var(--font-num);font-size:26px;font-weight:700;color:var(--teal)" id="exViewSteps">—</div>
           <div style="font-size:12px;color:var(--ink-soft)" id="exViewStepsSub">syncs automatically once your Shortcut is set up</div>
         </div>
         <div style="display:flex;gap:8px;align-items:flex-end">
@@ -1691,7 +1690,7 @@ body {
       <div class="form-card" id="sleepOverrideCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Sleep (from Apple Health)</span><span id="sleepOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewSleep">—</div>
+          <div style="font-family:var(--font-num);font-size:26px;font-weight:700;color:var(--teal)" id="exViewSleep">—</div>
           <div style="font-size:12px;color:var(--ink-soft)" id="exViewSleepSub">syncs automatically once your Shortcut is set up</div>
         </div>
         <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:16px">
@@ -1703,7 +1702,7 @@ body {
         </div>
         <div style="border-top:1px solid var(--line);padding-top:14px">
           <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewSleepScore">—</div>
+            <div style="font-family:var(--font-num);font-size:26px;font-weight:700;color:var(--teal)" id="exViewSleepScore">—</div>
             <div style="font-size:12px;color:var(--ink-soft)" id="exViewSleepScoreSub">syncs automatically if your device exposes it</div>
           </div>
           <div style="display:flex;gap:8px;align-items:flex-end">
@@ -1719,7 +1718,7 @@ body {
       <div class="form-card" id="activeEnergyOverrideCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Active Energy (from Apple Health)</span><span id="activeEnergyOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewActiveCal">—</div>
+          <div style="font-family:var(--font-num);font-size:26px;font-weight:700;color:var(--teal)" id="exViewActiveCal">—</div>
           <div style="font-size:12px;color:var(--ink-soft)" id="exViewActiveCalSub">syncs automatically once your Shortcut is set up</div>
         </div>
         <div style="display:flex;gap:8px;align-items:flex-end">
@@ -1734,7 +1733,7 @@ body {
       <div class="form-card" id="distanceOverrideCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Distance (from Apple Health)</span><span id="distanceOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewDistance">—</div>
+          <div style="font-family:var(--font-num);font-size:26px;font-weight:700;color:var(--teal)" id="exViewDistance">—</div>
           <div style="font-size:12px;color:var(--ink-soft)" id="exViewDistanceSub">syncs automatically once your Shortcut is set up</div>
         </div>
         <div style="display:flex;gap:8px;align-items:flex-end">
@@ -1749,7 +1748,7 @@ body {
       <div class="form-card" id="hrvOverrideCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Heart Rate Variability (from Apple Health)</span><span id="hrvOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--teal)" id="exViewHrv">—</div>
+          <div style="font-family:var(--font-num);font-size:26px;font-weight:700;color:var(--teal)" id="exViewHrv">—</div>
           <div style="font-size:12px;color:var(--ink-soft)" id="exViewHrvSub">syncs automatically once your Shortcut is set up</div>
         </div>
         <div style="display:flex;gap:8px;align-items:flex-end">
@@ -1869,270 +1868,270 @@ body {
             <input type="date" id="labpDate">
           </div>
           <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--divider)">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Kidney</div>
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Kidney</div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_bun">BUN (Urea Nitrogen)<span style="color:var(--ink-soft);font-weight:400"> (7–25 mg/dL)</span></label>
+              <label for="labp_bun">BUN (Urea Nitrogen)<span style="color:var(--ink-soft);font-weight:500"> (7–25 mg/dL)</span></label>
               <input type="number" id="labp_bun" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_creatinine">Creatinine<span style="color:var(--ink-soft);font-weight:400"> (0.7–1.3 mg/dL)</span></label>
+              <label for="labp_creatinine">Creatinine<span style="color:var(--ink-soft);font-weight:500"> (0.7–1.3 mg/dL)</span></label>
               <input type="number" id="labp_creatinine" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_egfr">eGFR<span style="color:var(--ink-soft);font-weight:400"> (> 60 mL/min/1.73m²)</span></label>
+              <label for="labp_egfr">eGFR<span style="color:var(--ink-soft);font-weight:500"> (> 60 mL/min/1.73m²)</span></label>
               <input type="number" id="labp_egfr" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_urineAcr">Urine Albumin/Creatinine Ratio<span style="color:var(--ink-soft);font-weight:400"> (< 30 mg/g)</span></label>
+              <label for="labp_urineAcr">Urine Albumin/Creatinine Ratio<span style="color:var(--ink-soft);font-weight:500"> (< 30 mg/g)</span></label>
               <input type="number" id="labp_urineAcr" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           </div>
           <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--divider)">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Metabolic</div>
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Metabolic</div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_glucoseLab">Glucose (lab draw)<span style="color:var(--ink-soft);font-weight:400"> (65–99 mg/dL)</span></label>
+              <label for="labp_glucoseLab">Glucose (lab draw)<span style="color:var(--ink-soft);font-weight:500"> (65–99 mg/dL)</span></label>
               <input type="number" id="labp_glucoseLab" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_sodium">Sodium<span style="color:var(--ink-soft);font-weight:400"> (135–146 mmol/L)</span></label>
+              <label for="labp_sodium">Sodium<span style="color:var(--ink-soft);font-weight:500"> (135–146 mmol/L)</span></label>
               <input type="number" id="labp_sodium" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_potassium">Potassium<span style="color:var(--ink-soft);font-weight:400"> (3.5–5.3 mmol/L)</span></label>
+              <label for="labp_potassium">Potassium<span style="color:var(--ink-soft);font-weight:500"> (3.5–5.3 mmol/L)</span></label>
               <input type="number" id="labp_potassium" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_chloride">Chloride<span style="color:var(--ink-soft);font-weight:400"> (98–110 mmol/L)</span></label>
+              <label for="labp_chloride">Chloride<span style="color:var(--ink-soft);font-weight:500"> (98–110 mmol/L)</span></label>
               <input type="number" id="labp_chloride" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_co2">Carbon Dioxide<span style="color:var(--ink-soft);font-weight:400"> (20–32 mmol/L)</span></label>
+              <label for="labp_co2">Carbon Dioxide<span style="color:var(--ink-soft);font-weight:500"> (20–32 mmol/L)</span></label>
               <input type="number" id="labp_co2" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_calcium">Calcium<span style="color:var(--ink-soft);font-weight:400"> (8.6–10.3 mg/dL)</span></label>
+              <label for="labp_calcium">Calcium<span style="color:var(--ink-soft);font-weight:500"> (8.6–10.3 mg/dL)</span></label>
               <input type="number" id="labp_calcium" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           </div>
           <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--divider)">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Liver</div>
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Liver</div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_totalProtein">Total Protein<span style="color:var(--ink-soft);font-weight:400"> (6.1–8.1 g/dL)</span></label>
+              <label for="labp_totalProtein">Total Protein<span style="color:var(--ink-soft);font-weight:500"> (6.1–8.1 g/dL)</span></label>
               <input type="number" id="labp_totalProtein" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_albumin">Albumin<span style="color:var(--ink-soft);font-weight:400"> (3.6–5.1 g/dL)</span></label>
+              <label for="labp_albumin">Albumin<span style="color:var(--ink-soft);font-weight:500"> (3.6–5.1 g/dL)</span></label>
               <input type="number" id="labp_albumin" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_globulin">Globulin<span style="color:var(--ink-soft);font-weight:400"> (1.9–3.7 g/dL)</span></label>
+              <label for="labp_globulin">Globulin<span style="color:var(--ink-soft);font-weight:500"> (1.9–3.7 g/dL)</span></label>
               <input type="number" id="labp_globulin" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_agRatio">A/G Ratio<span style="color:var(--ink-soft);font-weight:400"> (1–2.5)</span></label>
+              <label for="labp_agRatio">A/G Ratio<span style="color:var(--ink-soft);font-weight:500"> (1–2.5)</span></label>
               <input type="number" id="labp_agRatio" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_bilirubin">Bilirubin, Total<span style="color:var(--ink-soft);font-weight:400"> (0.2–1.2 mg/dL)</span></label>
+              <label for="labp_bilirubin">Bilirubin, Total<span style="color:var(--ink-soft);font-weight:500"> (0.2–1.2 mg/dL)</span></label>
               <input type="number" id="labp_bilirubin" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_alp">Alkaline Phosphatase<span style="color:var(--ink-soft);font-weight:400"> (35–144 U/L)</span></label>
+              <label for="labp_alp">Alkaline Phosphatase<span style="color:var(--ink-soft);font-weight:500"> (35–144 U/L)</span></label>
               <input type="number" id="labp_alp" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_ast">AST<span style="color:var(--ink-soft);font-weight:400"> (10–35 U/L)</span></label>
+              <label for="labp_ast">AST<span style="color:var(--ink-soft);font-weight:500"> (10–35 U/L)</span></label>
               <input type="number" id="labp_ast" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_alt">ALT<span style="color:var(--ink-soft);font-weight:400"> (9–46 U/L)</span></label>
+              <label for="labp_alt">ALT<span style="color:var(--ink-soft);font-weight:500"> (9–46 U/L)</span></label>
               <input type="number" id="labp_alt" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           </div>
           <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--divider)">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">CBC</div>
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">CBC</div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_wbc">White Blood Cell Count<span style="color:var(--ink-soft);font-weight:400"> (3.8–10.8 K/uL)</span></label>
+              <label for="labp_wbc">White Blood Cell Count<span style="color:var(--ink-soft);font-weight:500"> (3.8–10.8 K/uL)</span></label>
               <input type="number" id="labp_wbc" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_rbc">Red Blood Cell Count<span style="color:var(--ink-soft);font-weight:400"> (4.2–5.8 M/uL)</span></label>
+              <label for="labp_rbc">Red Blood Cell Count<span style="color:var(--ink-soft);font-weight:500"> (4.2–5.8 M/uL)</span></label>
               <input type="number" id="labp_rbc" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_hemoglobin">Hemoglobin<span style="color:var(--ink-soft);font-weight:400"> (13.2–17.1 g/dL)</span></label>
+              <label for="labp_hemoglobin">Hemoglobin<span style="color:var(--ink-soft);font-weight:500"> (13.2–17.1 g/dL)</span></label>
               <input type="number" id="labp_hemoglobin" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_hematocrit">Hematocrit<span style="color:var(--ink-soft);font-weight:400"> (39.4–51.1 %)</span></label>
+              <label for="labp_hematocrit">Hematocrit<span style="color:var(--ink-soft);font-weight:500"> (39.4–51.1 %)</span></label>
               <input type="number" id="labp_hematocrit" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_mcv">MCV<span style="color:var(--ink-soft);font-weight:400"> (81.4–101.7 fL)</span></label>
+              <label for="labp_mcv">MCV<span style="color:var(--ink-soft);font-weight:500"> (81.4–101.7 fL)</span></label>
               <input type="number" id="labp_mcv" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_mch">MCH<span style="color:var(--ink-soft);font-weight:400"> (27–33 pg)</span></label>
+              <label for="labp_mch">MCH<span style="color:var(--ink-soft);font-weight:500"> (27–33 pg)</span></label>
               <input type="number" id="labp_mch" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_mchc">MCHC<span style="color:var(--ink-soft);font-weight:400"> (31.6–35.4 g/dL)</span></label>
+              <label for="labp_mchc">MCHC<span style="color:var(--ink-soft);font-weight:500"> (31.6–35.4 g/dL)</span></label>
               <input type="number" id="labp_mchc" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_rdw">RDW<span style="color:var(--ink-soft);font-weight:400"> (11–15 %)</span></label>
+              <label for="labp_rdw">RDW<span style="color:var(--ink-soft);font-weight:500"> (11–15 %)</span></label>
               <input type="number" id="labp_rdw" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_platelets">Platelet Count<span style="color:var(--ink-soft);font-weight:400"> (140–400 K/uL)</span></label>
+              <label for="labp_platelets">Platelet Count<span style="color:var(--ink-soft);font-weight:500"> (140–400 K/uL)</span></label>
               <input type="number" id="labp_platelets" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_mpv">MPV<span style="color:var(--ink-soft);font-weight:400"> (7.5–12.5 fL)</span></label>
+              <label for="labp_mpv">MPV<span style="color:var(--ink-soft);font-weight:500"> (7.5–12.5 fL)</span></label>
               <input type="number" id="labp_mpv" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           </div>
           <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--divider)">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">CBC Differential</div>
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">CBC Differential</div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_neutrophilsAbs">Neutrophils, Absolute<span style="color:var(--ink-soft);font-weight:400"> (1500–7800 cells/uL)</span></label>
+              <label for="labp_neutrophilsAbs">Neutrophils, Absolute<span style="color:var(--ink-soft);font-weight:500"> (1500–7800 cells/uL)</span></label>
               <input type="number" id="labp_neutrophilsAbs" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_neutrophilsPct">Neutrophils<span style="color:var(--ink-soft);font-weight:400"> (%)</span></label>
+              <label for="labp_neutrophilsPct">Neutrophils<span style="color:var(--ink-soft);font-weight:500"> (%)</span></label>
               <input type="number" id="labp_neutrophilsPct" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_lymphocytesAbs">Lymphocytes, Absolute<span style="color:var(--ink-soft);font-weight:400"> (850–3900 cells/uL)</span></label>
+              <label for="labp_lymphocytesAbs">Lymphocytes, Absolute<span style="color:var(--ink-soft);font-weight:500"> (850–3900 cells/uL)</span></label>
               <input type="number" id="labp_lymphocytesAbs" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_lymphocytesPct">Lymphocytes<span style="color:var(--ink-soft);font-weight:400"> (%)</span></label>
+              <label for="labp_lymphocytesPct">Lymphocytes<span style="color:var(--ink-soft);font-weight:500"> (%)</span></label>
               <input type="number" id="labp_lymphocytesPct" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_monocytesAbs">Monocytes, Absolute<span style="color:var(--ink-soft);font-weight:400"> (200–950 cells/uL)</span></label>
+              <label for="labp_monocytesAbs">Monocytes, Absolute<span style="color:var(--ink-soft);font-weight:500"> (200–950 cells/uL)</span></label>
               <input type="number" id="labp_monocytesAbs" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_monocytesPct">Monocytes<span style="color:var(--ink-soft);font-weight:400"> (%)</span></label>
+              <label for="labp_monocytesPct">Monocytes<span style="color:var(--ink-soft);font-weight:500"> (%)</span></label>
               <input type="number" id="labp_monocytesPct" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_eosinophilsAbs">Eosinophils, Absolute<span style="color:var(--ink-soft);font-weight:400"> (15–500 cells/uL)</span></label>
+              <label for="labp_eosinophilsAbs">Eosinophils, Absolute<span style="color:var(--ink-soft);font-weight:500"> (15–500 cells/uL)</span></label>
               <input type="number" id="labp_eosinophilsAbs" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_eosinophilsPct">Eosinophils<span style="color:var(--ink-soft);font-weight:400"> (%)</span></label>
+              <label for="labp_eosinophilsPct">Eosinophils<span style="color:var(--ink-soft);font-weight:500"> (%)</span></label>
               <input type="number" id="labp_eosinophilsPct" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_basophilsAbs">Basophils, Absolute<span style="color:var(--ink-soft);font-weight:400"> (0–200 cells/uL)</span></label>
+              <label for="labp_basophilsAbs">Basophils, Absolute<span style="color:var(--ink-soft);font-weight:500"> (0–200 cells/uL)</span></label>
               <input type="number" id="labp_basophilsAbs" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_basophilsPct">Basophils<span style="color:var(--ink-soft);font-weight:400"> (%)</span></label>
+              <label for="labp_basophilsPct">Basophils<span style="color:var(--ink-soft);font-weight:500"> (%)</span></label>
               <input type="number" id="labp_basophilsPct" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           </div>
           <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--divider)">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Inflammation</div>
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Inflammation</div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_sedRate">Sed Rate (Westergren)<span style="color:var(--ink-soft);font-weight:400"> (< 15 mm/h)</span></label>
+              <label for="labp_sedRate">Sed Rate (Westergren)<span style="color:var(--ink-soft);font-weight:500"> (< 15 mm/h)</span></label>
               <input type="number" id="labp_sedRate" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_crp">C-Reactive Protein<span style="color:var(--ink-soft);font-weight:400"> (< 8 mg/L)</span></label>
+              <label for="labp_crp">C-Reactive Protein<span style="color:var(--ink-soft);font-weight:500"> (< 8 mg/L)</span></label>
               <input type="number" id="labp_crp" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           </div>
           <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--divider)">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Lipids</div>
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Lipids</div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_totalChol">Total Cholesterol<span style="color:var(--ink-soft);font-weight:400"> (< 200 mg/dL)</span></label>
+              <label for="labp_totalChol">Total Cholesterol<span style="color:var(--ink-soft);font-weight:500"> (< 200 mg/dL)</span></label>
               <input type="number" id="labp_totalChol" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_hdl">HDL Cholesterol<span style="color:var(--ink-soft);font-weight:400"> (> 40 mg/dL)</span></label>
+              <label for="labp_hdl">HDL Cholesterol<span style="color:var(--ink-soft);font-weight:500"> (> 40 mg/dL)</span></label>
               <input type="number" id="labp_hdl" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_triglycerides">Triglycerides<span style="color:var(--ink-soft);font-weight:400"> (< 150 mg/dL)</span></label>
+              <label for="labp_triglycerides">Triglycerides<span style="color:var(--ink-soft);font-weight:500"> (< 150 mg/dL)</span></label>
               <input type="number" id="labp_triglycerides" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_ldl">LDL Cholesterol<span style="color:var(--ink-soft);font-weight:400"> (< 100 mg/dL)</span></label>
+              <label for="labp_ldl">LDL Cholesterol<span style="color:var(--ink-soft);font-weight:500"> (< 100 mg/dL)</span></label>
               <input type="number" id="labp_ldl" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_cholHdlRatio">Chol/HDL Ratio<span style="color:var(--ink-soft);font-weight:400"> (< 5)</span></label>
+              <label for="labp_cholHdlRatio">Chol/HDL Ratio<span style="color:var(--ink-soft);font-weight:500"> (< 5)</span></label>
               <input type="number" id="labp_cholHdlRatio" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
             <div class="field">
-              <label for="labp_nonHdlChol">Non-HDL Cholesterol<span style="color:var(--ink-soft);font-weight:400"> (< 130 mg/dL)</span></label>
+              <label for="labp_nonHdlChol">Non-HDL Cholesterol<span style="color:var(--ink-soft);font-weight:500"> (< 130 mg/dL)</span></label>
               <input type="number" id="labp_nonHdlChol" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           </div>
           <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--divider)">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Thyroid</div>
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Thyroid</div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_tsh">TSH<span style="color:var(--ink-soft);font-weight:400"> (0.4–4.5 mIU/L)</span></label>
+              <label for="labp_tsh">TSH<span style="color:var(--ink-soft);font-weight:500"> (0.4–4.5 mIU/L)</span></label>
               <input type="number" id="labp_tsh" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
           </div>
           <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--divider)">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Other</div>
+            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Other</div>
           <div class="field-row">
             <div class="field">
-              <label for="labp_psa">PSA, Total<span style="color:var(--ink-soft);font-weight:400"> (< 4 ng/mL)</span></label>
+              <label for="labp_psa">PSA, Total<span style="color:var(--ink-soft);font-weight:500"> (< 4 ng/mL)</span></label>
               <input type="number" id="labp_psa" step="any" inputmode="decimal" placeholder="e.g. value">
             </div>
           </div>
@@ -2149,7 +2148,7 @@ body {
 
       <div class="log-subpanel" id="logSub-daily">
       <div class="form-card" id="tellMeAboutDayCard">
-          <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Tell Me About Your Day <span style="font-weight:400;font-size:11px;color:var(--ink-soft);text-transform:none">(optional)</span></span><span id="tellMeAboutDayChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
+          <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Tell Me About Your Day <span style="font-weight:500;font-size:11px;color:var(--ink-soft);text-transform:none">(optional)</span></span><span id="tellMeAboutDayChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
           <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px">Describe it in a sentence — I'll try to fill in symptoms and exercise below for you to review.</div>
           <div style="display:flex;gap:8px">
             <input type="text" id="dayDescInput" placeholder="e.g. rough morning, nauseous, walked 20 min tonight" style="flex:1">
@@ -2160,7 +2159,7 @@ body {
 
         <div class="form-card" id="fullLogCard">
           <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
-            <span><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg> Full Log <span style="font-weight:400;font-size:11px;color:var(--ink-soft);text-transform:none">(weekly)</span></span>
+            <span><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg> Full Log <span style="font-weight:500;font-size:11px;color:var(--ink-soft);text-transform:none">(weekly)</span></span>
             <span id="fullLogChevron" style="font-size:11px;color:var(--ink-soft)">▶</span>
           </div>
           <div class="field-row">
@@ -2246,7 +2245,7 @@ body {
           </div>
         </div>
 
-        <button class="btn btn-primary" id="saveBtn" style="background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#04203a;font-weight:700">Save Entry</button>
+        <button class="btn btn-primary" id="saveBtn" style="background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#04203a;font-weight:800">Save Entry</button>
         <div class="save-msg" id="saveMsg">✓ Saved and synced</div>
         <div style="height:8px"></div>
         <button class="btn btn-ghost" id="clearBtn">Clear Form</button>
@@ -2283,7 +2282,7 @@ body {
 
       <div class="form-card" id="addFoodCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">Add Food</span>
+          <span style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">Add Food</span>
           <span id="addFoodChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
         </div>
         <div class="chip-row" id="foodTabRow" style="margin-bottom:12px">
@@ -2451,8 +2450,8 @@ body {
         <div class="form-section-title">Water</div>
         <div style="display:flex;align-items:center;gap:10px">
           <input type="number" inputmode="numeric" id="waterInput"
-            style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;color:var(--teal);width:80px;padding:6px 8px;border:1.5px solid var(--line);border-radius:10px;background:var(--input-bg);text-align:center" value="0">
-          <span style="font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);font-size:14px">oz</span>
+            style="font-family:var(--font-num);font-size:24px;font-weight:700;color:var(--teal);width:80px;padding:6px 8px;border:1.5px solid var(--line);border-radius:10px;background:var(--input-bg);text-align:center" value="0">
+          <span style="font-family:var(--font-num);color:var(--ink-soft);font-size:14px;font-weight:700">oz</span>
           <button class="btn btn-secondary btn-sm" id="water8Btn">+8</button>
           <button class="btn btn-secondary btn-sm" id="water16Btn">+16</button>
           <button class="btn btn-ghost btn-sm" id="waterMinusBtn">−8</button>
@@ -2493,7 +2492,7 @@ body {
       <div class="form-card">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Exercise</span><button type="button" id="exerciseFullscreenCloseBtn" title="Minimize — timer keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px">✕</button></div>
         <div id="workoutDescBlock" style="margin-bottom:12px">
-          <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Describe your workout <span style="font-weight:400">(optional)</span></label>
+          <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Describe your workout <span style="font-weight:500">(optional)</span></label>
           <div style="display:flex;gap:8px">
             <input type="text" id="workoutDescInput" placeholder="e.g. did the elliptical for 35 min, felt strong" style="flex:1">
             <button class="btn btn-secondary btn-sm" id="parseWorkoutBtn">Parse</button>
@@ -2501,7 +2500,7 @@ body {
           <div id="workoutParseResults" style="font-size:12px;margin-top:6px"></div>
         </div>
         <div style="margin-bottom:12px">
-          <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Scan treadmill finish screen <span style="font-weight:400">(optional)</span></label>
+          <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Scan treadmill finish screen <span style="font-weight:500">(optional)</span></label>
           <button class="btn btn-secondary btn-sm" id="scanTreadmillBtn" style="width:100%"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Scan Screen</button>
           <input type="file" id="treadmillFileInput" accept="image/*" style="display:none">
           <div id="treadmillScanResults" style="font-size:12px;margin-top:6px"></div>
@@ -2518,24 +2517,24 @@ body {
         </div>
         <button type="button" class="btn btn-ghost btn-sm" id="cardioTrendsBtn" style="width:100%;margin-bottom:12px;display:none"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> View Trends</button>
         <div id="exTimerBar" style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:14px;border:2px solid #37C6FF;border-radius:14px;background:linear-gradient(135deg,rgba(55,198,255,0.14),rgba(92,230,192,0.14))">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:800;color:var(--teal-mid);min-width:76px" id="exTimerDisplay">0:00</div>
+          <div style="font-family:var(--font-num);font-size:28px;font-weight:800;color:var(--teal-mid);min-width:76px" id="exTimerDisplay">0:00</div>
           <button class="btn btn-primary btn-sm" id="exTimerStartBtn" style="flex:1;padding:12px;font-size:13px;font-weight:800;text-transform:uppercase;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28">⏱ Start Timer</button>
           <button class="btn btn-secondary btn-sm" id="exTimerStopBtn" style="flex:1;display:none;padding:12px;font-size:13px;font-weight:800;text-transform:uppercase">⏹ Stop &amp; Log</button>
         </div>
         <div style="display:flex;gap:10px;align-items:flex-end">
           <div class="field" style="flex:1;margin-bottom:0">
-            <label for="exMin" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em">Minutes</label>
-            <input type="number" id="exMin" inputmode="numeric" placeholder="e.g. 30" style="padding:12px;font-size:18px;font-weight:700;text-align:center">
+            <label for="exMin" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em">Minutes</label>
+            <input type="number" id="exMin" inputmode="numeric" placeholder="e.g. 30" style="padding:12px;font-size:18px;font-weight:800;text-align:center">
           </div>
           <div class="field" style="flex:1;margin-bottom:0">
-            <label for="exDist" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em">Distance (mi)</label>
-            <input type="number" id="exDist" inputmode="decimal" step="0.01" placeholder="optional" style="padding:12px;font-size:18px;font-weight:700;text-align:center">
+            <label for="exDist" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em">Distance (mi)</label>
+            <input type="number" id="exDist" inputmode="decimal" step="0.01" placeholder="optional" style="padding:12px;font-size:18px;font-weight:800;text-align:center">
           </div>
         </div>
         <div style="display:flex;gap:10px;align-items:flex-end;margin-top:10px">
           <div class="field" style="flex:1;margin-bottom:0">
-            <label for="exIncline" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em">Incline (%)</label>
-            <input type="number" id="exIncline" inputmode="decimal" step="0.5" placeholder="optional" style="padding:12px;font-size:18px;font-weight:700;text-align:center">
+            <label for="exIncline" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em">Incline (%)</label>
+            <input type="number" id="exIncline" inputmode="decimal" step="0.5" placeholder="optional" style="padding:12px;font-size:18px;font-weight:800;text-align:center">
           </div>
           <button class="btn btn-secondary btn-sm" id="addExBtn" style="margin-bottom:2px;padding:12px 18px;font-size:13px;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800;text-transform:uppercase;letter-spacing:0.02em">+ Add</button>
           <button class="btn btn-ghost btn-sm" id="cancelExEditBtn" style="margin-bottom:2px;display:none">Cancel</button>
@@ -2589,7 +2588,7 @@ body {
       <div class="chart-card">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
           <div class="chart-title" style="margin-bottom:0">Dose Change Comparison</div>
-          <select id="doseComparisonPicker" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--input-bg);color:var(--ink);max-width:160px"></select>
+          <select id="doseComparisonPicker" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:11px;background:var(--input-bg);color:var(--ink);max-width:160px;font-weight:700"></select>
         </div>
         <div id="doseComparisonBody"></div>
       </div>
@@ -2719,7 +2718,7 @@ body {
       <div class="chart-card">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
           <div class="chart-title" style="margin-bottom:0">Exercise Weight Progress</div>
-          <select id="weightProgressExercisePicker" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--input-bg);color:var(--ink);max-width:150px"></select>
+          <select id="weightProgressExercisePicker" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:11px;background:var(--input-bg);color:var(--ink);max-width:150px;font-weight:700"></select>
         </div>
         <div id="weightProgressEmptyMsg" style="display:none;text-align:center;padding:20px 4px;color:var(--ink-soft);font-size:12px">Log a few sessions with weights to see progress here.</div>
         <div class="chart-wrap"><canvas id="weightProgressChart"></canvas></div>
@@ -2948,7 +2947,7 @@ body {
               <div class="settings-row-label">Treatment Start</div>
               <div class="settings-row-sub">Titration began</div>
             </div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--teal)">Jul 18, 2026</div>
+            <div style="font-family:var(--font-num);font-size:13px;color:var(--teal);font-weight:700">Jul 18, 2026</div>
           </div>
           <div class="settings-row">
             <div>
@@ -2956,7 +2955,7 @@ body {
               <div class="settings-row-sub">Your starting point — used for "Total Lost"</div>
             </div>
             <input type="number" step="0.1" inputmode="decimal" id="setBaseline"
-              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right">
+              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right;font-weight:700">
           </div>
           <div class="settings-row">
             <div>
@@ -2964,7 +2963,7 @@ body {
               <div class="settings-row-sub">12-month target — shown on weight chart</div>
             </div>
             <input type="number" step="0.1" inputmode="decimal" id="setGoal"
-              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:14px;background:var(--input-bg);color:var(--in);text-align:right">
+              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:14px;background:var(--input-bg);color:var(--in);text-align:right;font-weight:700">
           </div>
           <div class="settings-row">
             <div>
@@ -2972,14 +2971,14 @@ body {
               <div class="settings-row-sub">Leave blank for auto — ramps 5,000 → 7,500 → 10,000 with your plan</div>
             </div>
             <input type="number" inputmode="numeric" id="setStepGoal" placeholder="auto"
-              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right">
+              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right;font-weight:700">
           </div>
           <div class="settings-row">
             <div>
               <div class="settings-row-label">Workout Plan Style</div>
               <div class="settings-row-sub">Push/Pull alternates two days; Push/Pull/Legs rotates three; Full Body is one list every session</div>
             </div>
-            <select id="setWorkoutPlanMode" style="width:150px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);color:var(--ink)">
+            <select id="setWorkoutPlanMode" style="width:150px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
               <option value="split">Push/Pull Split</option>
               <option value="ppl">Push/Pull/Legs</option>
               <option value="fullbody">Full Body</option>
@@ -2997,7 +2996,7 @@ body {
               <div class="settings-row-sub">Used to calculate your daily Calorie/Fat/Carb targets</div>
             </div>
             <input type="number" inputmode="numeric" id="setHeightIn" placeholder="e.g. 74"
-              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right">
+              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right;font-weight:700">
           </div>
           <div class="settings-row">
             <div>
@@ -3005,14 +3004,14 @@ body {
               <div class="settings-row-sub">Also used for the calorie calculation</div>
             </div>
             <input type="number" inputmode="numeric" id="setAge" placeholder="e.g. 50"
-              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right">
+              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right;font-weight:700">
           </div>
           <div class="settings-row">
             <div>
               <div class="settings-row-label">Sex (for calorie formula)</div>
               <div class="settings-row-sub">Mifflin-St Jeor equation requires this input</div>
             </div>
-            <select id="setSex" style="width:110px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:13px;background:var(--input-bg);color:var(--ink)">
+            <select id="setSex" style="width:110px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:13px;background:var(--input-bg);color:var(--ink);font-weight:700">
               <option value="male">Male</option>
               <option value="female">Female</option>
             </select>
@@ -3022,7 +3021,7 @@ body {
               <div class="settings-row-label">Activity Level</div>
               <div class="settings-row-sub">Typical weekly exercise, not just workouts logged here</div>
             </div>
-            <select id="setActivityLevel" style="width:150px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);color:var(--ink)">
+            <select id="setActivityLevel" style="width:150px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
               <option value="sedentary">Sedentary</option>
               <option value="light">Lightly active</option>
               <option value="moderate">Moderately active</option>
@@ -3034,7 +3033,7 @@ body {
               <div class="settings-row-label">Target Weekly Weight Loss</div>
               <div class="settings-row-sub">Drives your daily Calorie deficit</div>
             </div>
-            <select id="setLossRate" style="width:110px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);color:var(--ink)">
+            <select id="setLossRate" style="width:110px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
               <option value="0.5">0.5 lb/wk</option>
               <option value="1">1 lb/wk</option>
               <option value="1.5">1.5 lb/wk</option>
@@ -3053,7 +3052,7 @@ body {
               <div class="settings-row-sub">Optional — free key from fdc.nal.usda.gov raises lookup limits</div>
             </div>
             <input type="text" id="setUsdaKey" placeholder="DEMO_KEY"
-              style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);color:var(--ink)">
+              style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
           </div>
           <div class="settings-row">
             <div>
@@ -3061,15 +3060,15 @@ body {
               <div class="settings-row-sub">Optional — adds a third food search source, mainly for recipes/dishes</div>
             </div>
             <input type="text" id="setSpoonacularKey" placeholder="not set"
-              style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);color:var(--ink)">
+              style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
           </div>
           <div class="settings-row">
             <div>
-              <div class="settings-row-label">FatSecret Client ID <span style="color:var(--ink-soft);font-weight:400;text-transform:none">(saved, not active)</span></div>
+              <div class="settings-row-label">FatSecret Client ID <span style="color:var(--ink-soft);font-weight:500;text-transform:none">(saved, not active)</span></div>
               <div class="settings-row-sub">Their servers block direct browser requests (CORS) — kept here in case a future backend proxy enables it</div>
             </div>
             <input type="text" id="setFatSecretClientId" placeholder="not set"
-              style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);color:var(--ink)">
+              style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
           </div>
           <div class="settings-row">
             <div>
@@ -3077,15 +3076,15 @@ body {
               <div class="settings-row-sub">Optional — paired with the Client ID above</div>
             </div>
             <input type="password" id="setFatSecretClientSecret" placeholder="not set"
-              style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);color:var(--ink)">
+              style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
           </div>
           <div class="settings-row">
             <div>
-              <div class="settings-row-label">Anthropic API Key <span style="color:var(--coral);font-weight:400;text-transform:none">(paid, exposed in-browser — see note)</span></div>
+              <div class="settings-row-label">Anthropic API Key <span style="color:var(--coral);font-weight:500;text-transform:none">(paid, exposed in-browser — see note)</span></div>
               <div class="settings-row-sub">Powers "Estimate from Photo" for food logging. This key is visible in your browser's network requests when used — regenerate anytime at console.anthropic.com if you're ever unsure.</div>
             </div>
             <input type="password" id="setAnthropicKey" placeholder="not set"
-              style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);color:var(--ink)">
+              style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
           </div>
           <div class="settings-row" style="align-items:center">
             <div>
@@ -3168,6 +3167,10 @@ setTimeout(() => { if (typeof hideLoading === 'function') hideLoading(); }, 8000
 import { initializeApp }        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, doc, setDoc as fsSetDoc, getDoc, getDocs, deleteDoc as fsDeleteDoc, onSnapshot, query, orderBy, enableIndexedDbPersistence }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// Canvas text and Chart.js take literal font strings, not CSS variables — same two faces as --font-num / --font-text.
+const CHART_FONT_NUM = "ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif";
+const CHART_FONT_TEXT = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif";
 
 // ── SAVE STATUS ──
 // Every cloud write in the app goes through these two wrappers (the real
@@ -3740,7 +3743,7 @@ function renderDoseTimeline() {
       <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;${i < periods.length - 1 ? 'border-bottom:1px solid var(--line)' : ''}">
         <div style="width:10px;height:10px;border-radius:50%;margin-top:5px;background:${isOngoing ? 'var(--teal)' : 'var(--ink-soft)'};flex-shrink:0"></div>
         <div style="flex:1">
-          <div style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:14px;color:${isOngoing ? 'var(--teal)' : 'var(--ink)'}">${p.dose} mg${isOngoing ? ' · current' : ''}</div>
+          <div style="font-family:var(--font-num);font-weight:800;font-size:14px;color:${isOngoing ? 'var(--teal)' : 'var(--ink)'}">${p.dose} mg${isOngoing ? ' · current' : ''}</div>
           <div style="font-size:11px;color:var(--ink-soft)">${fmtDate(p.startDate)} → ${endLabel} · ${durationLabel}</div>
         </div>
       </div>`;
@@ -3825,8 +3828,8 @@ function renderDoseComparisonFor(afterPeriodKey) {
   const row = (label, beforeVal, afterVal) => `
     <div style="display:contents">
       <div style="font-size:12px;color:var(--ink-soft);padding:8px 0;border-bottom:1px solid var(--line)">${label}</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;text-align:center;padding:8px 0;border-bottom:1px solid var(--line)">${beforeVal}</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;text-align:center;padding:8px 0;border-bottom:1px solid var(--line);font-weight:700;color:var(--teal)">${afterVal}</div>
+      <div style="font-family:var(--font-num);font-size:13px;text-align:center;padding:8px 0;border-bottom:1px solid var(--line);font-weight:700">${beforeVal}</div>
+      <div style="font-family:var(--font-num);font-size:13px;text-align:center;padding:8px 0;border-bottom:1px solid var(--line);font-weight:800;color:var(--teal)">${afterVal}</div>
     </div>`;
 
   const dash = (v, suffix) => v == null ? '—' : `${v}${suffix}`;
@@ -3838,7 +3841,7 @@ function renderDoseComparisonFor(afterPeriodKey) {
     <div style="display:grid;grid-template-columns:1fr 90px 90px;gap:0 8px;margin-bottom:6px">
       <div></div>
       <div style="font-size:10px;color:var(--ink-soft);text-align:center;text-transform:uppercase">${data.beforePeriod.dose}mg</div>
-      <div style="font-size:10px;color:var(--teal);text-align:center;text-transform:uppercase;font-weight:700">${data.afterPeriod.dose}mg</div>
+      <div style="font-size:10px;color:var(--teal);text-align:center;text-transform:uppercase;font-weight:800">${data.afterPeriod.dose}mg</div>
       ${row('Weight trend', dash(data.before.weightRate, ' lb/wk'), dash(data.after.weightRate, ' lb/wk'))}
       ${row('Avg fasting glucose', dash(data.before.avgGlucose, ' mg/dL'), dash(data.after.avgGlucose, ' mg/dL'))}
       ${row('Days with side effects', `${data.before.sideEffectDays}/${data.before.totalDaysLogged || 0}`, `${data.after.sideEffectDays}/${data.after.totalDaysLogged || 0}`)}
@@ -3918,8 +3921,8 @@ function renderSideEffectCorrelation() {
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px">
       ${data.sortedTags.map(([tag, count]) => `
-        <div style="background:var(--teal-tint);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--teal);font-weight:600">
-          ${tag} <span style="color:var(--ink-soft);font-weight:400">×${count}</span>
+        <div style="background:var(--teal-tint);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--teal);font-weight:700">
+          ${tag} <span style="color:var(--ink-soft);font-weight:500">×${count}</span>
         </div>`).join('')}
     </div>
   `;
@@ -3942,7 +3945,7 @@ const doseMarkerPlugin = {
       ctx.beginPath(); ctx.moveTo(x, area.top + 12); ctx.lineTo(x, area.bottom); ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = coralNow;
-      ctx.font = "600 10px 'IBM Plex Mono', monospace";
+      ctx.font = `700 10px ${CHART_FONT_NUM}`;
       ctx.textAlign = 'center';
       ctx.fillText(m.text, x, area.top + 8);
       ctx.restore();
@@ -4813,12 +4816,12 @@ function renderBadges() {
             <stop offset="100%" stop-color="#5CE6C0"/>
           </linearGradient>
         </defs>
-        <text x="36" y="41" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)" font-family="'IBM Plex Mono',monospace">${pct}%</text>
+        <text x="36" y="41" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)" font-family="var(--font-num)">${pct}%</text>
       </svg>
       <div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:700;color:var(--teal)">${earned}</div>
+        <div style="font-family:var(--font-num);font-size:28px;font-weight:800;color:var(--teal)">${earned}</div>
         <div style="font-size:13px;color:var(--ink-soft)">of ${total} badges earned</div>
-        ${newThisWeek > 0 ? `<div style="font-size:12px;color:var(--in);margin-top:4px;font-weight:600">+${newThisWeek} new this week</div>` : ''}
+        ${newThisWeek > 0 ? `<div style="font-size:12px;color:var(--in);margin-top:4px;font-weight:700">+${newThisWeek} new this week</div>` : ''}
       </div>
     </div>
   `;
@@ -5535,15 +5538,15 @@ function updateStats() {
         const weightText = wChange === null ? '—' : (wChange.change <= 0 ? '' : '+') + wChange.change.toFixed(1) + ' lbs';
         recapBody.innerHTML = `
           <div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:${weightColor}">${weightText}</div>
+            <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:${weightColor}">${weightText}</div>
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Weight</div>
           </div>
           <div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#37C6FF">${workouts}</div>
+            <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:#37C6FF">${workouts}</div>
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Workout${workouts === 1 ? '' : 's'}</div>
           </div>
           <div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#FFB020">${streak}</div>
+            <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:#FFB020">${streak}</div>
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Day Streak</div>
           </div>
         `;
@@ -5772,7 +5775,7 @@ function muscleDetailHtml(st) {
       <div style="font-size:15px;font-weight:800">${g}</div>
       <button type="button" class="md-close" data-muscleclose="1" aria-label="Close details">✕</button>
     </div>
-    <div style="font-size:12px;font-weight:600;margin-bottom:2px">${status}</div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:2px">${status}</div>
     ${last ? `<div style="font-size:11px;color:var(--ink-soft);margin-bottom:${effortNote ? '2px' : '8px'}">${last}</div>` : '<div style="margin-bottom:8px"></div>'}
     ${effortNote ? `<div class="md-effort" style="font-size:11px;color:var(--ink-soft);margin-bottom:8px">${effortNote}</div>` : ''}
     <div class="md-label">This week</div>
@@ -5862,7 +5865,7 @@ function renderMuscleMap() {
   if (mode === 'recovery') {
     const over = MUSCLE_MAP_GROUPS.filter(g => stats[g].recovery.state === 'overlap');
     const fresh = MUSCLE_MAP_GROUPS.filter(g => ['ready', 'none'].includes(stats[g].recovery.state));
-    note = (over.length ? `<div style="color:${MUSCLE_COLORS.red};font-weight:700;margin-bottom:4px">⚠ Hit again before recovered: ${over.join(', ')}</div>` : '')
+    note = (over.length ? `<div style="color:${MUSCLE_COLORS.red};font-weight:800;margin-bottom:4px">⚠ Hit again before recovered: ${over.join(', ')}</div>` : '')
       + (fresh.length ? `Ready to train: <strong style="color:var(--ink)">${fresh.join(', ')}</strong>` : 'Everything is still recovering.')
       + `<div style="margin-top:6px">green = ready · amber = recovering · red = trained again too soon. Recovery is a rough 2–3 day estimate: it grows with the sets you did and stretches or shrinks with how hard you rated that workout (1–5).</div>`;
   } else {
@@ -5871,7 +5874,7 @@ function renderMuscleMap() {
     note = (sessions7 === 0 ? 'No strength sessions in the last 7 days.'
       : missed.length === 0 ? 'Every muscle group got work this week.'
       : `Not hit yet: <strong style="color:var(--ink)">${missed.join(', ')}</strong>`)
-      + (heavy.length ? `<div style="color:${MUSCLE_COLORS.amber};font-weight:700;margin-top:4px">Heavy week — watch recovery: ${heavy.join(', ')}</div>` : '')
+      + (heavy.length ? `<div style="color:${MUSCLE_COLORS.amber};font-weight:800;margin-top:4px">Heavy week — watch recovery: ${heavy.join(', ')}</div>` : '')
       + `<div style="margin-top:6px">teal = building toward your weekly goal · amber = 1.5× goal · red = 2× or more. Tap any muscle for details or to change its goal.</div>`;
   }
   const modeRow = `<div class="chip-row" style="margin-bottom:10px;gap:6px"><div class="chip${mode === 'volume' ? ' on' : ''}" data-musclemode="volume">Volume</div><div class="chip${mode === 'recovery' ? ' on' : ''}" data-musclemode="recovery">Recovery</div></div>`;
@@ -6234,8 +6237,8 @@ function renderWeightProgressChart(exerciseName) {
       plugins: { legend: { display: false } },
       elements: { point: { radius: 4, hoverRadius: 6 } },
       scales: {
-        y: { beginAtZero: false, grid: { color: cGrid }, ticks: { font: { family: 'IBM Plex Mono', size: 10 }, color: cTick } },
-        x: { grid: { display: false }, ticks: { font: { family: 'IBM Plex Mono', size: 10 }, color: cTick, maxRotation: 0 } }
+        y: { beginAtZero: false, grid: { color: cGrid }, ticks: { font: { family: CHART_FONT_NUM, weight: '700', size: 10 }, color: cTick } },
+        x: { grid: { display: false }, ticks: { font: { family: CHART_FONT_NUM, weight: '700', size: 10 }, color: cTick, maxRotation: 0 } }
       }
     }
   });
@@ -6323,8 +6326,8 @@ function renderCharts() {
       ]
     },
     options: { ...chartDefaults, doseMarks: doseChangeMarks(), scales: {
-      y: { beginAtZero:false, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-      x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+      y: { beginAtZero:false, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+      x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
     }},
     plugins: [doseMarkerPlugin]
   });
@@ -6342,8 +6345,8 @@ function renderCharts() {
       ]
     },
     options: { ...chartDefaults, doseMarks: doseChangeMarks(), scales: {
-      y: { grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-      x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+      y: { grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+      x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
     }},
     plugins: [doseMarkerPlugin]
   });
@@ -6373,8 +6376,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, scales: {
-        y: { grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6398,8 +6401,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6423,8 +6426,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6448,8 +6451,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6477,8 +6480,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6501,8 +6504,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6529,8 +6532,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, doseMarks: doseChangeMarks(), scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }},
       plugins: [doseMarkerPlugin]
     });
@@ -6555,8 +6558,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6583,8 +6586,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, doseMarks: doseChangeMarks(), scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }},
       plugins: [doseMarkerPlugin]
     });
@@ -6613,8 +6616,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, doseMarks: doseChangeMarks(), scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }},
       plugins: [doseMarkerPlugin]
     });
@@ -6649,8 +6652,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6684,8 +6687,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6714,8 +6717,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6781,8 +6784,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, scales: {
-        y: { grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6820,8 +6823,8 @@ function renderCharts() {
           return (e && hrSymptomDay(e)) ? 'Side effects: ' + e.tags.join(', ') : '';
         } } } },
         doseMarks: doseChangeMarks(), scales: {
-        y: { grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }},
       plugins: [doseMarkerPlugin]
     });
@@ -6861,8 +6864,8 @@ function renderCharts() {
           return (e && hrvSymptomDay(e)) ? 'Side effects: ' + e.tags.join(', ') : '';
         } } } },
         doseMarks: doseChangeMarks(), scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }},
       plugins: [doseMarkerPlugin]
     });
@@ -6890,8 +6893,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, doseMarks: doseChangeMarks(), scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }},
       plugins: [doseMarkerPlugin]
     });
@@ -6919,8 +6922,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, doseMarks: doseChangeMarks(), scales: {
-        y: { min: 0, max: 100, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { min: 0, max: 100, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }},
       plugins: [doseMarkerPlugin]
     });
@@ -6948,9 +6951,9 @@ function renderCharts() {
         y: {
           min: Math.min(4.5, ...sortedLabs.map(l => l.a1c - 0.5)),
           max: Math.max(8,   ...sortedLabs.map(l => l.a1c + 0.5)),
-          grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick}
+          grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick}
         },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }}
     });
   }
@@ -6984,8 +6987,8 @@ function renderCharts() {
         ]
       },
       options: { ...chartDefaults, doseMarks: doseChangeMarks(), scales: {
-        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick} },
-        x: { grid:{display:false}, ticks:{font:{family:'IBM Plex Mono',size:10},color:cTick, maxRotation:0} }
+        y: { beginAtZero: true, grid:{color:cGrid}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick} },
+        x: { grid:{display:false}, ticks:{font:{family: CHART_FONT_NUM, weight: '700',size:10},color:cTick, maxRotation:0} }
       }},
       plugins: [doseMarkerPlugin]
     });
@@ -7284,11 +7287,11 @@ function renderLookupResults(foods, note) {
       <div id="servingChips" class="chip-row" style="width:100%;margin-bottom:8px"></div>
       <span>Portion:</span>
       <input type="number" id="portionG" value="3.5" inputmode="decimal" step="0.1">
-      <select id="portionUnit" style="padding:8px;border:1.5px solid var(--teal);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:13px;background:var(--input-bg)">
+      <select id="portionUnit" style="padding:8px;border:1.5px solid var(--teal);border-radius:8px;font-family:var(--font-num);font-size:13px;background:var(--input-bg);font-weight:700">
         <option value="g">g</option>
         <option value="oz" selected>oz</option>
       </select>
-      <button class="btn btn-primary btn-sm" id="applyPortionBtn" style="margin-left:auto;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#04203a;font-weight:700">Add to Day</button>
+      <button class="btn btn-primary btn-sm" id="applyPortionBtn" style="margin-left:auto;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#04203a;font-weight:800">Add to Day</button>
     </div>`;
 
   box.querySelectorAll('.lookup-result').forEach(el => {
@@ -8007,7 +8010,7 @@ async function generateWeeklyInsights(isAuto) {
       if (!isAuto) box.innerHTML = `Failed — HTTP ${result.status}. Check your Anthropic API key in Settings.`;
       return false;
     }
-    const badge = isAuto ? '<div style="font-size:11px;color:var(--teal);font-weight:600;margin-bottom:6px"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Auto-generated this week</div>' : '';
+    const badge = isAuto ? '<div style="font-size:11px;color:var(--teal);font-weight:700;margin-bottom:6px"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Auto-generated this week</div>' : '';
     box.innerHTML = badge + (result.text || 'No response — try again.');
     return true;
   } catch (err) {
@@ -8175,7 +8178,7 @@ async function testApiConnections() {
   box.innerHTML = lines.map(l => {
     const icon = l.ok === true ? '✓' : l.ok === false ? '✗' : '—';
     const color = l.ok === true ? 'var(--in)' : l.ok === false ? 'var(--coral)' : 'var(--ink-soft)';
-    return `<div style="font-family:'IBM Plex Mono',monospace;font-size:12px;padding:3px 0;color:${color}"><b>${icon} ${l.label}:</b> ${l.detail}</div>`;
+    return `<div style="font-family:var(--font-num);font-size:12px;padding:3px 0;color:${color};font-weight:700"><b>${icon} ${l.label}:</b> ${l.detail}</div>`;
   }).join('');
 }
 document.getElementById('testApiConnectionsBtn').addEventListener('click', testApiConnections);
@@ -8239,7 +8242,7 @@ async function testHealthSync() {
   box.innerHTML = lines.map(l => {
     const icon = l.ok === true ? '✓' : l.ok === false ? '✗' : '—';
     const color = l.ok === true ? 'var(--in)' : l.ok === false ? 'var(--coral)' : 'var(--ink-soft)';
-    return `<div style="font-family:'IBM Plex Mono',monospace;font-size:12px;padding:3px 0;color:${color};line-height:1.5"><b>${icon} ${l.label}:</b> ${l.detail}</div>`;
+    return `<div style="font-family:var(--font-num);font-size:12px;padding:3px 0;color:${color};line-height:1.5;font-weight:700"><b>${icon} ${l.label}:</b> ${l.detail}</div>`;
   }).join('');
 }
 document.getElementById('testHealthSyncBtn').addEventListener('click', testHealthSync);
@@ -8808,7 +8811,7 @@ function renderWorkoutHistory() {
     const monthLabel = new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     if (monthLabel !== currentMonth) {
       currentMonth = monthLabel;
-      html += `<div style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;margin:${html ? '16px' : '0'} 0 8px">${monthLabel}</div>`;
+      html += `<div style="font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;margin:${html ? '16px' : '0'} 0 8px">${monthLabel}</div>`;
     }
     const dayLabel = new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
     html += `
@@ -8823,7 +8826,7 @@ function renderWorkoutHistory() {
         <div style="display:grid;grid-template-columns:1fr auto;gap:5px 12px;font-size:13px">
           ${s.exercises.map(ex => `
             <div style="color:var(--ink-soft)">${ex.setCount} × ${escapeHtml(ex.name)}</div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;text-align:right">${ex.bestWeight != null ? `${ex.bestWeight} lb × ${ex.bestReps}` : '—'}</div>
+            <div style="font-family:var(--font-num);font-weight:700;text-align:right">${ex.bestWeight != null ? `${ex.bestWeight} lb × ${ex.bestReps}` : '—'}</div>
           `).join('')}
         </div>
       </div>`;
@@ -8896,40 +8899,40 @@ function showWorkoutSummary(sets, minutes, totalWeight, prs) {
   const setCount = Object.values(sets).reduce((n, arr) => n + arr.length, 0);
   modal.innerHTML = `
     <div style="background:linear-gradient(135deg, var(--teal) 0%, var(--teal-mid) 100%);color:white;padding:18px 20px">
-      <div style="font-weight:700;font-size:17px">💪 Workout Complete!</div>
+      <div style="font-weight:800;font-size:17px">💪 Workout Complete!</div>
       <div style="font-size:12px;opacity:0.9;margin-top:2px">${minutes ? minutes + ' min · ' : ''}${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'} · ${setCount} set${setCount === 1 ? '' : 's'}</div>
     </div>
     <div style="padding:18px 20px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:${prs.length ? '16px' : '4px'}">
         <span style="font-size:12px;color:var(--ink-soft)">Total weight lifted</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--ink)">${totalWeight.toLocaleString()} lbs</span>
+        <span style="font-family:var(--font-num);font-size:20px;font-weight:800;color:var(--ink)">${totalWeight.toLocaleString()} lbs</span>
       </div>
       ${prs.length ? `
         <div id="prCelebrationSection" style="border-top:1px solid var(--line);padding-top:12px;margin-bottom:16px;position:relative;overflow:visible">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4"/><path d="M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/><path d="M8 21h8"/><path d="M12 17v4"/></svg> New PR${prs.length > 1 ? 's' : ''}</div>
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4"/><path d="M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/><path d="M8 21h8"/><path d="M12 17v4"/></svg> New PR${prs.length > 1 ? 's' : ''}</div>
           ${prs.map(pr => `
             <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:4px">
               <span>${pr.exercise}</span>
-              <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--teal)">${pr.weight} lb <span style="color:var(--ink-soft);font-weight:400">(prev ${pr.previous})</span></span>
+              <span style="font-family:var(--font-num);font-weight:700;color:var(--teal)">${pr.weight} lb <span style="color:var(--ink-soft);font-weight:500">(prev ${pr.previous})</span></span>
             </div>
           `).join('')}
         </div>
       ` : ''}
       <div style="border-top:1px solid var(--line);padding-top:12px;margin-bottom:16px;max-height:220px;overflow-y:auto">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Sets</div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">Sets</div>
         ${Object.entries(sets).map(([exName, exSets]) => `
           <div style="margin-bottom:10px">
-            <div style="font-size:13px;font-weight:600;margin-bottom:4px">${exName}</div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:4px">${exName}</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
-              ${exSets.map(s => `<span style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);border-radius:6px;padding:3px 8px;${s.warmup ? 'color:var(--ink-soft);opacity:0.75' : 'color:var(--ink)'}">${s.warmup ? 'W · ' : ''}${s.weight}×${s.reps}</span>`).join('')}
+              ${exSets.map(s => `<span style="font-family:var(--font-num);font-size:12px;background:var(--input-bg);border-radius:6px;padding:3px 8px;${s.warmup ? 'color:var(--ink-soft);opacity:0.75' : 'color:var(--ink)'};font-weight:700">${s.warmup ? 'W · ' : ''}${s.weight}×${s.reps}</span>`).join('')}
             </div>
           </div>
         `).join('')}
       </div>
       <div style="border-top:1px solid var(--line);padding-top:12px;margin-bottom:16px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">How did that feel?</div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:8px">How did that feel?</div>
         <div id="effortRatingRow" style="display:flex;gap:6px;justify-content:space-between">
-          ${[1, 2, 3, 4, 5].map(n => `<button type="button" class="effort-rating-btn" data-rating="${n}" style="flex:1;padding:10px 0;border:1.5px solid var(--line);border-radius:10px;background:var(--input-bg);color:var(--ink);font-weight:700;font-size:15px;cursor:pointer">${n}</button>`).join('')}
+          ${[1, 2, 3, 4, 5].map(n => `<button type="button" class="effort-rating-btn" data-rating="${n}" style="flex:1;padding:10px 0;border:1.5px solid var(--line);border-radius:10px;background:var(--input-bg);color:var(--ink);font-weight:800;font-size:15px;cursor:pointer">${n}</button>`).join('')}
         </div>
       </div>
       <button type="button" class="btn btn-primary" id="workoutSummaryDoneBtn" style="width:100%">Nice!</button>
@@ -9208,7 +9211,7 @@ try {
         const headerRow=document.createElement('div');
         headerRow.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:4px';
         const labelEl=document.createElement('div');
-        labelEl.style.cssText='font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft)';
+        labelEl.style.cssText='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft)';
         labelEl.textContent=m.label;
         headerRow.appendChild(labelEl);
 
@@ -9235,10 +9238,10 @@ try {
           tileInput.type='number';
           tileInput.inputMode=m.inputmode;
           tileInput.step=m.step;
-          tileInput.style.cssText='flex:1;min-width:0;width:100%;padding:6px 8px;font-size:14px;border:1.5px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--ink);font-family:\'IBM Plex Mono\',monospace';
+          tileInput.style.cssText='flex:1;min-width:0;width:100%;padding:6px 8px;font-size:14px;border:1.5px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--ink);font-family:var(--font-num)';
           const saveIcon=document.createElement('button');
           saveIcon.type='button'; saveIcon.textContent='✓'; saveIcon.title='Save';
-          saveIcon.style.cssText='padding:6px 10px;border:none;border-radius:6px;background:var(--teal);color:white;cursor:pointer;font-weight:600;flex-shrink:0';
+          saveIcon.style.cssText='padding:6px 10px;border:none;border-radius:6px;background:var(--teal);color:white;cursor:pointer;font-weight:700;flex-shrink:0';
           const cancelIcon=document.createElement('button');
           cancelIcon.type='button'; cancelIcon.textContent='✕'; cancelIcon.title='Cancel';
           cancelIcon.style.cssText='padding:6px 8px;border:none;border-radius:6px;background:var(--input-bg);color:var(--ink-soft);cursor:pointer;flex-shrink:0';
@@ -9951,11 +9954,11 @@ function renderPRHallOfFame() {
       <div style="display:flex;align-items:center;gap:10px;min-width:0">
         ${i < 3 ? `<div style="width:22px;height:22px;border-radius:50%;background:${medals[i]};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#1a1a1a">${i + 1}</div>` : `<div style="width:22px;text-align:center;flex-shrink:0;font-size:12px;color:var(--ink-soft)">${i + 1}</div>`}
         <div style="min-width:0">
-          <div style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(pr.name)}</div>
+          <div style="font-weight:800;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(pr.name)}</div>
           <div style="font-size:11px;color:var(--ink-soft)">${fmtDate(pr.date)} · ${pr.sessions} session${pr.sessions === 1 ? '' : 's'}</div>
         </div>
       </div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-weight:800;font-size:16px;color:#5CE6C0;text-align:right;flex-shrink:0;padding-left:8px">${pr.weight}<span style="font-size:11px;font-weight:400;color:var(--ink-soft)"> lb×${pr.reps}</span></div>
+      <div style="font-family:var(--font-num);font-weight:800;font-size:16px;color:#5CE6C0;text-align:right;flex-shrink:0;padding-left:8px">${pr.weight}<span style="font-size:11px;font-weight:500;color:var(--ink-soft)"> lb×${pr.reps}</span></div>
     </div>`).join('');
 }
 
@@ -10025,10 +10028,10 @@ function showExerciseHistory(exerciseName) {
     oneRmHtml = `
       <div class="e1rm-block" style="padding:12px 16px;border-bottom:1px solid var(--line)">
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft)">Estimated 1RM</div>
-          <div style="font-size:11px;color:${delta > 0 ? 'var(--sage)' : 'var(--ink-soft)'};font-weight:700"><span class="e1rm-delta">${deltaText}</span> over ${oneRm.length} sessions</div>
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft)">Estimated 1RM</div>
+          <div style="font-size:11px;color:${delta > 0 ? 'var(--sage)' : 'var(--ink-soft)'};font-weight:800"><span class="e1rm-delta">${deltaText}</span> over ${oneRm.length} sessions</div>
         </div>
-        <div class="e1rm-value" style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:800;line-height:1">${Math.round(latest)} <span style="font-size:13px;font-weight:600;color:var(--ink-soft)">lb</span></div>
+        <div class="e1rm-value" style="font-family:var(--font-num);font-size:26px;font-weight:800;line-height:1">${Math.round(latest)} <span style="font-size:13px;font-weight:700;color:var(--ink-soft)">lb</span></div>
         <svg viewBox="0 0 100 50" preserveAspectRatio="none" style="width:100%;height:56px;display:block;margin-top:6px">
           <polyline points="${pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')}" fill="none" stroke="#37C6FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
         </svg>
@@ -10038,9 +10041,9 @@ function showExerciseHistory(exerciseName) {
 
   const listHtml = history.slice().reverse().map(h => `
     <div style="padding:10px 16px;border-bottom:1px solid var(--line)">
-      <div style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px">${fmtDate(h.date)}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:5px">${fmtDate(h.date)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${h.sets.map(s => `<span style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--input-bg);border-radius:6px;padding:3px 8px;${s.warmup ? 'color:var(--ink-soft);opacity:0.75' : 'color:var(--ink)'}">${s.warmup ? 'W · ' : ''}${s.weight}×${s.reps}</span>`).join('')}
+        ${h.sets.map(s => `<span style="font-family:var(--font-num);font-size:12px;background:var(--input-bg);border-radius:6px;padding:3px 8px;${s.warmup ? 'color:var(--ink-soft);opacity:0.75' : 'color:var(--ink)'};font-weight:700">${s.warmup ? 'W · ' : ''}${s.weight}×${s.reps}</span>`).join('')}
       </div>
       ${h.note ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:6px;font-style:italic">📝 ${escapeHtml(h.note)}</div>` : ''}
     </div>
@@ -10123,8 +10126,8 @@ function showCardioTrends(type) {
   const listHtml = history.slice().reverse().map(h => `
     <div style="padding:10px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
       <div style="font-size:12px;color:var(--ink-soft)">${fmtDate(h.date)}</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;text-align:right">
-        <span style="font-weight:700">${h.min} min</span>
+      <div style="font-family:var(--font-num);font-size:13px;text-align:right;font-weight:700">
+        <span style="font-weight:800">${h.min} min</span>
         ${h.dist ? `<span style="color:var(--ink-soft)"> · ${h.dist} mi${h.mph ? ` · ${h.mph} mph` : ''}</span>` : ''}
       </div>
     </div>
@@ -10559,7 +10562,7 @@ function focusNextSetInput() { if (!restTimerContext) return; const ctx = restTi
   const todayEntry = entries.find(x => x.date === todayStr());
   if (todayEntry && todayEntry.restDay) {
     const sick = todayEntry.restDay === 'sick';
-    return `<div style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line)">${sick ? '😷 Sick day — rest up. Your streak is paused, not broken.' : '🛌 Rest day — your streak is paused, not broken.'}</div>`;
+    return `<div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line)">${sick ? '😷 Sick day — rest up. Your streak is paused, not broken.' : '🛌 Rest day — your streak is paused, not broken.'}</div>`;
   }
   const days = daysSinceLastWorkout();
   let text, color;
@@ -10571,7 +10574,7 @@ function focusNextSetInput() { if (!restTimerContext) return; const ctx = restTi
     text = `It's been ${days} days — good day for ${dayLabel}.`; color = 'var(--teal)';
   }
   else { text = `It's been ${days} days since your last workout — today's a good day to get back in.`; color = 'var(--coral)'; }
-  return `<div style="font-size:12px;font-weight:600;color:${color};margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line)">${text}</div>`;
+  return `<div style="font-size:12px;font-weight:700;color:${color};margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line)">${text}</div>`;
 }
 
 // Rotating accent palette for the workout screen's "vivid glass" look —
@@ -11188,7 +11191,7 @@ function renderWorkoutPlan() {
       if (feelingCheckStep === 'initial') {
         feelingCheckHtml = `
           <div class="feeling-check-card" style="background:var(--input-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px">
-            <div style="font-size:12px;font-weight:600;margin-bottom:8px">How's your body feeling today?</div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px">How's your body feeling today?</div>
             <div style="display:flex;gap:8px">
               <button type="button" class="btn btn-secondary btn-sm feeling-good-btn" style="flex:1">Feeling good</button>
               <button type="button" class="btn btn-secondary btn-sm feeling-sore-btn" style="flex:1">A little sore</button>
@@ -11206,7 +11209,7 @@ function renderWorkoutPlan() {
     headerHtml = `
       ${feelingCheckHtml}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">Full Body</div>
+        <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">Full Body</div>
         <div style="font-size:11px;color:var(--ink-soft)">${totalStrengthSessions()} sessions logged so far</div>
       </div>`;
     footerHtml = `Check off each set as you finish it — a rest timer starts automatically. Log it as <b>Strength</b> below (or use the timer) when you're done.`;
@@ -11227,7 +11230,7 @@ function renderWorkoutPlan() {
       if (feelingCheckStep === 'initial') {
         feelingCheckHtml = `
           <div class="feeling-check-card" style="background:var(--input-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px">
-            <div style="font-size:12px;font-weight:600;margin-bottom:8px">How's your body feeling today?</div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px">How's your body feeling today?</div>
             <div style="display:flex;gap:8px">
               <button type="button" class="btn btn-secondary btn-sm feeling-good-btn" style="flex:1">Feeling good</button>
               <button type="button" class="btn btn-secondary btn-sm feeling-sore-btn" style="flex:1">A little sore</button>
@@ -11236,7 +11239,7 @@ function renderWorkoutPlan() {
       } else if (feelingCheckStep === 'sore-followup') {
         feelingCheckHtml = `
           <div class="feeling-check-card" style="background:var(--input-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px">
-            <div style="font-size:12px;font-weight:600;margin-bottom:8px">Where's the soreness?</div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px">Where's the soreness?</div>
             <div style="display:flex;gap:8px">
               <button type="button" class="btn btn-secondary btn-sm feeling-followup-btn" data-area="upper" style="flex:1">Upper body</button>
               <button type="button" class="btn btn-secondary btn-sm feeling-followup-btn" data-area="lower" style="flex:1">Lower body</button>
@@ -11255,7 +11258,7 @@ function renderWorkoutPlan() {
     headerHtml = `
       ${feelingCheckHtml}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">${next} Day${pplDayOverride ? ' <span style="font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:none;letter-spacing:normal">(picked)</span>' : ''}</div>
+        <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">${next} Day${pplDayOverride ? ' <span style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:none;letter-spacing:normal">(picked)</span>' : ''}</div>
         <div style="font-size:11px;color:var(--ink-soft)">${pplDayOverride ? '' : 'next up · '}${totalStrengthSessions()} sessions logged so far</div>
       </div>
       <div class="chip-row ppl-day-row" style="margin-bottom:12px">
@@ -11274,7 +11277,7 @@ function renderWorkoutPlan() {
       if (feelingCheckStep === 'initial') {
         feelingCheckHtml = `
           <div class="feeling-check-card" style="background:var(--input-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px">
-            <div style="font-size:12px;font-weight:600;margin-bottom:8px">How's your body feeling today?</div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px">How's your body feeling today?</div>
             <div style="display:flex;gap:8px">
               <button type="button" class="btn btn-secondary btn-sm feeling-good-btn" style="flex:1">Feeling good</button>
               <button type="button" class="btn btn-secondary btn-sm feeling-sore-btn" style="flex:1">A little sore</button>
@@ -11283,7 +11286,7 @@ function renderWorkoutPlan() {
       } else if (feelingCheckStep === 'sore-followup') {
         feelingCheckHtml = `
           <div class="feeling-check-card" style="background:var(--input-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px">
-            <div style="font-size:12px;font-weight:600;margin-bottom:8px">Where's the soreness?</div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px">Where's the soreness?</div>
             <div style="display:flex;gap:8px">
               <button type="button" class="btn btn-secondary btn-sm feeling-followup-btn" data-area="push" style="flex:1">Chest/shoulders/triceps</button>
               <button type="button" class="btn btn-secondary btn-sm feeling-followup-btn" data-area="pull" style="flex:1">Back/biceps</button>
@@ -11302,7 +11305,7 @@ function renderWorkoutPlan() {
     headerHtml = `
       ${feelingCheckHtml}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">Day ${next}${splitDayOverride ? ' <span style="font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:none;letter-spacing:normal">(picked)</span>' : ''}</div>
+        <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">Day ${next}${splitDayOverride ? ' <span style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:none;letter-spacing:normal">(picked)</span>' : ''}</div>
         <div style="font-size:11px;color:var(--ink-soft)">${splitDayOverride ? '' : 'next up · '}${totalStrengthSessions()} sessions logged so far</div>
       </div>
       <div class="chip-row split-day-row" style="margin-bottom:12px">
@@ -11383,7 +11386,7 @@ function renderWorkoutPlan() {
         <div class="workout-exercise-block" data-exercise="${ex.name}" style="margin-bottom:10px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;background:var(--card)">
           <div class="exercise-drag-handle" style="cursor:grab;color:var(--ink-soft);font-size:20px;line-height:1;flex-shrink:0">⠿</div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:14px">${ex.name}</div>
+            <div style="font-weight:800;font-size:14px">${ex.name}</div>
             <div style="font-size:11px;color:var(--ink-soft)">${ex.sets}</div>
           </div>
         </div>`;
@@ -11433,7 +11436,7 @@ function renderWorkoutPlan() {
       return `
       <div class="workout-exercise-block${allDone ? ' workout-exercise-done' : ''}" data-exercise="${ex.name}" style="margin-bottom:18px;padding:16px 16px 12px;border:2px solid ${cardColor};border-radius:16px;background:${allDone ? 'var(--success-tint)' : 'transparent'};box-shadow:${allDone ? '0 0 22px -4px var(--sage)' : 'none'};transition:box-shadow 0.3s ease">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-          <div class="exercise-zoom-btn" data-exercise="${ex.name}" style="font-family:'Inter',sans-serif;font-weight:800;font-size:17px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 4px;margin:-8px 0">
+          <div class="exercise-zoom-btn" data-exercise="${ex.name}" style="font-family:var(--font-text);font-weight:800;font-size:17px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 4px;margin:-8px 0">
             <span>${ex.name}</span>
             <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-soft);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
@@ -11450,8 +11453,8 @@ function renderWorkoutPlan() {
         <div class="exercise-note-wrap" data-exercise="${ex.name}" style="display:${workoutNotesState[ex.name] ? '' : 'none'};margin-bottom:8px">
           <textarea class="exercise-note-input" data-exercise="${ex.name}" placeholder="e.g. left shoulder felt off today" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;background:var(--input-bg);color:var(--ink);resize:vertical">${escapeHtml(workoutNotesState[ex.name] || '')}</textarea>
         </div>
-        ${hint ? `<div style="font-size:12px;color:var(--coral);font-weight:600;margin-bottom:8px">${hint}</div>` : ''}
-        ${plateau ? `<div style="font-size:12px;color:#FFB020;font-weight:600;margin-bottom:8px">${plateau}</div>` : ''}
+        ${hint ? `<div style="font-size:12px;color:var(--coral);font-weight:700;margin-bottom:8px">${hint}</div>` : ''}
+        ${plateau ? `<div style="font-size:12px;color:#FFB020;font-weight:700;margin-bottom:8px">${plateau}</div>` : ''}
         <div class="set-rows-container" data-exercise-name="${ex.name}">
           ${setState.map((s, i) => renderSetRowHtml(ex.name, i, s, prevSets && prevSets[i], accent)).join('')}
         </div>
@@ -11477,7 +11480,7 @@ function renderWorkoutPlan() {
     </div>`}
     <div id="workoutStartFinishBlock">${workoutStartedAt
       ? `<div id="resumeWorkoutIndicator" style="margin-top:10px;text-align:center;cursor:pointer" title="Tap to resume full screen">
-           <div style="font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:800;color:var(--teal-mid);line-height:1.1">⏱ <span id="workoutElapsedDisplay">0:00</span></div>
+           <div style="font-family:var(--font-num);font-size:30px;font-weight:800;color:var(--teal-mid);line-height:1.1">⏱ <span id="workoutElapsedDisplay">0:00</span></div>
            <div style="font-size:11px;color:var(--ink-soft);margin-top:2px">tap to resume full screen</div>
            <div style="font-size:11px;color:var(--ink-soft);margin-top:2px">Workout #${workoutsInLastDays(7) + 1} this week</div>
            <div id="workoutDraftStatus" style="font-size:11px;color:var(--sage);margin-top:2px">${draftStatusText()}</div>
@@ -11626,7 +11629,7 @@ function renderExList() {
     const totalDist = ex.reduce((s, x) => s + (parseFloat(x.dist) || 0), 0);
     list.innerHTML = ex.map(x => `
       <div class="lab-row">
-        <span style="font-family:'Inter',sans-serif">${x.type}</span>
+        <span style="font-family:var(--font-text)">${x.type}</span>
         <span style="display:flex;align-items:center;gap:10px">
           <span class="lab-val">${x.min} min</span>
           ${x.dist ? `<span style="color:var(--ink-soft)">${x.dist} mi</span>` : ''}
@@ -11636,7 +11639,7 @@ function renderExList() {
           <button class="entry-del" data-exts="${x.ts}" aria-label="Delete ${x.type} entry">✕</button>
         </span>
       </div>`).join('') +
-      `<div style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--teal);padding:6px 4px">Total: ${total} min${totalDist > 0 ? ` · ${round1(totalDist)} mi` : ''}</div>`;
+      `<div style="text-align:right;font-family:var(--font-num);font-size:12px;color:var(--teal);padding:6px 4px;font-weight:700">Total: ${total} min${totalDist > 0 ? ` · ${round1(totalDist)} mi` : ''}</div>`;
     list.querySelectorAll('[data-exts]').forEach(btn => {
       btn.addEventListener('click', () => deleteEx(date, btn.dataset.exts));
     });
@@ -11667,14 +11670,14 @@ function renderActivityHistory() {
   }
   box.innerHTML = recent.map(x => `
     <div class="lab-row" data-activity-date="${x.date}" style="cursor:pointer">
-      <span style="display:flex;align-items:center;gap:8px;font-family:'Inter',sans-serif">
+      <span style="display:flex;align-items:center;gap:8px;font-family:var(--font-text)">
         <span style="font-size:16px">${ACTIVITY_ICONS[x.type] || '⚡'}</span>
         <span>
           <div>${x.type}</div>
           <div style="font-size:11px;color:var(--ink-soft)">${fmtDate(x.date)}</div>
         </span>
       </span>
-      <span style="text-align:right;font-family:'IBM Plex Mono',monospace">
+      <span style="text-align:right;font-family:var(--font-num);font-weight:700">
         <div class="lab-val">${x.min} min</div>
         ${x.dist ? `<div style="font-size:11px;color:var(--ink-soft)">${x.dist} mi${computePace(x.min, x.dist) ? ` · ${computePace(x.min, x.dist)} mph` : ''}</div>` : ''}
         ${x.sets ? `<div style="font-size:11px;color:var(--ink-soft)">${Object.entries(x.sets).map(([name, s]) => `${name}: ${s.map(set => `${set.weight}×${set.reps}`).join('/')}`).join(' · ')}</div>` : ''}
@@ -12304,7 +12307,7 @@ function renderWeeklySummary() {
   });
   const wkNums = Object.keys(weeks).map(Number).sort((a,b) => a-b);
   if (!wkNums.length) {
-    table.innerHTML = '<tr><td style="font-family:Inter,sans-serif;color:var(--ink-soft);text-align:center;padding:16px">Weekly rollups appear once you have entries.</td></tr>';
+    table.innerHTML = '<tr><td style="font-family:var(--font-text);color:var(--ink-soft);text-align:center;padding:16px">Weekly rollups appear once you have entries.</td></tr>';
     return;
   }
   const avg = (arr, f) => {
@@ -12351,7 +12354,7 @@ function renderWeeklySummary() {
       <td class="${stAvg != null && stAvg >= currentStepGoal() ? 'good' : ''}">${stAvg != null ? Math.round(stAvg).toLocaleString() : '—'}</td>
       <td class="${exTot >= 150 ? 'good' : ''}">${exTot || '—'}</td>
       <td class="${wdClass}">${wd}</td>
-      <td style="font-family:Inter,sans-serif;font-size:11px">${fxStr}</td>
+      <td style="font-family:var(--font-text);font-size:11px">${fxStr}</td>
     </tr>`;
   });
   table.innerHTML = html;
@@ -12825,7 +12828,7 @@ function renderFavorites() {
 
   if (pinnedRecipes.length) {
     html += `
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M4 12h16v2a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M8 12V8a4 4 0 0 1 8 0v4"/><line x1="2" y1="12" x2="22" y2="12"/></svg> Recipes</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M4 12h16v2a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M8 12V8a4 4 0 0 1 8 0v4"/><line x1="2" y1="12" x2="22" y2="12"/></svg> Recipes</div>
     <div class="chip-row" style="margin-bottom:12px">` +
       pinnedRecipes.map((r, i) => `
         <div class="chip" data-recipe="${i}" data-desc="${r.name}" style="display:inline-flex;align-items:center;gap:6px">
@@ -12837,7 +12840,7 @@ function renderFavorites() {
 
   if (foodCombos.length) {
     html += `
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Combos</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> Combos</div>
     <div class="chip-row" style="margin-bottom:12px">` +
       foodCombos.map((c, i) => `
         <div class="chip" data-combo="${i}" style="display:inline-flex;align-items:center;gap:6px">
@@ -12848,7 +12851,7 @@ function renderFavorites() {
       `</div>` +
       (comboEditingIdx != null && foodCombos[comboEditingIdx] ? `
         <div class="form-card" style="padding:12px;margin-bottom:12px">
-          <div style="font-size:12px;font-weight:600;margin-bottom:8px">Editing: ${escapeHtml(foodCombos[comboEditingIdx].name)}</div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px">Editing: ${escapeHtml(foodCombos[comboEditingIdx].name)}</div>
           ${foodCombos[comboEditingIdx].items.map((item, ii) => `
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
               <span style="font-size:12px;flex:1;min-width:90px">${escapeHtml(item.desc)}</span>
@@ -12868,7 +12871,7 @@ function renderFavorites() {
 
   if (pinnedFavorites.length) {
     html += `
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px">⭐ Favorites</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px">⭐ Favorites</div>
     <div class="chip-row" style="margin-bottom:12px">` +
       pinnedFavorites.map((f, i) => `
         <div class="chip" data-pin="${i}" data-desc="${f.desc}" style="display:inline-flex;align-items:center;gap:6px">
@@ -12882,7 +12885,7 @@ function renderFavorites() {
   const favs = favsPreview;
   if (favs.length) {
     html += `
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px">Quick add — your usuals</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px">Quick add — your usuals</div>
     <div class="chip-row" style="margin-bottom:12px">` +
       favs.map((f, i) => `
         <div class="chip" data-fav="${i}" data-desc="${f.desc}" style="display:inline-flex;align-items:center;gap:6px">
@@ -12896,7 +12899,7 @@ function renderFavorites() {
   if (pinnedFavorites.length >= 2) {
     html += `
     <div id="comboBuilderToggleRow" style="margin-top:4px">
-      <button type="button" id="showComboBuilderBtn" style="background:none;border:none;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;padding:0">+ New Combo</button>
+      <button type="button" id="showComboBuilderBtn" style="background:none;border:none;color:var(--teal);font-size:12px;font-weight:700;cursor:pointer;padding:0">+ New Combo</button>
       <div id="comboBuilderForm" style="display:none;margin-top:8px;padding:12px;border:1.5px solid var(--line);border-radius:10px">
         <div class="field" style="margin-bottom:8px">
           <label for="comboNameInput">Combo name</label>
@@ -12935,7 +12938,7 @@ function renderFavorites() {
     }).join('');
     html += `
     <div id="batchLogToggleRow" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
-      <button type="button" id="showBatchLogBtn" style="background:none;border:none;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;padding:0">📅 Batch Log to Multiple Days</button>
+      <button type="button" id="showBatchLogBtn" style="background:none;border:none;color:var(--teal);font-size:12px;font-weight:700;cursor:pointer;padding:0">📅 Batch Log to Multiple Days</button>
       <div id="batchLogForm" style="display:none;margin-top:8px;padding:12px;border:1.5px solid var(--line);border-radius:10px">
         <div class="field" style="margin-bottom:8px">
           <label for="batchLogItemSelect">What to log</label>
@@ -13384,7 +13387,7 @@ function renderRecipeBoxList(recipes, filterText) {
       ? `${m.calories} cal · ${m.protein || 0}g P · ${m.carbs || 0}g C · ${m.fat || 0}g F / serving`
       : 'No macros saved yet for this recipe';
     return `<div class="recipe-box-item" data-recipe-id="${r.id}" style="padding:12px 10px;border-bottom:1px solid var(--line);cursor:pointer">
-      <div style="font-weight:700;color:var(--ink);font-size:14px">${escapeHtml(r.title || 'Untitled recipe')}</div>
+      <div style="font-weight:800;color:var(--ink);font-size:14px">${escapeHtml(r.title || 'Untitled recipe')}</div>
       <div style="font-size:12px;color:var(--ink-soft);margin-top:2px">${escapeHtml(macroLine)}</div>
     </div>`;
   }).join('');
@@ -13493,7 +13496,7 @@ function renderRecipeBuilder() {
           <input type="number" id="recipeServings" inputmode="numeric" min="1" step="1" value="${servingsVal}" placeholder="1">
         </div>
       </div>
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin:10px 0 4px">Ingredients</div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin:10px 0 4px">Ingredients</div>
       ${recipeIngredients.map((ing, i) => `
         <div style="border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px">
           <div style="display:flex;gap:8px;margin-bottom:6px">
@@ -13511,7 +13514,7 @@ function renderRecipeBuilder() {
           </div>
         </div>`).join('')}
       <button type="button" class="btn btn-secondary btn-sm" id="addIngredientBtn" style="margin-bottom:12px">+ Add Ingredient</button>
-      <div id="recipeTotalsLine" style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;font-family:'IBM Plex Mono',monospace">
+      <div id="recipeTotalsLine" style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;font-family:var(--font-num);font-weight:700">
         Batch total: ${t.protein ?? 0}g P · ${t.carbs ?? 0}g C · ${t.fat ?? 0}g F · ${t.calories ?? 0} cal
         ${servings > 1 ? `<br>Per serving (÷${servings}): ${round1(( t.protein ?? 0)/servings)}g P · ${round1((t.carbs ?? 0)/servings)}g C · ${round1((t.fat ?? 0)/servings)}g F · ${Math.round((t.calories ?? 0)/servings)} cal` : ''}
       </div>
@@ -13985,7 +13988,7 @@ function macroBarRow(label, logged, goal, color, key) {
     <div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
         <span style="font-size:12px;color:var(--ink-soft)">${label}</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:${color}"><span class="macro-logged-value" data-macro-key="${key}" data-macro-target="${logged}">${logged}</span> / ${goal}${unit}${remaining > 0 ? ` · ${remaining}${unit} left` : ' · met ✓'}</span>
+        <span style="font-family:var(--font-num);font-size:12px;color:${color};font-weight:700"><span class="macro-logged-value" data-macro-key="${key}" data-macro-target="${logged}">${logged}</span> / ${goal}${unit}${remaining > 0 ? ` · ${remaining}${unit} left` : ' · met ✓'}</span>
       </div>
       <div style="height:7px;border-radius:4px;background:var(--line);overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${color};border-radius:4px"></div>
@@ -14034,7 +14037,7 @@ function renderWhatFits() {
   list.innerHTML = picks.map((c, i) => `
     <button type="button" class="fits-row" data-fit-idx="${i}">
       <div class="fits-text">
-        <div class="fits-name">${escapeHtml(c.label)}${c.kind === 'combo' && !/combo/i.test(c.label) ? ' <span style="font-weight:400;opacity:0.6">· combo</span>' : ''}</div>
+        <div class="fits-name">${escapeHtml(c.label)}${c.kind === 'combo' && !/combo/i.test(c.label) ? ' <span style="font-weight:500;opacity:0.6">· combo</span>' : ''}</div>
         <div class="fits-macros">${Math.round(c.p)}g protein${c.cal != null ? ` · ${Math.round(c.cal)} cal` : ''}</div>
       </div>
       <div class="fits-add" aria-hidden="true">+</div>
@@ -14093,17 +14096,17 @@ function renderMealList() {
     const sub = mealTotals(items);
     const subStr = items.length ? [sub.protein != null ? sub.protein + 'g P' : '', sub.carbs != null ? sub.carbs + 'g C' : '', sub.calories != null ? sub.calories + ' cal' : ''].filter(Boolean).join(' · ') : '';
     const addLink = mt !== 'Other'
-      ? `<div class="add-to-meal-row" data-addmeal="${mt}" style="padding:6px 0 8px;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer">+ Add food to ${mt}</div>`
+      ? `<div class="add-to-meal-row" data-addmeal="${mt}" style="padding:6px 0 8px;color:var(--teal);font-size:12px;font-weight:700;cursor:pointer">+ Add food to ${mt}</div>`
       : '';
     return `
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin:10px 0 2px;display:flex;justify-content:space-between">
-        <span>${mt}</span><span style="font-family:'IBM Plex Mono',monospace">${subStr}</span>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin:10px 0 2px;display:flex;justify-content:space-between">
+        <span>${mt}</span><span style="font-family:var(--font-num);font-weight:700">${subStr}</span>
       </div>` +
       items.map(m => `
         <div class="lab-row">
-          <span style="font-family:'Inter',sans-serif">
+          <span style="font-family:var(--font-text)">
             <div>${m.offPlan ? '🔸 ' : ''}${m.desc}</div>
-            ${m.source ? `<div style="font-size:10px;color:var(--ink-soft);font-weight:400">${m.source}</div>` : ''}
+            ${m.source ? `<div style="font-size:10px;color:var(--ink-soft);font-weight:500">${m.source}</div>` : ''}
           </span>
           <span style="display:flex;align-items:center;gap:10px">
             ${m.protein ? `<span class="lab-val">${m.protein}g</span>` : ''}
@@ -14302,7 +14305,7 @@ function renderLabPanelSummary() {
   const catOrder = ['Kidney', 'Metabolic', 'Liver', 'CBC', 'CBC Differential', 'Inflammation', 'Lipids', 'Thyroid', 'Other'];
   box.innerHTML = catOrder.filter(c => byCat[c]).map(cat => `
     <div style="margin-bottom:10px">
-      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:4px">${cat}</div>
+      <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:4px">${cat}</div>
       ${byCat[cat].map(r => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--divider)">
           <span style="color:var(--ink)">${r.item.label}</span>
@@ -14523,7 +14526,7 @@ function renderDueToday() {
   if (!items.length) { card.style.display = 'none'; return; }
   card.style.display = '';
   list.innerHTML = items.map(i => `
-    <div style="display:flex;align-items:center;gap:10px;padding:6px 0${i.urgent ? ';color:var(--coral);font-weight:600' : ''}">
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 0${i.urgent ? ';color:var(--coral);font-weight:700' : ''}">
       <span style="font-size:16px;flex-shrink:0">${i.icon}</span>
       <span style="font-size:13px">${i.text}</span>
     </div>`).join('');
@@ -14538,9 +14541,9 @@ function renderMedications() {
     return `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--divider)">
       <div>
-        <div style="font-weight:600;color:var(--ink)">${escapeHtml(m.name)}</div>
+        <div style="font-weight:700;color:var(--ink)">${escapeHtml(m.name)}</div>
         <div style="font-size:11.5px;color:var(--ink-soft)">${escapeHtml(m.dose || '')}${m.frequency ? ' • ' + escapeHtml(m.frequency) : ''}${m.notes ? ' • ' + escapeHtml(m.notes) : ''}</div>
-        ${refill ? `<div style="font-size:11.5px;font-weight:600;color:${refill.color};margin-top:2px">${refill.label}</div>` : ''}
+        ${refill ? `<div style="font-size:11.5px;font-weight:700;color:${refill.color};margin-top:2px">${refill.label}</div>` : ''}
       </div>
       <div style="display:flex;gap:12px;flex-shrink:0;padding-left:10px">
         <span class="med-edit-btn" data-id="${m.id}" style="cursor:pointer;color:var(--ink-soft)">✎</span>
@@ -14699,10 +14702,10 @@ function showDoctorSummary() {
 
   modal.innerHTML = `
     <div style="padding:20px">
-      <div style="font-size:16px;font-weight:700;color:var(--teal);margin-bottom:2px">Visit Summary</div>
+      <div style="font-size:16px;font-weight:800;color:var(--teal);margin-bottom:2px">Visit Summary</div>
       <div style="font-size:12px;color:var(--ink-soft);border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px">Generated ${today}</div>
       <div style="margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Weight</div>
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Weight</div>
         <div style="font-size:14px;line-height:1.6;color:var(--ink)">
           Current: <strong>${currentWeight.toFixed(1)} lbs</strong><br>
           Baseline: ${baselineWeight} lbs · Goal: ${goalWeight} lbs<br>
@@ -14711,23 +14714,23 @@ function showDoctorSummary() {
       </div>
       ${medsList.length ? `
       <div style="margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Current Medications</div>
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Current Medications</div>
         <div style="font-size:14px;line-height:1.7;color:var(--ink)">${medsList.join('<br>')}</div>
       </div>` : ''}
       <div style="margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Blood Sugar (last 30 days)</div>
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Blood Sugar (last 30 days)</div>
         <div style="font-size:14px;line-height:1.6;color:var(--ink)">
           ${avgGlucose != null ? `Average fasting: <strong>${Math.round(avgGlucose)} mg/dL</strong><br>In range (under ${GLUCOSE_TARGET}): <strong>${pctInRange}%</strong> of readings` : 'No glucose readings in the last 30 days'}
         </div>
       </div>
       <div style="margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Most Recent Labs</div>
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Most Recent Labs</div>
         <div style="font-size:14px;line-height:1.6;color:var(--ink)">
           ${latestLab ? `A1C: <strong>${latestLab.a1c}%</strong> (${fmtDate(latestLab.date)})` : 'No labs logged yet'}
         </div>
       </div>
       <div style="margin-bottom:20px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Activity</div>
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Activity</div>
         <div style="font-size:14px;line-height:1.6;color:var(--ink)">
           Workouts (last 30 days): <strong>${workouts30}</strong><br>
           Current logging streak: <strong>${streak} day${streak === 1 ? '' : 's'}</strong>
@@ -14787,10 +14790,10 @@ function showTrainerSummary() {
 
   modal.innerHTML = `
     <div style="padding:20px">
-      <div style="font-size:16px;font-weight:700;color:var(--teal);margin-bottom:2px">Training Summary</div>
+      <div style="font-size:16px;font-weight:800;color:var(--teal);margin-bottom:2px">Training Summary</div>
       <div style="font-size:12px;color:var(--ink-soft);border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px">Generated ${today}</div>
       <div style="margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Consistency</div>
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Consistency</div>
         <div style="font-size:14px;line-height:1.6;color:var(--ink)">
           Current plan: <strong>${planLabel}</strong><br>
           Workouts (last 30 days): <strong>${workouts30}</strong><br>
@@ -14799,12 +14802,12 @@ function showTrainerSummary() {
         </div>
       </div>
       <div style="margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Weekly Volume</div>
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Weekly Volume</div>
         ${avgWeeklyVolume != null ? `<div style="font-size:14px;color:var(--ink);margin-bottom:6px">Averaging <strong>${avgWeeklyVolume.toLocaleString()} lbs/week</strong> over the last ${weeksWithData.length} weeks</div>` : ''}
         ${weeksWithData.length ? `<table style="width:100%;font-size:13px;border-collapse:collapse">${volumeRows}</table>` : '<div style="font-size:13px;color:var(--ink-soft)">Not enough logged history yet.</div>'}
       </div>
       <div style="margin-bottom:20px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Personal Records</div>
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Personal Records</div>
         ${prRows ? `<table style="width:100%;font-size:13px;border-collapse:collapse">${prRows}</table>` : '<div style="font-size:13px;color:var(--ink-soft)">Log a few strength sessions and PRs will show up here.</div>'}
       </div>
       <div style="display:flex;gap:8px">
@@ -15115,7 +15118,7 @@ function showDraftBanner(setsDone) {
   const old = document.getElementById('draftBanner'); if (old) old.remove();
   const b = document.createElement('div');
   b.id = 'draftBanner'; b.className = 'draft-banner';
-  b.innerHTML = `<div style="flex:1;min-width:0">↩ Restored your workout in progress<div style="font-size:11px;font-weight:500;opacity:0.8">${setsDone} set${setsDone === 1 ? '' : 's'} logged</div></div>
+  b.innerHTML = `<div style="flex:1;min-width:0">↩ Restored your workout in progress<div style="font-size:11px;font-weight:600;opacity:0.8">${setsDone} set${setsDone === 1 ? '' : 's'} logged</div></div>
     <button type="button" id="draftResumeBtn" class="btn btn-primary btn-sm">Resume</button>
     <button type="button" id="draftDiscardBtn" class="btn btn-ghost btn-sm">Discard</button>`;
   document.body.appendChild(b);
@@ -15164,6 +15167,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 window.addEventListener('pagehide', persistWorkoutDraft);
 
 // ── BOOT ──
+try { if (typeof Chart !== 'undefined') { Chart.defaults.font.family = CHART_FONT_TEXT; Chart.defaults.font.weight = '600'; } } catch (err) { console.error('Chart font defaults failed:', err); }
 try { todayDefault(); } catch (err) { console.error('todayDefault failed:', err); }
 initSyncId();
 // Failsafe: never leave the loading screen up more than 6s
