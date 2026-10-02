@@ -5668,19 +5668,29 @@ function muscleSessionIndex() {
         const p = (per[g] = per[g] || { sets: 0, ex: [] });
         p.sets += n; p.ex.push({ name, sets: n });
       });
-      Object.entries(per).forEach(([g, p]) => idx[g].push({ t, date: e.date, sets: p.sets, ex: p.ex }));
+      const effort = (Number(x.effort) >= 1 && Number(x.effort) <= 5) ? Number(x.effort) : null;
+      Object.entries(per).forEach(([g, p]) => idx[g].push({ t, date: e.date, sets: p.sets, ex: p.ex, effort }));
     });
   });
   MUSCLE_MAP_GROUPS.forEach(g => idx[g].sort((a, b) => a.t - b.t));
   return idx;
 }
-function recoveryHoursForSets(n) { return Math.min(72, Math.max(48, 36 + 6 * n)); }
+// The end-of-workout effort rating (1-5) stretches or shrinks the window: a
+// max-effort session needs roughly 30% longer, a very easy one 20% less. It's
+// one rating for the whole workout, so it applies to every muscle that
+// session worked. Unrated workouts use the plain sets-based window.
+const EFFORT_RECOVERY_FACTOR = { 1: 0.8, 2: 0.9, 3: 1, 4: 1.15, 5: 1.3 };
+function effortRecoveryFactor(effort) { return EFFORT_RECOVERY_FACTOR[effort] || 1; }
+function recoveryHoursForSets(n, effort) {
+  const base = Math.min(72, Math.max(48, 36 + 6 * n));
+  return Math.min(96, Math.max(36, base * effortRecoveryFactor(effort)));
+}
 function muscleRecovery(sessions, now) {
   if (!sessions.length) return { state: 'none' };
   const L = sessions[sessions.length - 1];
-  const recH = recoveryHoursForSets(L.sets);
+  const recH = recoveryHoursForSets(L.sets, L.effort), baseH = recoveryHoursForSets(L.sets), effort = L.effort || null;
   const elapsedH = Math.max(0, (now - L.t) / 3600000);
-  if (elapsedH >= recH) return { state: 'ready', elapsedH, recH };
+  if (elapsedH >= recH) return { state: 'ready', elapsedH, recH, baseH, effort };
   // Still inside this session's recovery window. It's "hit again too soon" if the
   // session before it hadn't finished its own window (with 15% grace, so a normal
   // Mon/Wed/Fri full-body rhythm isn't flagged).
@@ -5688,9 +5698,9 @@ function muscleRecovery(sessions, now) {
   for (let i = sessions.length - 2; i >= 0; i--) {
     const P = sessions[i], gapH = (L.t - P.t) / 3600000;
     if (gapH > 96) break;
-    if (gapH < 0.85 * recoveryHoursForSets(P.sets)) { overlap = true; break; }
+    if (gapH < 0.85 * recoveryHoursForSets(P.sets, P.effort)) { overlap = true; break; }
   }
-  return { state: overlap ? 'overlap' : 'recovering', elapsedH, recH, hoursLeft: recH - elapsedH };
+  return { state: overlap ? 'overlap' : 'recovering', elapsedH, recH, baseH, effort, hoursLeft: recH - elapsedH };
 }
 function muscleZone(sets, goal) {
   if (sets <= 0) return 'none';
@@ -5749,6 +5759,8 @@ function muscleDetailHtml(st) {
     : r.state === 'ready' ? `Ready — last trained ${fmtHoursShort(r.elapsedH)} ago`
     : `${r.state === 'overlap' ? '⚠ Hit again before it recovered · ' : ''}about ${fmtHoursLeft(r.hoursLeft)} until recovered`;
   const last = st.last ? `Last trained ${fmtDate(st.last.date)} · ${st.last.sets} set${st.last.sets === 1 ? '' : 's'}` : '';
+  const effortNote = (r.effort && r.recH)
+    ? `Felt ${r.effort}/5 — ${Math.round(r.recH) === Math.round(r.baseH) ? `a normal recovery window (~${Math.round(r.recH)}h)` : `recovery window ~${Math.round(r.recH)}h (${r.recH > r.baseH ? 'longer' : 'shorter'} than the usual ${Math.round(r.baseH)}h)`}` : '';
   const ex = st.exercises.length ? st.exercises.map(e => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${escapeHtml(e.name)}</span><span class="n">${e.sets} set${e.sets === 1 ? '' : 's'}</span></div>`).join('') : '<div style="color:var(--ink-soft)">No sets in the last 7 days.</div>';
   const scale = Math.max(st.goal * 2, ...st.weeks, 1), labels = ['3w ago', '2w ago', 'last wk', 'this wk'];
   const bars = st.weeks.slice().reverse().map((v, i) => {
@@ -5761,7 +5773,8 @@ function muscleDetailHtml(st) {
       <button type="button" class="md-close" data-muscleclose="1" aria-label="Close details">✕</button>
     </div>
     <div style="font-size:12px;font-weight:600;margin-bottom:2px">${status}</div>
-    ${last ? `<div style="font-size:11px;color:var(--ink-soft);margin-bottom:8px">${last}</div>` : '<div style="margin-bottom:8px"></div>'}
+    ${last ? `<div style="font-size:11px;color:var(--ink-soft);margin-bottom:${effortNote ? '2px' : '8px'}">${last}</div>` : '<div style="margin-bottom:8px"></div>'}
+    ${effortNote ? `<div class="md-effort" style="font-size:11px;color:var(--ink-soft);margin-bottom:8px">${effortNote}</div>` : ''}
     <div class="md-label">This week</div>
     <div class="md-list">${ex}</div>
     <div class="md-label" style="margin-top:10px">Sets per week</div>
@@ -5851,7 +5864,7 @@ function renderMuscleMap() {
     const fresh = MUSCLE_MAP_GROUPS.filter(g => ['ready', 'none'].includes(stats[g].recovery.state));
     note = (over.length ? `<div style="color:${MUSCLE_COLORS.red};font-weight:700;margin-bottom:4px">⚠ Hit again before recovered: ${over.join(', ')}</div>` : '')
       + (fresh.length ? `Ready to train: <strong style="color:var(--ink)">${fresh.join(', ')}</strong>` : 'Everything is still recovering.')
-      + `<div style="margin-top:6px">green = ready · amber = recovering · red = trained again too soon. Recovery is a rough 2–3 day estimate that grows with the sets you did.</div>`;
+      + `<div style="margin-top:6px">green = ready · amber = recovering · red = trained again too soon. Recovery is a rough 2–3 day estimate: it grows with the sets you did and stretches or shrinks with how hard you rated that workout (1–5).</div>`;
   } else {
     const missed = MUSCLE_MAP_GROUPS.filter(g => stats[g].sets === 0);
     const heavy = MUSCLE_MAP_GROUPS.filter(g => ['heavy', 'high'].includes(stats[g].zone)).map(g => `${g} (${stats[g].sets})`);
