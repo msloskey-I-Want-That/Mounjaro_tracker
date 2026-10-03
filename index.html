@@ -3029,6 +3029,7 @@ body {
             <button class="btn btn-secondary btn-sm" id="ntfyCancelTestBtn" type="button">Test cancel</button>
           </div>
           <div id="ntfyStatus" style="margin:-4px 0 8px;padding:0 12px;font-size:12px;line-height:1.45;color:var(--ink-soft)"></div>
+          <div id="ntfyLast" style="display:none;margin:0 0 8px;padding:8px 12px;font-size:11px;line-height:1.5;color:var(--ink-soft);background:var(--input-bg);border-radius:8px"></div>
           <div style="font-size:11px;color:var(--ink-soft);padding:8px 10px;background:var(--input-bg);border-radius:8px;line-height:1.5">
             <b>One-time setup:</b> 1) Install the free <b>ntfy</b> app from the App Store. 2) Open it, tap <b>+</b>, and subscribe to your topic (leave the server as ntfy.sh). 3) Allow notifications when asked. 4) Turn this on, tap <b>Send test</b>, and switch apps. If it pings, you're set. The alert only fires if you actually leave the app while a rest is running, and it's cancelled if you come back first.
           </div>
@@ -15697,6 +15698,27 @@ window.addEventListener('pagehide', persistWorkoutDraft);
 const NTFY_ON_KEY = 'mounjaro-ntfy-on', NTFY_TOPIC_KEY = 'mounjaro-ntfy-topic';
 let restPushId = null, restPushPending = false;
 let NTFY_TEST_TIMEOUT_MS = 12000; // the Settings test buttons give up after this, so "Sending…" can never hang forever
+const NTFY_LAST_KEY = 'mounjaro-ntfy-last';
+function ntfyClock(ms) { return new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+// Remembers what the last real alert did (scheduled? cancelled when you came back?) so a phone-only
+// problem can be diagnosed without a console. Local to this device, like the topic.
+function ntfyNote(kind, detail) {
+  try {
+    const cur = JSON.parse(localStorage.getItem(NTFY_LAST_KEY) || '{}');
+    cur[kind] = { ...detail, at: Date.now() };
+    localStorage.setItem(NTFY_LAST_KEY, JSON.stringify(cur));
+  } catch (err) { /* storage unavailable */ }
+  renderNtfyLast();
+}
+function renderNtfyLast() {
+  const el = document.getElementById('ntfyLast'); if (!el) return;
+  let cur = {}; try { cur = JSON.parse(localStorage.getItem(NTFY_LAST_KEY) || '{}'); } catch (err) { /* ignore */ }
+  const lines = [];
+  if (cur.sched) lines.push(cur.sched.ok ? `Last alert: scheduled ${ntfyClock(cur.sched.at)} for ${ntfyClock(cur.sched.due)} ✓` : `Last alert: couldn't schedule at ${ntfyClock(cur.sched.at)} (${cur.sched.err})`);
+  if (cur.cancel) lines.push(cur.cancel.err ? `Cancel on return, ${ntfyClock(cur.cancel.at)}: failed (${cur.cancel.err})` : `Cancel on return, ${ntfyClock(cur.cancel.at)}: ${cur.cancel.ok ? 'accepted' : 'refused'} (HTTP ${cur.cancel.status})`);
+  el.innerHTML = lines.length ? lines.map(l => `<div>${escapeHtml(l)}</div>`).join('') + `<div style="margin-top:4px">ntfy accepting a cancel doesn't always stop an alert that's already scheduled — a late "Rest over" can still arrive.</div>` : '';
+  el.style.display = lines.length ? '' : 'none';
+}
 function ntfyTopicValid(t) { return /^[A-Za-z0-9_-]{10,64}$/.test(t || ''); }
 function ntfyConfig() {
   try {
@@ -15728,15 +15750,19 @@ async function scheduleRestPush() {
   if (remaining <= 0) return;
   restPushPending = true;
   try {
-    restPushId = await ntfyPublish(cfg.topic, { delaySec: remaining, title: 'Rest over', message: 'Time for your next set.' });
+    const ex = restTimerContext && restTimerContext.exerciseName;
+    // Worded so a late one still reads correctly (cancelling can't be relied on): it says when the rest ended.
+    const message = `${ex ? ex + ': ' : ''}time for your next set (rest ended ${ntfyClock(restTimerEndTime)}).`;
+    restPushId = await ntfyPublish(cfg.topic, { delaySec: remaining, title: 'Rest over', message });
+    ntfyNote('sched', { ok: true, due: restTimerEndTime });
     if (document.visibilityState === 'visible') await cancelRestPush(); // you were already back before the request finished
-  } catch (err) { restPushId = null; restPushPending = false; console.error('Rest alert not scheduled:', err); }
+  } catch (err) { restPushId = null; restPushPending = false; console.error('Rest alert not scheduled:', err); ntfyNote('sched', { ok: false, err: err.message }); }
 }
 async function cancelRestPush() {
   const cfg = ntfyConfig(), id = restPushId;
   restPushId = null; restPushPending = false;
   if (!cfg || !id) return;
-  try { await ntfyDelete(cfg.topic, id); } catch (err) { /* best effort */ }
+  try { const res = await ntfyDelete(cfg.topic, id); ntfyNote('cancel', { ok: res.ok, status: res.status }); } catch (err) { ntfyNote('cancel', { err: err.message }); }
 }
 // Cancelling is a DELETE (not a "simple" request, so the browser pre-checks it with ntfy first). It is
 // what stops a stale "Rest over" ping after you've already come back — the Test cancel button checks it.
@@ -15761,6 +15787,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
   };
   try { on.checked = localStorage.getItem(NTFY_ON_KEY) === '1'; topic.value = localStorage.getItem(NTFY_TOPIC_KEY) || ''; } catch (err) { /* storage unavailable */ }
   showEcho();
+  renderNtfyLast();
   const saveTopic = () => {
     const t = topic.value.trim();
     warn.style.display = t && !ntfyTopicValid(t) ? '' : 'none';
