@@ -2992,6 +2992,49 @@ body {
       </div>
 
       <div class="settings-section">
+        <div class="settings-title">Rest Timer Alert</div>
+        <div class="settings-card">
+          <div class="settings-row" style="align-items:center">
+            <div>
+              <div class="settings-row-label">Alert me when I leave the app</div>
+              <div class="settings-row-sub">If you switch apps or lock your phone mid-rest, get a notification sound when the rest is over — it plays over music. Uses the free ntfy app. Saved on this device only.</div>
+            </div>
+            <input type="checkbox" id="setNtfyOn" style="width:24px;height:24px;flex-shrink:0">
+          </div>
+          <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:8px">
+            <div>
+              <div class="settings-row-label">Your private topic</div>
+              <div class="settings-row-sub">Pick it once, then subscribe to the same name in the ntfy app. Anyone who knows it could send you a ping, so keep it to yourself.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="setNtfyTopic" placeholder="tap Generate" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--ink)">
+              <button class="btn btn-secondary btn-sm" id="ntfyGenerateBtn" type="button">Generate</button>
+              <button class="btn btn-secondary btn-sm" id="ntfyCopyBtn" type="button">Copy</button>
+            </div>
+            <div id="ntfyTopicWarn" style="font-size:11px;color:var(--coral);display:none">Use 10–64 letters, numbers, - or _ only.</div>
+          </div>
+          <div class="settings-row" style="align-items:center">
+            <div>
+              <div class="settings-row-label">Send a test alert</div>
+              <div class="settings-row-sub">Arrives in about 10 seconds — switch to another app (or lock your phone) right after tapping.</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="ntfyTestBtn" type="button">Send test</button>
+          </div>
+          <div class="settings-row" style="align-items:center">
+            <div>
+              <div class="settings-row-label">Test that cancelling works</div>
+              <div class="settings-row-sub">Schedules a test, then cancels it right away. Nothing should arrive — this checks you won't get a stale ping after returning to the app.</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="ntfyCancelTestBtn" type="button">Test cancel</button>
+          </div>
+          <div id="ntfyStatus" style="margin:-4px 0 8px;padding:0 12px;font-size:12px;line-height:1.45;color:var(--ink-soft)"></div>
+          <div style="font-size:11px;color:var(--ink-soft);padding:8px 10px;background:var(--input-bg);border-radius:8px;line-height:1.5">
+            <b>One-time setup:</b> 1) Install the free <b>ntfy</b> app from the App Store. 2) Open it, tap <b>+</b>, and subscribe to your topic (leave the server as ntfy.sh). 3) Allow notifications when asked. 4) Turn this on, tap <b>Send test</b>, and switch apps. If it pings, you're set. The alert only fires if you actually leave the app while a rest is running, and it's cancelled if you come back first.
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
         <div class="settings-title">Data Export</div>
         <div class="settings-card">
           <div class="settings-row">
@@ -15644,6 +15687,104 @@ function restoreWorkoutDraft() {
 setInterval(persistWorkoutDraft, 2000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persistWorkoutDraft(); });
 window.addEventListener('pagehide', persistWorkoutDraft);
+
+// ── REST TIMER ALERT WHEN YOU LEAVE THE APP ──
+// iOS freezes a web app's code within seconds of you leaving it, so the in-app beep can't fire from the
+// background. Instead, when you leave mid-rest we ask the free ntfy.sh service (no account, no server) to
+// push a notification to your phone after the remaining seconds; coming back cancels it. Opt-in, and
+// stored on this device only (the topic acts like a password, so it is deliberately not synced or backed up).
+const NTFY_ON_KEY = 'mounjaro-ntfy-on', NTFY_TOPIC_KEY = 'mounjaro-ntfy-topic';
+let restPushId = null, restPushPending = false;
+function ntfyTopicValid(t) { return /^[A-Za-z0-9_-]{10,64}$/.test(t || ''); }
+function ntfyConfig() {
+  try {
+    const topic = (localStorage.getItem(NTFY_TOPIC_KEY) || '').trim();
+    return localStorage.getItem(NTFY_ON_KEY) === '1' && ntfyTopicValid(topic) ? { topic } : null;
+  } catch (err) { return null; }
+}
+function generateNtfyTopic() {
+  const bytes = new Uint8Array(16); (window.crypto || window.msCrypto).getRandomValues(bytes);
+  return 'rest-' + [...bytes].map(b => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
+}
+// Publishes one message; delaySec (>=10) schedules it. Plain text POST with no custom headers = a "simple"
+// request, so no CORS preflight. Resolves to the message id (needed to cancel) or null.
+async function ntfyPublish(topic, { delaySec, title, message }) {
+  const qs = new URLSearchParams({ title, priority: '4', tags: 'stopwatch' });
+  if (delaySec) qs.set('delay', `${Math.max(10, Math.round(delaySec))}s`);
+  const res = await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}?${qs}`, { method: 'POST', body: message, keepalive: true });
+  if (!res.ok) throw new Error(`ntfy HTTP ${res.status}`);
+  try { return (await res.json()).id || null; } catch (err) { return null; }
+}
+async function scheduleRestPush() {
+  const cfg = ntfyConfig();
+  if (!cfg || restPushPending || restTimerEndTime == null) return;
+  const remaining = Math.round((restTimerEndTime - Date.now()) / 1000);
+  if (remaining <= 0) return;
+  restPushPending = true;
+  try {
+    restPushId = await ntfyPublish(cfg.topic, { delaySec: remaining, title: 'Rest over', message: 'Time for your next set.' });
+    if (document.visibilityState === 'visible') await cancelRestPush(); // you were already back before the request finished
+  } catch (err) { restPushId = null; restPushPending = false; console.error('Rest alert not scheduled:', err); }
+}
+async function cancelRestPush() {
+  const cfg = ntfyConfig(), id = restPushId;
+  restPushId = null; restPushPending = false;
+  if (!cfg || !id) return;
+  try { await ntfyDelete(cfg.topic, id); } catch (err) { /* best effort */ }
+}
+// Cancelling is a DELETE (not a "simple" request, so the browser pre-checks it with ntfy first). It is
+// what stops a stale "Rest over" ping after you've already come back — the Test cancel button checks it.
+function ntfyDelete(topic, id) {
+  return fetch(`https://ntfy.sh/${encodeURIComponent(topic)}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') scheduleRestPush(); else cancelRestPush(); });
+
+(function wireNtfySettings() {
+  const on = document.getElementById('setNtfyOn'), topic = document.getElementById('setNtfyTopic'), warn = document.getElementById('ntfyTopicWarn'), status = document.getElementById('ntfyStatus');
+  if (!on || !topic) return;
+  try { on.checked = localStorage.getItem(NTFY_ON_KEY) === '1'; topic.value = localStorage.getItem(NTFY_TOPIC_KEY) || ''; } catch (err) { /* storage unavailable */ }
+  const saveTopic = () => {
+    const t = topic.value.trim();
+    warn.style.display = t && !ntfyTopicValid(t) ? '' : 'none';
+    try { localStorage.setItem(NTFY_TOPIC_KEY, t); } catch (err) { /* ignore */ }
+  };
+  on.addEventListener('change', () => { try { localStorage.setItem(NTFY_ON_KEY, on.checked ? '1' : '0'); } catch (err) { /* ignore */ } });
+  topic.addEventListener('input', saveTopic);
+  document.getElementById('ntfyGenerateBtn').addEventListener('click', () => {
+    if (topic.value.trim() && !confirm('Replace your current topic? You will need to subscribe to the new one in the ntfy app.')) return;
+    topic.value = generateNtfyTopic(); saveTopic();
+    status.textContent = `New topic saved. In the ntfy app, tap + and subscribe to: ${topic.value}`;
+  });
+  document.getElementById('ntfyCopyBtn').addEventListener('click', async () => {
+    if (!topic.value.trim()) { status.textContent = 'Tap Generate first.'; return; }
+    try { await navigator.clipboard.writeText(topic.value.trim()); status.textContent = 'Topic copied.'; } catch (err) { status.textContent = 'Could not copy — press and hold the topic to copy it.'; }
+  });
+  document.getElementById('ntfyCancelTestBtn').addEventListener('click', async () => {
+    const t = topic.value.trim();
+    if (!ntfyTopicValid(t)) { status.textContent = 'Generate or enter a valid topic first.'; return; }
+    status.textContent = 'Testing…';
+    try {
+      const id = await ntfyPublish(t, { delaySec: 10, title: 'Cancel test (should NOT arrive)', message: 'You should never see this — it was cancelled.' });
+      if (!id) { status.textContent = "Sent, but ntfy didn't return a message id, so I can't test cancelling. A \"Cancel test\" ping may arrive in 10 seconds."; return; }
+      const res = await ntfyDelete(t, id);
+      status.textContent = res.ok
+        ? `Cancel accepted (HTTP ${res.status}). Wait about 20 seconds: if NOTHING arrives, cancelling works. If a "Cancel test" notification does arrive, it doesn't — tell me.`
+        : `ntfy refused the cancel (HTTP ${res.status}). Alerts will still arrive, but coming back to the app won't stop them.`;
+    } catch (err) {
+      console.error(err);
+      status.textContent = `Cancel test failed (${err.message}) — the browser probably blocked it, so alerts can't be cancelled from this app. A "Cancel test" ping may arrive in 10 seconds.`;
+    }
+  });
+  document.getElementById('ntfyTestBtn').addEventListener('click', async () => {
+    const t = topic.value.trim();
+    if (!ntfyTopicValid(t)) { status.textContent = 'Generate or enter a valid topic first.'; return; }
+    status.textContent = 'Sending…';
+    try {
+      await ntfyPublish(t, { delaySec: 10, title: 'Rest timer test', message: 'If you hear this, rest-timer alerts work.' });
+      status.textContent = 'Sent. Switch to another app now — it should ping in about 10 seconds. Nothing? Check you subscribed to this exact topic in the ntfy app and allowed notifications.';
+    } catch (err) { console.error(err); status.textContent = `Couldn't send (${err.message}). Check your connection.`; }
+  });
+})();
 
 // ── BOOT ──
 try { if (typeof Chart !== 'undefined') { Chart.defaults.font.family = CHART_FONT_TEXT; Chart.defaults.font.weight = '600'; } } catch (err) { console.error('Chart font defaults failed:', err); }
