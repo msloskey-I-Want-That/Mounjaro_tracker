@@ -961,6 +961,8 @@ body {
 .rest-inline.done .rest-inline-fill { background: rgba(92,230,192,0.55); transition: none; }
 .rest-inline-time { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; height: 100%; font-family:var(--font-num); font-weight: 800; font-size: 16px; color: var(--ink); }
 .rest-inline-skip { width: 30px; height: 36px; flex-shrink: 0; background: none; border: none; color: var(--ink-soft); font-size: 15px; cursor: pointer; }
+.effort-legend { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; font-size: 10px; font-weight: 700; color: var(--ink-soft); }
+.effort-bar { flex: 1; height: 8px; border-radius: 5px; background: linear-gradient(90deg, hsl(190, 85%, 58%), hsl(143, 85%, 58%), hsl(95, 85%, 58%), hsl(48, 85%, 58%), hsl(0, 85%, 58%)); }
 #muscleMap [data-muscle] { cursor: pointer; }
 #muscleMap .sel { filter: drop-shadow(0 0 3px var(--ink)); }
 .muscle-chip { cursor: pointer; }
@@ -5744,7 +5746,7 @@ const MUSCLE_GOAL_DEFAULTS = { Chest: 10, Back: 10, Quads: 10, Hamstrings: 8, Sh
 const MUSCLE_COLORS = { teal: 'var(--teal)', amber: '#FFB020', red: '#FF4D5E', green: '#5CE6C0' };
 let muscleGoals = {};      // { group: sets/week } — only the ones you've changed; synced in settings
 let muscleMapMode = 'volume';
-try { if (localStorage.getItem('mounjaro-musclemap-mode') === 'recovery') muscleMapMode = 'recovery'; } catch (err) { /* storage unavailable */ }
+try { const saved = localStorage.getItem('mounjaro-musclemap-mode'); if (saved === 'recovery' || saved === 'effort') muscleMapMode = saved; } catch (err) { /* storage unavailable */ }
 let muscleMapSelected = null;
 function muscleGoalFor(g) { const v = Number(muscleGoals[g]); return v >= 1 ? v : MUSCLE_GOAL_DEFAULTS[g]; }
 async function saveMuscleGoals() {
@@ -5831,6 +5833,61 @@ function muscleZone(sets, goal) {
 function daysAgoFor(dateStr) {
   return Math.round((new Date(todayStr() + 'T00:00:00') - new Date(dateStr + 'T00:00:00')) / 86400000);
 }
+// ── EFFORT VIEW ──
+// Colors each muscle by how hard the recent workouts that trained it FELT (your 1-5 rating from the
+// finish screen), averaged over the last 2 weeks and weighted by sets. The rating is one number for a
+// whole workout, so every muscle in that session shares it — the map shows which muscles were in the
+// hard sessions, not which muscle was hard. Unrated workouts are left out of the average (and shown
+// gray if they're all a muscle has).
+const EFFORT_WINDOW_DAYS = 14;
+function effortColor(avg) { // cyan (easy) -> green -> yellow -> orange -> red (max)
+  const e = Math.min(5, Math.max(1, avg));
+  return `hsl(${Math.round(190 - ((e - 1) / 4) * 190)}, 85%, 58%)`;
+}
+function muscleEffortFor(sessions) {
+  const win = sessions.filter(x => { const d = daysAgoFor(x.date); return d >= 0 && d < EFFORT_WINDOW_DAYS; });
+  const rated = win.filter(x => x.effort);
+  const w = rated.reduce((a, x) => a + x.sets, 0);
+  return { sessions: win.length, rated: rated.length, avg: w ? rated.reduce((a, x) => a + x.effort * x.sets, 0) / w : null, recent: win.slice(-5).reverse() };
+}
+function effortRank(st) { const e = st.effort; return e.avg != null ? -e.avg : e.sessions ? 10 : 20; }
+function effortTip(g, st) {
+  const e = st.effort;
+  return !e.sessions ? `${g} · not trained in the last 2 weeks` : e.avg == null ? `${g} · trained, but those workouts weren't rated` : `${g} · average effort ${e.avg.toFixed(1)}/5`;
+}
+function muscleEffortStatus(st) {
+  const e = st.effort;
+  if (!e.sessions) return 'No sessions in the last 2 weeks';
+  if (e.avg == null) return `${e.sessions} session${e.sessions === 1 ? '' : 's'} in the last 2 weeks, none rated`;
+  return `Average effort ${e.avg.toFixed(1)}/5 over ${e.rated} rated session${e.rated === 1 ? '' : 's'} (last 2 weeks)`;
+}
+function effortCoverage() { // distinct workouts in the window, and how many carry a rating
+  const idx = muscleSessionIndex(), seen = new Map();
+  MUSCLE_MAP_GROUPS.forEach(g => idx[g].forEach(x => { const d = daysAgoFor(x.date); if (d >= 0 && d < EFFORT_WINDOW_DAYS) seen.set(x.t, !!x.effort || seen.get(x.t) === true); }));
+  return { total: seen.size, rated: [...seen.values()].filter(Boolean).length };
+}
+function effortNoteHtml(stats) {
+  const cov = effortCoverage();
+  const legend = '<div class="effort-legend"><span>easy</span><div class="effort-bar"></div><span>max effort</span></div>';
+  if (!cov.total) return 'No strength sessions in the last 2 weeks.' + legend;
+  const plural = n => (n === 1 ? '' : 's');
+  const rated = MUSCLE_MAP_GROUPS.filter(g => stats[g].effort.avg != null).sort((a, b) => stats[b].effort.avg - stats[a].effort.avg);
+  let html = '';
+  if (!cov.rated) {
+    html = `None of your last ${cov.total} workout${plural(cov.total)} has an effort rating yet — rate how hard it felt on the finish screen and this fills in.`;
+  } else {
+    const hi = stats[rated[0]].effort.avg, lo = stats[rated[rated.length - 1]].effort.avg;
+    const hardest = rated.filter(g => stats[g].effort.avg >= hi - 0.25);
+    html = `Hardest: <strong style="color:var(--ink)">${hardest.join(', ')}</strong> (${hi.toFixed(1)})`;
+    if (rated.length >= 2 && hi - lo >= 0.5) {
+      const easiest = rated.filter(g => stats[g].effort.avg <= lo + 0.25 && !hardest.includes(g));
+      if (easiest.length) html += `<br>Easiest: <strong style="color:var(--ink)">${easiest.join(', ')}</strong> (${lo.toFixed(1)})`;
+    }
+    html += `<div style="margin-top:6px">${cov.rated} of ${cov.total} workout${plural(cov.total)} in the last 2 weeks ${cov.rated === 1 ? 'has' : 'have'} a rating.${MUSCLE_MAP_GROUPS.some(g => stats[g].effort.sessions && stats[g].effort.avg == null) ? ' Gray = trained, but only in unrated workouts.' : ''}</div>`;
+  }
+  return html + legend + `<div style="margin-top:6px">Colored by how hard your workouts felt (your 1–5 rating), averaged over the last 2 weeks and weighted by sets. One rating covers a whole workout, so every muscle in a session shares it.</div>`;
+}
+
 function muscleStats(now) {
   const idx = muscleSessionIndex(); now = now || Date.now(); const out = {};
   MUSCLE_MAP_GROUPS.forEach(g => {
@@ -5842,11 +5899,16 @@ function muscleStats(now) {
     });
     out[g] = { group: g, sets: weeks[0], goal, zone: muscleZone(weeks[0], goal), weeks,
       exercises: Object.entries(exWeek).map(([name, sets]) => ({ name, sets })).sort((a, b) => b.sets - a.sets),
-      last: s.length ? s[s.length - 1] : null, recovery: muscleRecovery(s, now) };
+      last: s.length ? s[s.length - 1] : null, recovery: muscleRecovery(s, now), effort: muscleEffortFor(s) };
   });
   return out;
 }
 function musclePaint(st, mode) {
+  if (mode === 'effort') {
+    if (!st.effort.sessions) return null;
+    if (st.effort.avg == null) return { fill: 'var(--ink-soft)', opacity: 0.28 };
+    return { fill: effortColor(st.effort.avg), opacity: 0.95 };
+  }
   if (mode === 'recovery') {
     const r = st.recovery;
     if (r.state === 'none') return null;
@@ -5874,11 +5936,12 @@ function muscleBalanceFlags() {
 function fmtHoursLeft(h) { return `${Math.max(1, Math.ceil(h))}h`; }
 function fmtHoursShort(h) { return h < 24 ? `${Math.max(1, Math.round(h))}h` : `${Math.round(h / 24 * 10) / 10}d`; }
 
-function muscleDetailHtml(st) {
+function muscleDetailHtml(st, mode) {
   const r = st.recovery, g = st.group, goalIsCustom = muscleGoals[g] != null && Number(muscleGoals[g]) >= 1;
   let status = r.state === 'none' ? 'Not trained yet'
     : r.state === 'ready' ? `Ready — last trained ${fmtHoursShort(r.elapsedH)} ago`
     : `${r.state === 'overlap' ? '⚠ Hit again before it recovered · ' : ''}about ${fmtHoursLeft(r.hoursLeft)} until recovered`;
+  if (mode === 'effort') status = muscleEffortStatus(st);
   const last = st.last ? `Last trained ${fmtDate(st.last.date)} · ${st.last.sets} set${st.last.sets === 1 ? '' : 's'}` : '';
   const effortNote = (r.effort && r.recH)
     ? `Felt ${r.effort}/5 — ${Math.round(r.recH) === Math.round(r.baseH) ? `a normal recovery window (~${Math.round(r.recH)}h)` : `recovery window ~${Math.round(r.recH)}h (${r.recH > r.baseH ? 'longer' : 'shorter'} than the usual ${Math.round(r.baseH)}h)`}` : '';
@@ -5888,6 +5951,9 @@ function muscleDetailHtml(st) {
     const z = muscleZone(v, st.goal), col = z === 'high' ? MUSCLE_COLORS.red : z === 'heavy' ? MUSCLE_COLORS.amber : MUSCLE_COLORS.teal;
     return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div class="n" style="font-size:10px">${v}</div><div style="width:70%;height:${Math.max(2, Math.round(44 * Math.min(1, v / scale)))}px;border-radius:4px 4px 0 0;background:${v ? col : 'var(--line)'};opacity:${v ? 0.9 : 1}"></div><div style="font-size:9px;color:var(--ink-soft)">${labels[i]}</div></div>`;
   }).join('');
+  const recentHtml = `<div class="md-label" style="margin-top:10px">Recent sessions</div><div class="md-list">${st.effort.recent.length
+    ? st.effort.recent.map(x => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${fmtDate(x.date)} · ${x.sets} set${x.sets === 1 ? '' : 's'}</span><span class="n">${x.effort ? `felt ${x.effort}/5` : 'not rated'}</span></div>`).join('')
+    : '<div style="color:var(--ink-soft)">None in the last 2 weeks.</div>'}</div>`;
   return `<div class="muscle-detail">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
       <div style="font-size:15px;font-weight:800">${g}</div>
@@ -5897,7 +5963,7 @@ function muscleDetailHtml(st) {
     ${last ? `<div style="font-size:11px;color:var(--ink-soft);margin-bottom:${effortNote ? '2px' : '8px'}">${last}</div>` : '<div style="margin-bottom:8px"></div>'}
     ${effortNote ? `<div class="md-effort" style="font-size:11px;color:var(--ink-soft);margin-bottom:8px">${effortNote}</div>` : ''}
     <div class="md-label">This week</div>
-    <div class="md-list">${ex}</div>
+    <div class="md-list">${ex}</div>${recentHtml}
     <div class="md-label" style="margin-top:10px">Sets per week</div>
     <div style="position:relative;display:flex;align-items:flex-end;gap:6px;height:76px;padding-top:4px">
       <div style="position:absolute;left:0;right:0;bottom:${Math.round(14 + 44 * st.goal / scale)}px;border-top:1.5px dashed var(--ink-soft);opacity:0.45"></div>${bars}
@@ -5918,11 +5984,11 @@ function renderMuscleMap() {
   if (!box) return;
   const mode = muscleMapMode, stats = muscleStats();
   const titleEl = document.getElementById('muscleMapTitle');
-  if (titleEl) titleEl.textContent = mode === 'recovery' ? "Recovery · what's fresh" : 'Muscles trained · last 7 days';
+  if (titleEl) titleEl.textContent = mode === 'recovery' ? "Recovery · what's fresh" : mode === 'effort' ? 'Effort · how hard it felt' : 'Muscles trained · last 7 days';
   const sessions7 = muscleSetsLastDays(7).sessions;
   const sel = muscleMapSelected && stats[muscleMapSelected] ? muscleMapSelected : null;
   const attrs = g => { const p = musclePaint(stats[g], mode); return p ? `fill="${p.fill}" fill-opacity="${p.opacity.toFixed(2)}"` : `fill="var(--line)"`; };
-  const tip = g => { const st = stats[g]; return mode === 'recovery'
+  const tip = g => { const st = stats[g]; if (mode === 'effort') return effortTip(g, st); return mode === 'recovery'
       ? (st.recovery.state === 'none' ? `${g} · not trained yet` : st.recovery.state === 'ready' ? `${g} · ready` : `${g} · ~${fmtHoursLeft(st.recovery.hoursLeft)} to recover`)
       : `${g} · ${st.sets} set${st.sets === 1 ? '' : 's'} of ${st.goal}`; };
   const m = (g, tag, a) => `<${tag} ${a} ${attrs(g)} data-muscle="${g}"${sel === g ? ' class="sel"' : ''}><title>${tip(g)}</title></${tag}>`;
@@ -5957,20 +6023,20 @@ function renderMuscleMap() {
     m('Calves', 'ellipse', e(184, 191, 7.5, 18)), m('Calves', 'ellipse', e(206, 191, 7.5, 18)),
     n('ellipse', e(185, 214, 8, 3.5)), n('ellipse', e(205, 214, 8, 3.5))
   ].join('');
-  const svg = `<svg viewBox="0 0 260 232" width="100%" style="max-width:340px;display:block;margin:0 auto" role="img" aria-label="Muscle groups, ${mode === 'recovery' ? 'recovery status' : 'trained in the last 7 days'}, front and back">
+  const svg = `<svg viewBox="0 0 260 232" width="100%" style="max-width:340px;display:block;margin:0 auto" role="img" aria-label="Muscle groups, ${mode === 'recovery' ? 'recovery status' : mode === 'effort' ? 'effort of recent workouts' : 'trained in the last 7 days'}, front and back">
     ${front}${back}
     <text x="65" y="229" text-anchor="middle" font-size="8" fill="var(--ink-soft)" letter-spacing="1">FRONT</text>
     <text x="195" y="229" text-anchor="middle" font-size="8" fill="var(--ink-soft)" letter-spacing="1">BACK</text>
   </svg>`;
   // chips
   const rank = g => { const r = stats[g].recovery; return r.state === 'overlap' ? [0, -r.hoursLeft] : r.state === 'recovering' ? [1, -r.hoursLeft] : r.state === 'ready' ? [2, 0] : [3, 0]; };
-  const order = MUSCLE_MAP_GROUPS.slice().sort((a, b) => mode === 'recovery'
+  const order = MUSCLE_MAP_GROUPS.slice().sort((a, b) => mode === 'effort' ? effortRank(stats[a]) - effortRank(stats[b]) : mode === 'recovery'
     ? (rank(a)[0] - rank(b)[0]) || (rank(a)[1] - rank(b)[1])
     : stats[b].sets - stats[a].sets);
   const chips = order.map(g => {
     const st = stats[g], p = musclePaint(st, mode), r = st.recovery;
-    const idle = mode === 'recovery' ? r.state === 'none' : st.sets === 0;
-    const suffix = mode === 'recovery'
+    const idle = mode === 'effort' ? !st.effort.sessions : mode === 'recovery' ? r.state === 'none' : st.sets === 0;
+    const suffix = mode === 'effort' ? (!st.effort.sessions ? '–' : st.effort.avg == null ? '?' : st.effort.avg.toFixed(1)) : mode === 'recovery'
       ? (r.state === 'none' ? '–' : r.state === 'ready' ? '✓' : `${r.state === 'overlap' ? '⚠ ' : ''}${fmtHoursLeft(r.hoursLeft)}`)
       : `${st.sets}/${st.goal}`;
     return `<span class="muscle-chip${idle ? ' zero' : ''}${sel === g ? ' selected' : ''}" data-musclechip="${g}"><span class="dot" style="${p ? `background:${p.fill};opacity:${p.opacity.toFixed(2)}` : 'background:var(--line)'}"></span>${g} <span class="n">${suffix}</span></span>`;
@@ -5980,7 +6046,9 @@ function renderMuscleMap() {
   const balHtml = bal.flags.length ? bal.flags.map(f => `<div class="muscle-balance">⚖️ ${f}</div>`).join('')
     : bal.balanced ? '<div class="muscle-balance ok">⚖️ Push/pull and quads/hamstrings look balanced over the last 2 weeks.</div>' : '';
   let note;
-  if (mode === 'recovery') {
+  if (mode === 'effort') {
+    note = effortNoteHtml(stats);
+  } else if (mode === 'recovery') {
     const over = MUSCLE_MAP_GROUPS.filter(g => stats[g].recovery.state === 'overlap');
     const fresh = MUSCLE_MAP_GROUPS.filter(g => ['ready', 'none'].includes(stats[g].recovery.state));
     note = (over.length ? `<div style="color:${MUSCLE_COLORS.red};font-weight:800;margin-bottom:4px">⚠ Hit again before recovered: ${over.join(', ')}</div>` : '')
@@ -5995,8 +6063,8 @@ function renderMuscleMap() {
       + (heavy.length ? `<div style="color:${MUSCLE_COLORS.amber};font-weight:800;margin-top:4px">Heavy week — watch recovery: ${heavy.join(', ')}</div>` : '')
       + `<div style="margin-top:6px">teal = building toward your weekly goal · amber = 1.5× goal · red = 2× or more. Tap any muscle for details or to change its goal.</div>`;
   }
-  const modeRow = `<div class="chip-row" style="margin-bottom:10px;gap:6px"><div class="chip${mode === 'volume' ? ' on' : ''}" data-musclemode="volume">Volume</div><div class="chip${mode === 'recovery' ? ' on' : ''}" data-musclemode="recovery">Recovery</div></div>`;
-  box.innerHTML = `${modeRow}${svg}<div class="muscle-chips">${chips}</div>${sel ? muscleDetailHtml(stats[sel]) : ''}${mode === 'volume' ? balHtml : ''}<div style="font-size:11px;color:var(--ink-soft);margin-top:8px">${note}</div>`;
+  const modeRow = `<div class="chip-row" style="margin-bottom:10px;gap:6px"><div class="chip${mode === 'volume' ? ' on' : ''}" data-musclemode="volume">Volume</div><div class="chip${mode === 'recovery' ? ' on' : ''}" data-musclemode="recovery">Recovery</div><div class="chip${mode === 'effort' ? ' on' : ''}" data-musclemode="effort">Effort</div></div>`;
+  box.innerHTML = `${modeRow}${svg}<div class="muscle-chips">${chips}</div>${sel ? muscleDetailHtml(stats[sel], mode) : ''}${mode === 'volume' ? balHtml : ''}<div style="font-size:11px;color:var(--ink-soft);margin-top:8px">${note}</div>`;
   box.onclick = (ev) => {
     const t = ev.target.closest ? ev.target : null; if (!t) return;
     const modeBtn = t.closest('[data-musclemode]');
