@@ -3006,11 +3006,12 @@ body {
               <div class="settings-row-label">Your private topic</div>
               <div class="settings-row-sub">Pick it once, then subscribe to the same name in the ntfy app. Anyone who knows it could send you a ping, so keep it to yourself.</div>
             </div>
+            <input type="text" id="setNtfyTopic" placeholder="tap Generate" autocapitalize="off" autocorrect="off" spellcheck="false" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--ink);font-weight:600">
             <div style="display:flex;gap:8px">
-              <input type="text" id="setNtfyTopic" placeholder="tap Generate" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--ink)">
-              <button class="btn btn-secondary btn-sm" id="ntfyGenerateBtn" type="button">Generate</button>
-              <button class="btn btn-secondary btn-sm" id="ntfyCopyBtn" type="button">Copy</button>
+              <button class="btn btn-secondary btn-sm" id="ntfyGenerateBtn" type="button" style="flex:1">Generate</button>
+              <button class="btn btn-secondary btn-sm" id="ntfyCopyBtn" type="button" style="flex:1">Copy</button>
             </div>
+            <div id="ntfyTopicEcho" style="display:none;font-size:12px;line-height:1.5;color:var(--ink-soft);word-break:break-all"></div>
             <div id="ntfyTopicWarn" style="font-size:11px;color:var(--coral);display:none">Use 10–64 letters, numbers, - or _ only.</div>
           </div>
           <div class="settings-row" style="align-items:center">
@@ -15695,6 +15696,7 @@ window.addEventListener('pagehide', persistWorkoutDraft);
 // stored on this device only (the topic acts like a password, so it is deliberately not synced or backed up).
 const NTFY_ON_KEY = 'mounjaro-ntfy-on', NTFY_TOPIC_KEY = 'mounjaro-ntfy-topic';
 let restPushId = null, restPushPending = false;
+let NTFY_TEST_TIMEOUT_MS = 12000; // the Settings test buttons give up after this, so "Sending…" can never hang forever
 function ntfyTopicValid(t) { return /^[A-Za-z0-9_-]{10,64}$/.test(t || ''); }
 function ntfyConfig() {
   try {
@@ -15708,10 +15710,14 @@ function generateNtfyTopic() {
 }
 // Publishes one message; delaySec (>=10) schedules it. Plain text POST with no custom headers = a "simple"
 // request, so no CORS preflight. Resolves to the message id (needed to cancel) or null.
-async function ntfyPublish(topic, { delaySec, title, message }) {
+async function ntfyPublish(topic, { delaySec, title, message, timeoutMs }) {
   const qs = new URLSearchParams({ title, priority: '4', tags: 'stopwatch' });
   if (delaySec) qs.set('delay', `${Math.max(10, Math.round(delaySec))}s`);
-  const res = await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}?${qs}`, { method: 'POST', body: message, keepalive: true });
+  const ctl = timeoutMs ? new AbortController() : null, timer = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : null;
+  let res;
+  try { res = await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}?${qs}`, { method: 'POST', body: message, keepalive: true, ...(ctl ? { signal: ctl.signal } : {}) }); }
+  catch (err) { if (ctl && ctl.signal.aborted) throw new Error(`timed out after ${Math.round(timeoutMs / 1000)}s`); throw err; }
+  finally { if (timer) clearTimeout(timer); }
   if (!res.ok) throw new Error(`ntfy HTTP ${res.status}`);
   try { return (await res.json()).id || null; } catch (err) { return null; }
 }
@@ -15734,19 +15740,32 @@ async function cancelRestPush() {
 }
 // Cancelling is a DELETE (not a "simple" request, so the browser pre-checks it with ntfy first). It is
 // what stops a stale "Rest over" ping after you've already come back — the Test cancel button checks it.
-function ntfyDelete(topic, id) {
-  return fetch(`https://ntfy.sh/${encodeURIComponent(topic)}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+async function ntfyDelete(topic, id, timeoutMs) {
+  const ctl = timeoutMs ? new AbortController() : null, timer = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : null;
+  try { return await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}/${encodeURIComponent(id)}`, { method: 'DELETE', ...(ctl ? { signal: ctl.signal } : {}) }); }
+  catch (err) { if (ctl && ctl.signal.aborted) throw new Error(`timed out after ${Math.round(timeoutMs / 1000)}s`); throw err; }
+  finally { if (timer) clearTimeout(timer); }
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') scheduleRestPush(); else cancelRestPush(); });
 
 (function wireNtfySettings() {
   const on = document.getElementById('setNtfyOn'), topic = document.getElementById('setNtfyTopic'), warn = document.getElementById('ntfyTopicWarn'), status = document.getElementById('ntfyStatus');
   if (!on || !topic) return;
+  const echo = document.getElementById('ntfyTopicEcho');
+  // The field is narrow on a phone and long names scroll, so a missing first letter is easy to miss —
+  // spell out exactly what is saved so it can be compared with the name in the ntfy app.
+  const showEcho = () => {
+    const t = topic.value.trim();
+    echo.style.display = ntfyTopicValid(t) ? '' : 'none';
+    echo.innerHTML = ntfyTopicValid(t) ? `The ntfy app must show exactly: <b style="color:var(--ink);font-weight:800">${escapeHtml(t)}</b>` : '';
+  };
   try { on.checked = localStorage.getItem(NTFY_ON_KEY) === '1'; topic.value = localStorage.getItem(NTFY_TOPIC_KEY) || ''; } catch (err) { /* storage unavailable */ }
+  showEcho();
   const saveTopic = () => {
     const t = topic.value.trim();
     warn.style.display = t && !ntfyTopicValid(t) ? '' : 'none';
     try { localStorage.setItem(NTFY_TOPIC_KEY, t); } catch (err) { /* ignore */ }
+    showEcho();
   };
   on.addEventListener('change', () => { try { localStorage.setItem(NTFY_ON_KEY, on.checked ? '1' : '0'); } catch (err) { /* ignore */ } });
   topic.addEventListener('input', saveTopic);
@@ -15764,9 +15783,9 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
     if (!ntfyTopicValid(t)) { status.textContent = 'Generate or enter a valid topic first.'; return; }
     status.textContent = 'Testing…';
     try {
-      const id = await ntfyPublish(t, { delaySec: 10, title: 'Cancel test (should NOT arrive)', message: 'You should never see this — it was cancelled.' });
+      const id = await ntfyPublish(t, { delaySec: 10, title: 'Cancel test (should NOT arrive)', message: 'You should never see this — it was cancelled.', timeoutMs: NTFY_TEST_TIMEOUT_MS });
       if (!id) { status.textContent = "Sent, but ntfy didn't return a message id, so I can't test cancelling. A \"Cancel test\" ping may arrive in 10 seconds."; return; }
-      const res = await ntfyDelete(t, id);
+      const res = await ntfyDelete(t, id, NTFY_TEST_TIMEOUT_MS);
       status.textContent = res.ok
         ? `Cancel accepted (HTTP ${res.status}). Wait about 20 seconds: if NOTHING arrives, cancelling works. If a "Cancel test" notification does arrive, it doesn't — tell me.`
         : `ntfy refused the cancel (HTTP ${res.status}). Alerts will still arrive, but coming back to the app won't stop them.`;
@@ -15780,7 +15799,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
     if (!ntfyTopicValid(t)) { status.textContent = 'Generate or enter a valid topic first.'; return; }
     status.textContent = 'Sending…';
     try {
-      await ntfyPublish(t, { delaySec: 10, title: 'Rest timer test', message: 'If you hear this, rest-timer alerts work.' });
+      await ntfyPublish(t, { delaySec: 10, title: 'Rest timer test', message: 'If you hear this, rest-timer alerts work.', timeoutMs: NTFY_TEST_TIMEOUT_MS });
       status.textContent = 'Sent. Switch to another app now — it should ping in about 10 seconds. Nothing? Check you subscribed to this exact topic in the ntfy app and allowed notifications.';
     } catch (err) { console.error(err); status.textContent = `Couldn't send (${err.message}). Check your connection.`; }
   });
