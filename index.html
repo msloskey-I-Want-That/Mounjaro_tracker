@@ -855,6 +855,18 @@ body {
 .re-create { padding: 8px 16px 14px; border-top: 1px solid var(--line); }
 .re-create-form .re-input { margin-bottom: 8px; }
 .re-create-row { display: flex; gap: 8px; margin-top: 8px; } .re-create-row .btn { flex: 1; }
+.rm-card { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 12px; }
+.rm-card.in-use { border-color: var(--teal); }
+.rm-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rm-name { font-weight: 800; font-size: 16px; min-width: 0; overflow-wrap: anywhere; }
+.rm-badge { flex: 0 0 auto; font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; background: var(--teal); color: #0a2e28; padding: 3px 8px; border-radius: 999px; }
+.rm-sub { font-size: 12px; color: var(--ink-soft); margin-top: 3px; }
+.rm-days { font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+.rm-actions { display: flex; gap: 6px; margin-top: 10px; align-items: center; }
+.rm-actions .btn { flex: 1; white-space: nowrap; min-width: 0; padding-left: 8px; padding-right: 8px; }
+.rm-del { flex: 0 0 40px; height: 36px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--input-bg); color: var(--coral); cursor: pointer; }
+.rm-styles { flex-wrap: wrap; }
+.re-add-day:disabled { opacity: 0.4; cursor: default; }
 .routine-empty { border: 1.5px dashed var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
 .routine-edit-link { background: none; border: none; color: var(--teal); font: inherit; font-weight: 700; text-decoration: underline; padding: 0; cursor: pointer; }
 .ppl-day-chip.on, .split-day-chip.on, .custom-day-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; font-weight: 800; }
@@ -1284,7 +1296,8 @@ body {
 </div>
 
 <!-- ── REST TIMER POPUP (workout sets) ── -->
-<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="routineEditor" class="re-overlay" style="display:none"></div>
+<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="routineManager" class="re-overlay" style="display:none"></div>
+<div id="routineEditor" class="re-overlay" style="display:none"></div>
 <div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="trainerSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:708"></div><div id="trainerSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:709;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="cardioTrendsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:706"></div><div id="cardioTrendsModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:707;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
 <div id="restTimerWrap" style="display:none;flex-direction:row;align-items:center;gap:8px;position:fixed;bottom:88px;right:14px;background:var(--card);border:1.5px solid var(--teal);border-radius:17px;padding:9px 11px 9px 15px;box-shadow:0 8px 26px rgba(0,0,0,0.28);z-index:601;text-align:center">
   <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.1">
@@ -3206,10 +3219,10 @@ body {
           </div>
           <div class="settings-row">
             <div>
-              <div class="settings-row-label">My Routine</div>
-              <div class="settings-row-sub">Build your own training days from an exercise library. Your other plan styles stay available: switch back any time with the style menu above.</div>
+              <div class="settings-row-label">My Routines</div>
+              <div class="settings-row-sub">Build your own training days from an exercise library and keep up to 4 routines to switch between. Your other plan styles stay available: switch back any time with the style menu above.</div>
             </div>
-            <button type="button" class="btn btn-secondary btn-sm" id="setupRoutineBtn" style="width:150px">Set up / edit</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="setupRoutineBtn" style="width:150px">Manage routines</button>
           </div>
         </div>
       </div>
@@ -11694,7 +11707,7 @@ async function saveRoutinesToCloud(extra) {
 // A sheet for naming the routine, adding/ordering days, and choosing each day's exercises from the library
 // (a second sheet on top). Everything edits a private draft; nothing changes until "Save routine".
 let routineDraft = null, reStage = 'edit', rePickDay = null, reQuery = '', reGroup = 'All', reDirty = false, reCreateOpen = false, reNewGroup = null;
-const RE_MAX_DAYS = 7;
+const RE_MAX_DAYS = 7, RE_MAX_ROUTINES = 4;
 
 function ensureRoutineEditorDom() {
   const el = document.getElementById('routineEditor');
@@ -11731,9 +11744,11 @@ function ensureRoutineEditorDom() {
     if (document.getElementById('rePicker').style.display !== 'none') closeRoutinePicker(); else closeRoutineEditor();
   });
 }
-function openRoutineEditor() {
+function openRoutineEditor(id) {
   ensureRoutineEditorDom();
-  const existing = activeRoutine();
+  // no argument = the routine in use (or a new one if there isn't one); an id = that routine; 'new' = start a new one
+  const existing = id === 'new' ? null : (id ? customRoutines.find(r => r.id === id) : activeRoutine());
+  if (!existing && customRoutines.length >= RE_MAX_ROUTINES) { alert(`You can keep up to ${RE_MAX_ROUTINES} routines. Delete one to make room for another.`); return; }
   routineDraft = existing ? JSON.parse(JSON.stringify(existing)) : null;
   reStage = existing ? 'edit' : 'template'; reDirty = false;
   document.getElementById('routineEditor').style.display = 'flex';
@@ -11795,7 +11810,7 @@ function renderRoutineEditor() {
   foot.innerHTML = `
     <button type="button" class="btn btn-primary" data-foot="save">Save routine</button>
     <button type="button" class="btn btn-ghost" data-foot="cancel">Cancel</button>
-    ${activeRoutine() ? '<button type="button" class="re-delete-routine" data-foot="delete">Delete this routine</button>' : ''}`;
+    ${customRoutines.some(x => x.id === routineDraft.id) ? '<button type="button" class="re-delete-routine" data-foot="delete">Delete this routine</button>' : ''}`;
 }
 function onReBodyInput(e) {
   const t = e.target; reDirty = true;
@@ -11825,10 +11840,10 @@ async function onReFootClick(e) {
   else if (b.dataset.foot === 'save') await saveRoutineFromEditor();
   else if (b.dataset.foot === 'delete') {
     if (!confirm('Delete this routine? Workouts you have already logged stay in your history.')) return;
-    customRoutines = customRoutines.filter(r => r.id !== activeRoutineId);
-    activeRoutineId = customRoutines.length ? customRoutines[0].id : null; customDayOverride = null;
-    await saveRoutinesToCloud();
-    closeRoutineEditor(true); renderWorkoutPlan();
+    const gone = routineDraft.id;
+    closeRoutineEditor(true);
+    await removeRoutine(gone);
+    if (routineManagerOpen()) { if (customRoutines.length) renderRoutineManager(); else closeRoutineManager(); }
   }
 }
 async function saveRoutineFromEditor() {
@@ -11843,14 +11858,21 @@ async function saveRoutineFromEditor() {
   });
   const empty = r.days.find(d => !d.exercises.length);
   if (empty) { reError(`Add at least one exercise to ${empty.name}, or delete that day.`); return; }
+  const isNew = !customRoutines.some(x => x.id === r.id);
+  if (isNew && customRoutines.length >= RE_MAX_ROUTINES) { reError(`You can keep up to ${RE_MAX_ROUTINES} routines. Delete one first.`); return; }
+  const becomesActive = isNew || !activeRoutine();
+  if (becomesActive && !confirmDiscardWorkoutProgress()) return;
   const at = customRoutines.findIndex(x => x.id === r.id);
   if (at >= 0) customRoutines[at] = r; else customRoutines.push(r);
-  activeRoutineId = r.id; workoutPlanMode = 'custom'; customDayOverride = null;
-  const sel = document.getElementById('setWorkoutPlanMode'); if (sel) sel.value = 'custom';
-  await saveRoutinesToCloud({ workoutPlanMode: 'custom' });
+  if (becomesActive) {
+    activeRoutineId = r.id; workoutPlanMode = 'custom'; customDayOverride = null;
+    const sel = document.getElementById('setWorkoutPlanMode'); if (sel) sel.value = 'custom';
+  }
+  await saveRoutinesToCloud(becomesActive ? { workoutPlanMode: 'custom' } : null);
   closeRoutineEditor(true);
-  workoutSessionState = {}; workoutNotesState = {}; workoutVariationState = {}; todaysSwaps = {};
+  if (becomesActive || (workoutPlanMode === 'custom' && r.id === activeRoutineId)) resetWorkoutScreenState();
   renderWorkoutPlan(); if (typeof updateStats === 'function') updateStats();
+  if (routineManagerOpen()) renderRoutineManager();
 }
 
 // ── the library picker (second sheet) ──
@@ -11923,11 +11945,124 @@ function onReCreateClick(e) {
   }
 }
 
-function wireRoutineButtons(root) {
-  (root || document).querySelectorAll('.routine-edit-btn').forEach(b => b.addEventListener('click', () => { if (typeof openRoutineEditor === 'function') openRoutineEditor(); }));
+// ── MY ROUTINES (the manager) ────────────────────────────────────────────
+// Up to 4 saved routines, plus a quick switch between plan styles. Each routine keeps its own place in
+// its cycle (workouts are tagged with routine + day), so coming back to one picks up where it left off.
+function hasCheckedSets() { return Object.values(workoutSessionState || {}).some(a => Array.isArray(a) && a.some(s => s && s.done)); }
+function confirmDiscardWorkoutProgress() {
+  return !hasCheckedSets() || confirm("Switching will clear the sets you've checked off in this workout. Continue?");
+}
+function resetWorkoutScreenState() {
+  workoutSessionState = {}; workoutNotesState = {}; workoutVariationState = {}; todaysSwaps = {};
+  zoomedExercise = null; reorderingExercises = false;
+  if (typeof clearWorkoutDraft === 'function') clearWorkoutDraft();
+}
+function routineManagerOpen() { const m = document.getElementById('routineManager'); return !!m && m.style.display !== 'none'; }
+function ensureRoutineManagerDom() {
+  const el = document.getElementById('routineManager');
+  if (!el || el.dataset.ready) return;
+  el.dataset.ready = '1';
+  el.addEventListener('click', onRoutineManagerClick);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && routineManagerOpen() && document.getElementById('routineEditor').style.display === 'none') closeRoutineManager(); });
+}
+function openRoutineManager() {
+  if (!customRoutines.length) { openRoutineEditor('new'); return; } // nothing saved yet: go straight to building one
+  ensureRoutineManagerDom();
+  document.getElementById('routineManager').style.display = 'flex';
+  renderRoutineManager();
+}
+function closeRoutineManager() { const m = document.getElementById('routineManager'); if (m) m.style.display = 'none'; }
+function renderRoutineManager() {
+  const el = document.getElementById('routineManager'); if (!el) return;
+  const inUse = workoutPlanMode === 'custom' ? activeRoutineId : null, full = customRoutines.length >= RE_MAX_ROUTINES;
+  const styles = [['split', 'Split'], ['ppl', 'PPL'], ['fullbody', 'Full Body'], ['custom', 'My Routines']];
+  const card = r => {
+    const live = r.id === inUse, n = r.days.reduce((s, d) => s + d.exercises.length, 0);
+    return `
+      <div class="rm-card${live ? ' in-use' : ''}">
+        <div class="rm-head"><div class="rm-name">${escapeHtml(r.name)}</div>${live ? '<span class="rm-badge">In use</span>' : ''}</div>
+        <div class="rm-sub">${r.days.length} day${r.days.length === 1 ? '' : 's'} · ${n} exercise${n === 1 ? '' : 's'}</div>
+        <div class="rm-days">${r.days.map(d => escapeHtml(d.name)).join(' → ')}</div>
+        <div class="rm-actions">
+          ${live ? '' : `<button type="button" class="btn btn-primary btn-sm" data-m="use" data-id="${r.id}">Use this</button>`}
+          <button type="button" class="btn btn-secondary btn-sm" data-m="edit" data-id="${r.id}">Edit</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-m="copy" data-id="${r.id}" ${full ? 'disabled' : ''}>Copy</button>
+          <button type="button" class="rm-del" data-m="del" data-id="${r.id}" aria-label="Delete ${escapeHtml(r.name)}">🗑</button>
+        </div>
+      </div>`;
+  };
+  el.innerHTML = `
+    <div class="re-sheet" role="dialog" aria-modal="true" aria-label="My routines">
+      <div class="re-top"><div class="re-title">My routines</div><button type="button" class="re-x" data-m="close" aria-label="Close">✕</button></div>
+      <div class="re-body">
+        <div class="re-label">Plan style</div>
+        <div class="re-groups rm-styles">${styles.map(([k, l]) => `<button type="button" class="re-g${workoutPlanMode === k ? ' on' : ''}" data-m="style" data-style="${k}">${l}</button>`).join('')}</div>
+        <div class="re-hint">Switching style never deletes anything. Push/Pull/Legs, Split and Full Body are always here.</div>
+        ${customRoutines.map(card).join('')}
+        <button type="button" class="re-add-day" data-m="new" ${full ? 'disabled' : ''}>＋ New routine</button>
+        <div class="re-hint">${customRoutines.length} of ${RE_MAX_ROUTINES} saved.${full ? ' Delete one to add another.' : ''} Each routine remembers where you were in its cycle.</div>
+      </div>
+    </div>`;
+}
+async function onRoutineManagerClick(e) {
+  const b = e.target.closest('[data-m]'); if (!b || b.disabled) return;
+  const act = b.dataset.m, id = b.dataset.id;
+  if (act === 'close') closeRoutineManager();
+  else if (act === 'new') openRoutineEditor('new');
+  else if (act === 'edit') openRoutineEditor(id);
+  else if (act === 'use') await useRoutine(id);
+  else if (act === 'copy') await duplicateRoutine(id);
+  else if (act === 'style') {
+    const k = b.dataset.style;
+    if (k === 'custom') { const r = activeRoutine() || customRoutines[0]; if (r) await useRoutine(r.id); }
+    else await useBuiltInPlan(k);
+  }
+  else if (act === 'del') {
+    const r = customRoutines.find(x => x.id === id); if (!r) return;
+    if (!confirm(`Delete "${r.name}"? Workouts you have already logged stay in your history.`)) return;
+    await removeRoutine(id);
+    if (customRoutines.length) renderRoutineManager(); else closeRoutineManager();
+  }
+}
+async function useRoutine(id) {
+  const r = customRoutines.find(x => x.id === id); if (!r) return;
+  if ((workoutPlanMode !== 'custom' || id !== activeRoutineId) && !confirmDiscardWorkoutProgress()) return;
+  const changed = workoutPlanMode !== 'custom' || id !== activeRoutineId;
+  activeRoutineId = id; workoutPlanMode = 'custom'; customDayOverride = null;
+  if (changed) resetWorkoutScreenState();
+  const sel = document.getElementById('setWorkoutPlanMode'); if (sel) sel.value = 'custom';
+  await saveRoutinesToCloud({ workoutPlanMode: 'custom' });
+  closeRoutineManager(); renderWorkoutPlan(); if (typeof updateStats === 'function') updateStats();
+}
+async function useBuiltInPlan(mode) {
+  if (workoutPlanMode === mode) return;
+  if (!confirmDiscardWorkoutProgress()) return;
+  workoutPlanMode = mode; customDayOverride = null;
+  resetWorkoutScreenState();
+  const sel = document.getElementById('setWorkoutPlanMode'); if (sel) sel.value = mode;
+  await saveRoutinesToCloud({ workoutPlanMode: mode });
+  closeRoutineManager(); renderWorkoutPlan(); if (typeof updateStats === 'function') updateStats();
+}
+async function duplicateRoutine(id) {
+  const r = customRoutines.find(x => x.id === id); if (!r || customRoutines.length >= RE_MAX_ROUTINES) return;
+  const copy = JSON.parse(JSON.stringify(r));
+  copy.id = newRoutineId(); copy.name = `${r.name} copy`.slice(0, 30); copy.days.forEach(d => { d.id = newRoutineId(); }); // new ids: it starts its own cycle
+  customRoutines.push(copy);
+  await saveRoutinesToCloud(); renderRoutineManager();
+}
+async function removeRoutine(id) {
+  customRoutines = customRoutines.filter(r => r.id !== id);
+  if (activeRoutineId === id) { activeRoutineId = customRoutines.length ? customRoutines[0].id : null; customDayOverride = null; if (workoutPlanMode === 'custom') resetWorkoutScreenState(); }
+  await saveRoutinesToCloud();
+  renderWorkoutPlan(); if (typeof updateStats === 'function') updateStats();
 }
 
-{ const _b = document.getElementById('setupRoutineBtn'); if (_b) _b.addEventListener('click', () => openRoutineEditor()); }
+function wireRoutineButtons(root) {
+  (root || document).querySelectorAll('.routine-edit-btn').forEach(b => b.addEventListener('click', () => { if (typeof openRoutineEditor === 'function') openRoutineEditor(); }));
+  (root || document).querySelectorAll('.routine-manage-btn').forEach(b => b.addEventListener('click', () => { if (typeof openRoutineManager === 'function') openRoutineManager(); }));
+}
+
+{ const _b = document.getElementById('setupRoutineBtn'); if (_b) _b.addEventListener('click', () => openRoutineManager()); }
 
 function currentPlanKey() {
   if (workoutPlanMode === 'fullbody') return 'fullbody';
@@ -12187,6 +12322,16 @@ function renderWorkoutPlan() {
     footerHtml = `Sore, tired, or just feel like something else? Tap a different day above — it'll stick for today, then the rotation continues normally from whatever you actually do. Check off each set as you finish it — a rest timer starts automatically. Log it as <b>Strength</b> below (or use the timer) — the plan moves to ${other} Day once you do.`;
   } else if (workoutPlanMode === 'custom') {
     const routine = activeRoutine();
+    if ((!routine || !routine.days.length) && customRoutines.length) {
+      box.innerHTML = `
+        <div class="routine-empty">
+          <div style="font-weight:800;margin-bottom:6px">Choose a routine</div>
+          <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">You have ${customRoutines.length} saved. Pick the one to use.</div>
+          <button type="button" class="btn btn-primary btn-sm routine-manage-btn" style="width:100%">My routines</button>
+        </div>`;
+      wireRoutineButtons(box);
+      return;
+    }
     if (!routine || !routine.days.length) {
       box.innerHTML = `
         <div class="routine-empty">
@@ -12229,7 +12374,7 @@ function renderWorkoutPlan() {
       <div class="chip-row custom-day-row" style="margin-bottom:12px">
         ${routine.days.map(d => `<div class="chip custom-day-chip${d.id === day.id ? ' on' : ''}" data-custom-day="${d.id}">${escapeHtml(d.name)}</div>`).join('')}
       </div>`;
-    footerHtml = `Tap a different day above to switch — it'll stick for today, then the cycle continues from whatever you actually log. Check off each set as you finish it. <button type="button" class="routine-edit-link routine-edit-btn">Edit my routine</button>`;
+    footerHtml = `Tap a different day above to switch — it'll stick for today, then the cycle continues from whatever you actually log. Check off each set as you finish it. <button type="button" class="routine-edit-link routine-edit-btn">Edit this routine</button> · <button type="button" class="routine-edit-link routine-manage-btn">My routines</button>`;
   } else {
     const next = splitDayOverride || nextWorkoutDay();
     const other = next === 'A' ? 'B' : 'A';
