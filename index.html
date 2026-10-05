@@ -11636,7 +11636,7 @@ function registerCustomLibrary() {
   customLibrary.forEach(e => { if (e && e.name && MUSCLE_MAP_GROUPS.includes(e.group) && !muscleGroupFor(e.name)) EXERCISE_MUSCLE_GROUP[e.name] = e.group; });
 }
 // Names go into page markup and plan keys, so quotes and angle brackets are stripped on creation.
-function cleanExerciseName(s) { return String(s == null ? '' : s).replace(/["'`<>&\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60); }
+function cleanExerciseName(s) { return String(s == null ? '' : s).replace(/&/g, ' and ').replace(/["'`<>\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60); }
 // "Seated Row" and "Seated Row (Machine)" are the same exercise spelled two ways: count them as one.
 function libKey(n) { return String(n || '').toLowerCase().replace(/\s*\(machine\)/g, '').replace(/\s+/g, ' ').trim(); }
 function exerciseLibrary() {
@@ -12093,7 +12093,17 @@ async function saveNewWorkoutExercise() {
   const sets = setsEl.value.trim() || '3 × 10';
   if (!name) { alert('Enter an exercise name.'); return; }
   if (cleanExerciseName(name) !== name) { name = cleanExerciseName(name); if (!name) { alert('Enter an exercise name.'); return; } }
-  if ([...document.querySelectorAll('.workout-exercise-block')].some(b => (b.dataset.exercise || '').toLowerCase() === name.toLowerCase())) { alert(`${name} is already on today's list.`); return; }
+  if (/\(\s*\)\s*$/.test(name)) { alert('Type what is different inside the brackets, for example (wide stance).'); return; }
+  const clash = [...document.querySelectorAll('.workout-exercise-block')].find(b => (b.dataset.exercise || '').toLowerCase() === name.toLowerCase());
+  if (clash) {
+    // Two cards with one name would merge (sets are kept by name), so a second one needs its own name. Say so, and set it up:
+    // the box becomes "Leg Press ()" with the cursor between the brackets, ready for "wide stance".
+    const base = clash.dataset.exercise;
+    alert(`${base} is already on today's list. To add a second one, give it a different name, for example "${base} (wide stance)". I have added the brackets for you: just type what is different.`);
+    nameEl.value = `${base} ()`;
+    setTimeout(() => { nameEl.focus(); const p = nameEl.value.length - 1; try { nameEl.setSelectionRange(p, p); } catch (e) { /* not every input type allows it */ } }, 0);
+    return;
+  }
   const key = currentPlanKey();
   customWorkoutExercises[key] = [...(customWorkoutExercises[key] || []), { name, sets, rest: REST_SECONDS }];
   addToCustomLibrary(name, sets); // anything created here is offered again in the library
