@@ -809,7 +809,55 @@ body {
   transition: all 0.15s;
 }
 .chip.on { background: var(--teal); border-color: var(--teal); color: white; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
-.ppl-day-chip.on, .split-day-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; font-weight: 800; }
+/* My Routine editor + library picker */
+.re-overlay { position: fixed; inset: 0; z-index: 1200; background: rgba(4,7,18,0.74); display: flex; align-items: flex-end; justify-content: center; }
+.re-picker { position: fixed; inset: 0; z-index: 1300; background: rgba(4,7,18,0.6); display: flex; align-items: flex-end; justify-content: center; }
+.re-sheet { background: var(--bg, #14102a); color: var(--ink); width: 100%; max-width: 560px; max-height: 94vh; height: 94vh; border-radius: 18px 18px 0 0; display: flex; flex-direction: column; border: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.re-top { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+.re-title { font-family: var(--font-text); font-weight: 800; font-size: 17px; }
+.re-x, .re-done { background: none; border: none; color: var(--ink-soft); font-size: 18px; padding: 6px 8px; cursor: pointer; }
+.re-done { color: var(--teal); font-weight: 800; font-size: 16px; }
+.re-body { flex: 1; overflow-y: auto; padding: 12px 16px; -webkit-overflow-scrolling: touch; }
+.re-foot { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px 14px; border-top: 1px solid var(--line); }
+.re-foot .btn { flex: 1; }
+.re-lead { font-weight: 800; font-size: 15px; margin-bottom: 10px; }
+.re-tpl { display: block; width: 100%; text-align: left; background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; color: var(--ink); cursor: pointer; font: inherit; }
+.re-tpl b { display: block; font-weight: 800; } .re-tpl span { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.re-label { display: block; font-size: 12px; font-weight: 700; color: var(--ink-soft); margin-bottom: 4px; }
+.re-input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--input-bg); color: var(--ink); font-size: 16px; min-width: 0; }
+.re-day { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px; margin-top: 12px; }
+.re-day-head { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+.re-day-name { font-weight: 800; flex: 1; }
+.re-ico { flex: 0 0 38px; height: 38px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--input-bg); color: var(--ink); font-size: 14px; cursor: pointer; padding: 0; }
+.re-ico:disabled { opacity: 0.3; cursor: default; }
+.re-del { color: var(--coral); }
+.re-ex { padding: 8px 0; border-top: 1px solid var(--line); }
+.re-ex-name { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.re-grp { font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; margin-left: 4px; }
+.re-ex-ctl { display: flex; gap: 6px; align-items: center; }
+.re-sets { flex: 1; }
+.re-empty { font-size: 12px; color: var(--ink-soft); padding: 10px 0; text-align: center; }
+.re-add-ex, .re-add-day, .re-create-toggle { display: block; width: 100%; margin-top: 8px; padding: 11px; border: 1.5px dashed var(--teal); border-radius: 10px; background: none; color: var(--teal); font: inherit; font-weight: 700; cursor: pointer; }
+.re-add-day { margin-top: 12px; }
+.re-hint { font-size: 11px; color: var(--ink-soft); margin-top: 10px; line-height: 1.4; }
+.re-error { background: rgba(255,107,107,0.14); border: 1px solid var(--coral); color: var(--coral); border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 700; margin-bottom: 10px; }
+.re-error[hidden] { display: none; }
+.re-delete-routine { flex-basis: 100%; background: none; border: none; color: var(--coral); font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 6px; }
+.re-pick-controls { padding: 10px 16px 4px; }
+.re-groups { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 4px; -webkit-overflow-scrolling: touch; }
+.re-g { flex: 0 0 auto; padding: 7px 12px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--input-bg); color: var(--ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.re-g.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; }
+.re-grp-head { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal); margin: 14px 0 4px; }
+.re-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.re-item-main { flex: 1; min-width: 0; } .re-item-name { font-weight: 700; font-size: 14px; } .re-item-sub { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
+.re-pick { flex: 0 0 auto; min-width: 84px; padding: 9px 10px; border-radius: 10px; border: 1.5px solid var(--teal); background: none; color: var(--teal); font: inherit; font-weight: 800; font-size: 13px; cursor: pointer; }
+.re-pick.on { background: var(--teal); color: #0a2e28; }
+.re-create { padding: 8px 16px 14px; border-top: 1px solid var(--line); }
+.re-create-form .re-input { margin-bottom: 8px; }
+.re-create-row { display: flex; gap: 8px; margin-top: 8px; } .re-create-row .btn { flex: 1; }
+.routine-empty { border: 1.5px dashed var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.routine-edit-link { background: none; border: none; color: var(--teal); font: inherit; font-weight: 700; text-decoration: underline; padding: 0; cursor: pointer; }
+.ppl-day-chip.on, .split-day-chip.on, .custom-day-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; font-weight: 800; }
 .ex-chip.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; }
 .chip.ex-chip { padding: 9px 16px; font-size: 14px; font-weight: 800; border-radius: 12px; }
 
@@ -1236,7 +1284,8 @@ body {
 </div>
 
 <!-- ── REST TIMER POPUP (workout sets) ── -->
-<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="trainerSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:708"></div><div id="trainerSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:709;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="cardioTrendsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:706"></div><div id="cardioTrendsModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:707;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
+<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="routineEditor" class="re-overlay" style="display:none"></div>
+<div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="trainerSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:708"></div><div id="trainerSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:709;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="cardioTrendsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:706"></div><div id="cardioTrendsModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:707;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
 <div id="restTimerWrap" style="display:none;flex-direction:row;align-items:center;gap:8px;position:fixed;bottom:88px;right:14px;background:var(--card);border:1.5px solid var(--teal);border-radius:17px;padding:9px 11px 9px 15px;box-shadow:0 8px 26px rgba(0,0,0,0.28);z-index:601;text-align:center">
   <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.1">
     <span id="restTimerLabel" style="font-size:10px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em">⏱ Rest</span>
@@ -3152,7 +3201,15 @@ body {
               <option value="split">Push/Pull Split</option>
               <option value="ppl">Push/Pull/Legs</option>
               <option value="fullbody">Full Body</option>
+              <option value="custom">My Routine</option>
             </select>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">My Routine</div>
+              <div class="settings-row-sub">Build your own training days from an exercise library. Your other plan styles stay available: switch back any time with the style menu above.</div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="setupRoutineBtn" style="width:150px">Set up / edit</button>
           </div>
         </div>
       </div>
@@ -3543,7 +3600,11 @@ let userAge = 0;             // years — 0 means not yet set
 let userSex = 'male';
 let userActivityLevel = 'moderate';
 let userLossRate = 1;        // lbs/week
-let workoutPlanMode = 'split'; // 'split' (Day A/B alternating), 'fullbody' (one list every session), or 'ppl' (Push/Pull/Legs, 3-day rotation)
+let workoutPlanMode = 'split'; // 'split' (Day A/B alternating), 'fullbody' (one list every session), 'ppl' (Push/Pull/Legs, 3-day rotation), or 'custom' (My Routine)
+let customRoutines = [];      // My Routine: [{ id, name, days: [{ id, name, exercises: [{ name, sets }] }] }] — saved in the person's own settings
+let activeRoutineId = null;
+let customLibrary = [];       // exercises the person created, offered again in the library: [{ name, sets, group }]
+let customDayOverride = null; // day id picked by tapping a day chip, until that workout is logged
 const ACTIVITY_MULTIPLIERS = { sedentary: 1.2, light: 1.375, moderate: 1.55, very: 1.725 };
 let spoonacularKey      = '';        // optional user key, synced to Firestore — empty means not connected
 let fatSecretClientId     = '';      // optional OAuth 2.0 credential, synced to Firestore
@@ -5185,6 +5246,9 @@ function startListening() {
       if (s.activityLevel)          userActivityLevel = s.activityLevel;
       if (s.lossRate)               userLossRate   = parseFloat(s.lossRate) || 1;
       if (s.workoutPlanMode)        workoutPlanMode = s.workoutPlanMode;
+      if (Array.isArray(s.customRoutines)) customRoutines = s.customRoutines;
+      if (typeof s.activeRoutineId === 'string') activeRoutineId = s.activeRoutineId;
+      if (Array.isArray(s.customLibrary)) { customLibrary = s.customLibrary; registerCustomLibrary(); }
       if (s.spoonacularKey)         spoonacularKey = s.spoonacularKey;
       if (s.fatSecretClientId)      fatSecretClientId     = s.fatSecretClientId;
       if (s.fatSecretClientSecret)  fatSecretClientSecret = s.fatSecretClientSecret;
@@ -8287,7 +8351,7 @@ function gatherRecentHealthData(days) {
       if (strengthEx.length) {
         const lines = [];
         strengthEx.forEach(x => {
-          if (x.planDay && typeof x.planDay === 'string' && !row.workout_day) row.workout_day = x.planDay;
+          if (x.planDay && typeof x.planDay === 'string' && !row.workout_day) row.workout_day = planDayLabel(x.planDay);
           Object.entries(x.sets).slice(0, 12).forEach(([name, sets]) => {
             if (!Array.isArray(sets)) return;
             const working = sets.filter(s => s && !s.warmup && ((s.weight > 0 && s.reps > 0) || s.timed || s.bodyweight)).slice(0, 10);
@@ -9199,7 +9263,7 @@ function buildWorkoutHistorySummaries() {
     });
     summaries.push({
       date: e.date,
-      label: planDay ? `${planDay} Day` : 'Workout',
+      label: planDay ? (String(planDay).startsWith('custom:') ? planDayLabel(planDay) : `${planDay} Day`) : 'Workout',
       duration,
       totalVolume: totalSessionWeight(combinedSets),
       prCount,
@@ -9404,7 +9468,7 @@ async function logExercise(type, min, dist, incline) {
     // nextPPLDay()/nextWorkoutDay() can advance from what was really
     // trained rather than a blind session count — see their own
     // comments for why that distinction matters.
-    if (workoutPlanMode === 'ppl' || workoutPlanMode === 'split') item.planDay = currentPlanKey();
+    if (workoutPlanMode === 'ppl' || workoutPlanMode === 'split' || (workoutPlanMode === 'custom' && customCurrentDay())) item.planDay = currentPlanKey();
   }
   await writeEx(date, [...exForDate(date), item]);
   if (type === 'Strength') {
@@ -9419,6 +9483,7 @@ async function logExercise(type, min, dist, incline) {
     stopRestTimer();
     pplDayOverride = null;
     splitDayOverride = null;
+    customDayOverride = null;
     zoomedExercise = null; reorderingExercises = false;
   }
   return { date, ts: item.ts };
@@ -9858,6 +9923,7 @@ function planTargetTextFor(name) { // the "3 × 45 sec" text from whichever plan
   const lists = [];
   const add = v => { if (Array.isArray(v)) lists.push(v); else if (v && typeof v === 'object') Object.values(v).forEach(add); };
   add(WORKOUT_PLAN_PPL); if (typeof WORKOUT_PLAN !== 'undefined') add(WORKOUT_PLAN); if (typeof WORKOUT_PLAN_FULLBODY !== 'undefined') add(WORKOUT_PLAN_FULLBODY); if (typeof customWorkoutExercises !== 'undefined') add(customWorkoutExercises);
+  customRoutines.forEach(r => r.days.forEach(d => lists.push(d.exercises))); lists.push(customLibrary);
   for (const l of lists) { const e = l.find(x => x && x.name === name); if (e) return e.sets || null; }
   return null;
 }
@@ -9964,6 +10030,10 @@ function suggestSwapsFor(exerciseName, todaysExerciseNames) {
 // when exercises changed.
 function describeWorkoutPlanForAI() {
   const fmt = (arr) => arr.map(e => `${e.name} ${e.sets}`).join(', ');
+  if (workoutPlanMode === 'custom') {
+    const r = activeRoutine();
+    if (r) return `Custom routine "${r.name}" (cycles through its days in order, one per workout at Planet Fitness): ${r.days.map(d => `${d.name}: ${fmt(d.exercises)}`).join('. ')}.`;
+  }
   if (workoutPlanMode === 'fullbody') {
     return `Full Body: ${fmt(WORKOUT_PLAN_FULLBODY)}. Same list every session, target 2-3x/week at Planet Fitness.`;
   }
@@ -10792,7 +10862,8 @@ function lastWarmupWeightFor(exerciseName) {
 function getExerciseRestSeconds(exerciseName) {
   if (FLAT_REST) return REST_SECONDS;
   if (exerciseRestOverride[exerciseName] != null) return exerciseRestOverride[exerciseName];
-  const builtIn = workoutPlanMode === 'fullbody' ? WORKOUT_PLAN_FULLBODY
+  const builtIn = workoutPlanMode === 'custom' ? customRoutineExercises()
+    : workoutPlanMode === 'fullbody' ? WORKOUT_PLAN_FULLBODY
     : workoutPlanMode === 'ppl' ? [...WORKOUT_PLAN_PPL.Push, ...WORKOUT_PLAN_PPL.Pull, ...WORKOUT_PLAN_PPL.Legs]
     : [...WORKOUT_PLAN.A, ...WORKOUT_PLAN.B];
   const custom = Object.values(customWorkoutExercises).flat();
@@ -11188,6 +11259,19 @@ function wireWorkoutPlanEvents() {
       renderWorkoutPlan();
     });
   });
+  document.querySelectorAll('.custom-day-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      if (chip.dataset.customDay === customDayOverride) return;
+      customDayOverride = chip.dataset.customDay;
+      workoutSessionState = {};
+      workoutNotesState = {};
+      workoutVariationState = {};
+      todaysSwaps = {};
+      zoomedExercise = null; reorderingExercises = false;
+      renderWorkoutPlan();
+    });
+  });
+  wireRoutineButtons(document);
   document.querySelectorAll('.split-day-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       if (chip.dataset.splitDay === splitDayOverride) return; // already showing this one
@@ -11209,7 +11293,7 @@ function wireWorkoutPlanEvents() {
   if (feelingSoreBtn) feelingSoreBtn.addEventListener('click', () => {
     // Full Body has no alternate day to point toward, so there's nothing
     // meaningful to ask about location — go straight to the acknowledgment.
-    feelingCheckStep = workoutPlanMode === 'fullbody' ? 'fullbody-ack' : 'sore-followup';
+    feelingCheckStep = (workoutPlanMode === 'fullbody' || workoutPlanMode === 'custom') ? 'fullbody-ack' : 'sore-followup';
     renderWorkoutPlan();
   });
   document.querySelectorAll('.feeling-followup-btn').forEach(btn => {
@@ -11499,8 +11583,355 @@ document.getElementById('workoutFullscreenCloseBtn').addEventListener('click', (
 document.getElementById('workoutFullscreenBackdrop').addEventListener('click', () => setWorkoutFullscreen(false));
 document.getElementById('entryPopupBackdrop').addEventListener('click', () => { if (entryPopupCard) { const t = entryPopupCard.querySelector('.form-section-title'); if (t) t.click(); } });
 
+// ── MY ROUTINE ───────────────────────────────────────────────────────────
+// A fourth plan style beside Split / Full Body / PPL (those three are untouched). A routine is a name plus
+// ordered days, each with its own exercise list. "Next up" cycles through the days in order, exactly like
+// PPL does: from what was actually logged (planDay on the entry), with a tap-to-override.
+
+// The exercise library the picker offers: name, muscle group, default sets × reps, optional type.
+// Names avoid quotes and apostrophes on purpose (they travel through page markup).
+const LIBRARY_EXERCISES = [
+  ['Chest Press (machine)', 'Chest', '3 × 10–12'], ['Incline Chest Press (Smith machine)', 'Chest', '3 × 10–12'], ['Pec Deck (machine)', 'Chest', '2 × 10–12'],
+  ['Cable Fly', 'Chest', '3 × 12–15'], ['Dumbbell Bench Press', 'Chest', '3 × 8–12'], ['Incline Dumbbell Press', 'Chest', '3 × 8–12'],
+  ['Smith Machine Bench Press', 'Chest', '3 × 8–12'], ['Push-up', 'Chest', '3 × 10–15', 'bodyweight'],
+  ['Shoulder Press (machine)', 'Shoulders', '3 × 10–12'], ['Dumbbell Shoulder Press', 'Shoulders', '3 × 8–12'], ['Smith Machine Shoulder Press', 'Shoulders', '3 × 8–12'],
+  ['Lateral Raise', 'Shoulders', '3 × 12–15'], ['Lateral Raise (dumbbell)', 'Shoulders', '3 × 12–15'], ['Cable Lateral Raise', 'Shoulders', '3 × 12–15'], ['Front Raise (dumbbell)', 'Shoulders', '3 × 12–15'],
+  ['Triceps Pushdown (cable)', 'Triceps', '3 × 12–15'], ['Overhead Triceps Extension (cable)', 'Triceps', '3 × 12–15'], ['Dumbbell Triceps Extension', 'Triceps', '3 × 10–12'],
+  ['Assisted Dip (machine)', 'Triceps', '3 × 8–12'], ['Triceps Dip (machine)', 'Triceps', '3 × 10–12'],
+  ['Lat Pulldown', 'Back', '3 × 10–12'], ['Seated Row', 'Back', '3 × 10–12'], ['Assisted Pull-Up (machine)', 'Back', '3 × 8–10'], ['Cable Row (single-arm)', 'Back', '3 × 10–12'],
+  ['Dumbbell Row', 'Back', '3 × 10–12'], ['Chest-Supported Row (machine)', 'Back', '3 × 10–12'], ['Straight-Arm Pulldown (cable)', 'Back', '3 × 12–15'], ['Back Extension', 'Back', '3 × 12–15', 'bodyweight'],
+  ['Reverse Fly (machine)', 'Rear Delts', '2 × 10–12'], ['Face Pull (cable)', 'Rear Delts', '3 × 12–15'], ['Rear Delt Fly (dumbbell)', 'Rear Delts', '3 × 12–15'],
+  ['Bicep Curl', 'Biceps', '3 × 12–15'], ['Hammer Curl', 'Biceps', '3 × 12–15'], ['Preacher Curl (machine)', 'Biceps', '3 × 10–12'], ['Cable Curl', 'Biceps', '3 × 12–15'],
+  ['Dumbbell Curl', 'Biceps', '3 × 10–12'], ['Incline Dumbbell Curl', 'Biceps', '3 × 10–12'],
+  ['Wrist Curl (dumbbell)', 'Forearms', '3 × 12–15'], ['Reverse Wrist Curl (dumbbell)', 'Forearms', '2 × 15–20'], ['Reverse Curl', 'Forearms', '3 × 12–15'],
+  ['Farmers Carry (dumbbells)', 'Forearms', '3 × 40–60 sec', 'timedLoaded'], ['Dead Hang', 'Forearms', '3 × 20–40 sec', 'timed'],
+  ['Leg Press', 'Quads', '3 × 10–12'], ['Leg Extension (machine)', 'Quads', '3 × 10–12'], ['Smith Machine Squat', 'Quads', '3 × 8–12'], ['Goblet Squat (dumbbell)', 'Quads', '3 × 10–12'],
+  ['Walking Lunge (dumbbell)', 'Quads', '3 × 10–12'], ['Step-up (dumbbell)', 'Quads', '3 × 10–12'],
+  ['Leg Curl (machine)', 'Hamstrings', '3 × 10–12'], ['Romanian Deadlift (dumbbell)', 'Hamstrings', '3 × 8–12'], ['Hip Thrust (Smith machine)', 'Hamstrings', '3 × 10–12'], ['Glute Kickback (cable)', 'Hamstrings', '3 × 12–15'],
+  ['Calf Raise (machine)', 'Calves', '3 × 12–15'], ['Standing Calf Raise (Smith machine)', 'Calves', '3 × 12–15'],
+  ['Plank', 'Core', '3 × 30–45 sec', 'timed'], ['Side Plank', 'Core', '3 × 20–30 sec', 'timed'], ['Cable Crunch', 'Core', '3 × 12–15'], ['Ab Crunch (machine)', 'Core', '3 × 12–15'],
+  ['Hanging Knee Raise', 'Core', '3 × 10–15', 'bodyweight'], ['Cable Woodchopper', 'Core', '3 × 12–15'], ['Torso Rotation (machine)', 'Core', '3 × 12–15'],
+  ['Dead Bug', 'Core', '3 × 10–12', 'bodyweight'], ['Bicycle Crunch', 'Core', '3 × 20', 'bodyweight'], ['Russian Twist', 'Core', '3 × 20', 'bodyweight']
+];
+// Teach the rest of the app about library exercises it doesn't already know — never changing how a
+// known name is already filed, so existing history and the muscle map read exactly as before.
+LIBRARY_EXERCISES.forEach(([name, group, , mode]) => {
+  if (!muscleGroupFor(name)) EXERCISE_MUSCLE_GROUP[name] = group;
+  if (mode && !EXERCISE_MODE[name]) EXERCISE_MODE[name] = mode;
+});
+function registerCustomLibrary() {
+  customLibrary.forEach(e => { if (e && e.name && MUSCLE_MAP_GROUPS.includes(e.group) && !muscleGroupFor(e.name)) EXERCISE_MUSCLE_GROUP[e.name] = e.group; });
+}
+// Names go into page markup and plan keys, so quotes and angle brackets are stripped on creation.
+function cleanExerciseName(s) { return String(s == null ? '' : s).replace(/["'`<>&\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60); }
+// "Seated Row" and "Seated Row (Machine)" are the same exercise spelled two ways: count them as one.
+function libKey(n) { return String(n || '').toLowerCase().replace(/\s*\(machine\)/g, '').replace(/\s+/g, ' ').trim(); }
+function exerciseLibrary() {
+  const seen = new Set(), out = [];
+  const add = (name, group, sets, source) => {
+    const n = String(name || '').trim(), k = libKey(n);
+    if (!n || seen.has(k)) return;
+    if (source !== 'library' && source !== 'mine' && /\s\/\s/.test(n)) return; // skips awkward combined labels from older plan text
+    seen.add(k);
+    out.push({ name: n, group: muscleGroupFor(n) || group || 'Other', sets: sets || '3 × 10–12', source });
+  };
+  LIBRARY_EXERCISES.forEach(([n, g, s]) => add(n, g, s, 'library'));
+  [...Object.values(WORKOUT_PLAN_PPL), WORKOUT_PLAN.A, WORKOUT_PLAN.B, WORKOUT_PLAN_FULLBODY].forEach(l => (l || []).forEach(e => add(e.name, null, e.sets, 'plan')));
+  Object.values(SWAP_SUGGESTIONS_BY_GROUP).forEach(l => l.forEach(e => add(e.name, null, e.sets, 'swap')));
+  customLibrary.forEach(e => e && add(e.name, e.group, e.sets, 'mine'));
+  const order = [...MUSCLE_MAP_GROUPS, 'Other'];
+  return out.sort((a, b) => (order.indexOf(a.group) - order.indexOf(b.group)) || a.name.localeCompare(b.name));
+}
+// A custom exercise created anywhere (the in-workout "+ Add Exercise" or the routine editor) joins the library.
+function addToCustomLibrary(name, sets, group) {
+  const n = cleanExerciseName(name); if (!n) return false;
+  if (exerciseLibrary().some(e => libKey(e.name) === libKey(n))) return false;
+  const g = MUSCLE_MAP_GROUPS.includes(group) ? group : (muscleGroupFor(n) || 'Other');
+  customLibrary.push({ name: n, sets: sets || '3 × 10', group: g });
+  registerCustomLibrary();
+  return true;
+}
+function newRoutineId() { return Math.random().toString(36).slice(2, 9); }
+function activeRoutine() { return customRoutines.find(r => r.id === activeRoutineId) || null; }
+function routineDayKey(r, d) { return `custom:${r.id}:${d.id}`; }
+function routineDayByKey(key) {
+  const m = /^custom:([^:]+):(.+)$/.exec(typeof key === 'string' ? key : '');
+  if (!m) return null;
+  const routine = customRoutines.find(x => x.id === m[1]), day = routine && routine.days.find(x => x.id === m[2]);
+  return day ? { routine, day } : null;
+}
+function planDayLabel(key) { // what a saved planDay should read as ("Push" stays "Push"; a routine day shows its name)
+  if (typeof key === 'string' && key.startsWith('custom:')) { const hit = routineDayByKey(key); return hit ? hit.day.name : 'Workout'; }
+  return key;
+}
+function nextCustomDay(routine) {
+  if (!routine || !routine.days.length) return null;
+  let lastIdx = -1, lastTs = -Infinity;
+  entries.forEach(e => (e.ex || []).forEach(x => {
+    if (x.type !== 'Strength' || typeof x.planDay !== 'string') return;
+    const hit = routineDayByKey(x.planDay);
+    if (hit && hit.routine.id === routine.id && x.ts > lastTs) { lastTs = x.ts; lastIdx = routine.days.indexOf(hit.day); }
+  }));
+  return routine.days[(lastIdx + 1) % routine.days.length]; // nothing logged yet -> the first day
+}
+function customCurrentDay() { const r = activeRoutine(); return r ? (r.days.find(d => d.id === customDayOverride) || nextCustomDay(r)) : null; }
+function customPlanKey() { const r = activeRoutine(), d = customCurrentDay(); return r && d ? routineDayKey(r, d) : 'custom:none'; }
+function customRoutineExercises() { const r = activeRoutine(); return r ? r.days.flatMap(d => d.exercises) : []; }
+function routineFromTemplate(kind) {
+  const mk = (name, list) => ({ id: newRoutineId(), name, exercises: (list || []).map(e => ({ name: e.name, sets: e.sets })) });
+  const days = kind === 'ppl' ? ['Push', 'Pull', 'Legs'].map(d => mk(d, WORKOUT_PLAN_PPL[d]))
+    : kind === 'split' ? [mk('Day A', WORKOUT_PLAN.A), mk('Day B', WORKOUT_PLAN.B)]
+    : kind === 'fullbody' ? [mk('Full Body', WORKOUT_PLAN_FULLBODY)]
+    : [mk('Day 1', [])];
+  return { id: newRoutineId(), name: 'My Routine', days };
+}
+async function saveRoutinesToCloud(extra) {
+  if (!syncId) return;
+  try { await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { customRoutines, activeRoutineId, customLibrary, ...(extra || {}) }, { merge: true }); }
+  catch (err) { console.error(err); }
+}
+// ── MY ROUTINE EDITOR ───────────────────────────────────────────────────
+// A sheet for naming the routine, adding/ordering days, and choosing each day's exercises from the library
+// (a second sheet on top). Everything edits a private draft; nothing changes until "Save routine".
+let routineDraft = null, reStage = 'edit', rePickDay = null, reQuery = '', reGroup = 'All', reDirty = false, reCreateOpen = false, reNewGroup = null;
+const RE_MAX_DAYS = 7;
+
+function ensureRoutineEditorDom() {
+  const el = document.getElementById('routineEditor');
+  if (!el || el.dataset.ready) return; // an empty container lives in the page; it is filled the first time it is opened
+  el.dataset.ready = '1';
+  el.innerHTML = `
+    <div class="re-sheet" role="dialog" aria-modal="true" aria-label="My Routine">
+      <div class="re-top"><div class="re-title" id="reTitle">My Routine</div><button type="button" class="re-x" id="reClose" aria-label="Close">✕</button></div>
+      <div class="re-body" id="reBody"></div>
+      <div class="re-foot" id="reFoot"></div>
+    </div>
+    <div class="re-picker" id="rePicker" style="display:none">
+      <div class="re-sheet" role="dialog" aria-modal="true" aria-label="Choose exercises">
+        <div class="re-top"><div class="re-title" id="rePickTitle">Add exercises</div><button type="button" class="re-done" id="rePickDone">Done</button></div>
+        <div class="re-pick-controls">
+          <input type="search" id="rePickSearch" class="re-input" placeholder="Search exercises" autocomplete="off">
+          <div class="re-groups" id="rePickGroups"></div>
+        </div>
+        <div class="re-body" id="rePickList"></div>
+        <div class="re-create" id="rePickCreate"></div>
+      </div>
+    </div>`;
+  el.querySelector('#reBody').addEventListener('click', onReBodyClick);
+  el.querySelector('#reBody').addEventListener('input', onReBodyInput);
+  el.querySelector('#reFoot').addEventListener('click', onReFootClick);
+  el.querySelector('#reClose').addEventListener('click', closeRoutineEditor);
+  el.querySelector('#rePickDone').addEventListener('click', closeRoutinePicker);
+  el.querySelector('#rePickSearch').addEventListener('input', e => { reQuery = e.target.value; renderPickerList(); });
+  el.querySelector('#rePickGroups').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (b) { reGroup = b.dataset.g; renderPickerGroups(); renderPickerList(); } });
+  el.querySelector('#rePickList').addEventListener('click', e => { const b = e.target.closest('[data-pick]'); if (b) togglePickedExercise(b.dataset.pick); });
+  el.querySelector('#rePickCreate').addEventListener('click', onReCreateClick);
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || el.style.display === 'none') return;
+    if (document.getElementById('rePicker').style.display !== 'none') closeRoutinePicker(); else closeRoutineEditor();
+  });
+}
+function openRoutineEditor() {
+  ensureRoutineEditorDom();
+  const existing = activeRoutine();
+  routineDraft = existing ? JSON.parse(JSON.stringify(existing)) : null;
+  reStage = existing ? 'edit' : 'template'; reDirty = false;
+  document.getElementById('routineEditor').style.display = 'flex';
+  renderRoutineEditor();
+}
+function closeRoutineEditor(force) {
+  if (!force && reDirty && !confirm('Discard your changes to this routine?')) return;
+  document.getElementById('routineEditor').style.display = 'none';
+  document.getElementById('rePicker').style.display = 'none';
+  routineDraft = null; reDirty = false;
+}
+function reDay(id) { return routineDraft && routineDraft.days.find(d => d.id === id); }
+function reRerender() { const b = document.getElementById('reBody'), top = b.scrollTop; renderRoutineEditor(); b.scrollTop = top; }
+function reError(msg) { const e = document.getElementById('reError'); if (e) { e.textContent = msg || ''; e.hidden = !msg; if (msg) e.scrollIntoView({ block: 'nearest' }); } }
+
+function renderRoutineEditor() {
+  const body = document.getElementById('reBody'), foot = document.getElementById('reFoot');
+  document.getElementById('reTitle').textContent = reStage === 'template' ? 'Set up my routine' : 'My Routine';
+  if (reStage === 'template') {
+    body.innerHTML = `
+      <div class="re-lead">How do you want to start?</div>
+      <button type="button" class="re-tpl" data-tpl="blank"><b>Blank</b><span>Build it day by day from the library</span></button>
+      <button type="button" class="re-tpl" data-tpl="ppl"><b>Start from Push / Pull / Legs</b><span>3 days, then change anything you like</span></button>
+      <button type="button" class="re-tpl" data-tpl="split"><b>Start from Upper / Lower</b><span>2 days, then change anything you like</span></button>
+      <button type="button" class="re-tpl" data-tpl="fullbody"><b>Start from Full Body</b><span>1 day, then change anything you like</span></button>
+      <div class="re-hint">Your current plan style is not touched until you save a routine.</div>`;
+    foot.innerHTML = `<button type="button" class="btn btn-ghost" data-foot="cancel">Cancel</button>`;
+    return;
+  }
+  const lib = Object.fromEntries(exerciseLibrary().map(e => [e.name.toLowerCase(), e]));
+  const exRow = (d, e, i) => `
+    <div class="re-ex">
+      <div class="re-ex-name">${escapeHtml(e.name)} <span class="re-grp">${escapeHtml((lib[e.name.toLowerCase()] || {}).group || muscleGroupFor(e.name) || '')}</span></div>
+      <div class="re-ex-ctl">
+        <input class="re-input re-sets" data-day="${d.id}" data-i="${i}" value="${escapeHtml(e.sets)}" maxlength="22" aria-label="Sets and reps for ${escapeHtml(e.name)}">
+        <button type="button" class="re-ico" data-act="ex-up" data-day="${d.id}" data-i="${i}" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" class="re-ico" data-act="ex-down" data-day="${d.id}" data-i="${i}" aria-label="Move down" ${i === d.exercises.length - 1 ? 'disabled' : ''}>▼</button>
+        <button type="button" class="re-ico re-del" data-act="ex-del" data-day="${d.id}" data-i="${i}" aria-label="Remove ${escapeHtml(e.name)}">✕</button>
+      </div>
+    </div>`;
+  const dayCard = (d, di) => `
+    <div class="re-day">
+      <div class="re-day-head">
+        <input class="re-input re-day-name" data-day="${d.id}" value="${escapeHtml(d.name)}" maxlength="24" aria-label="Day name">
+        <button type="button" class="re-ico" data-act="day-up" data-day="${d.id}" aria-label="Move day up" ${di === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" class="re-ico" data-act="day-down" data-day="${d.id}" aria-label="Move day down" ${di === routineDraft.days.length - 1 ? 'disabled' : ''}>▼</button>
+        <button type="button" class="re-ico re-del" data-act="day-del" data-day="${d.id}" aria-label="Delete this day" ${routineDraft.days.length === 1 ? 'disabled' : ''}>🗑</button>
+      </div>
+      ${d.exercises.length ? d.exercises.map((e, i) => exRow(d, e, i)).join('') : '<div class="re-empty">No exercises yet</div>'}
+      <button type="button" class="re-add-ex" data-act="add-ex" data-day="${d.id}">＋ Add exercises</button>
+    </div>`;
+  body.innerHTML = `
+    <div class="re-error" id="reError" hidden></div>
+    <label class="re-label" for="reName">Routine name</label>
+    <input id="reName" class="re-input" maxlength="30" value="${escapeHtml(routineDraft.name)}">
+    ${routineDraft.days.map(dayCard).join('')}
+    ${routineDraft.days.length < RE_MAX_DAYS ? '<button type="button" class="re-add-day" data-act="add-day">＋ Add day</button>' : ''}
+    <div class="re-hint">Each workout you log moves you on to the next day, in this order. Tap a day on the Workout Plan card any time to switch.</div>`;
+  foot.innerHTML = `
+    <button type="button" class="btn btn-primary" data-foot="save">Save routine</button>
+    <button type="button" class="btn btn-ghost" data-foot="cancel">Cancel</button>
+    ${activeRoutine() ? '<button type="button" class="re-delete-routine" data-foot="delete">Delete this routine</button>' : ''}`;
+}
+function onReBodyInput(e) {
+  const t = e.target; reDirty = true;
+  if (t.id === 'reName') routineDraft.name = t.value;
+  else if (t.classList.contains('re-day-name')) { const d = reDay(t.dataset.day); if (d) d.name = t.value; }
+  else if (t.classList.contains('re-sets')) { const d = reDay(t.dataset.day); if (d && d.exercises[+t.dataset.i]) d.exercises[+t.dataset.i].sets = t.value; }
+}
+function onReBodyClick(e) {
+  const tpl = e.target.closest('[data-tpl]');
+  if (tpl) { routineDraft = routineFromTemplate(tpl.dataset.tpl); reStage = 'edit'; reDirty = true; renderRoutineEditor(); return; }
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const d = reDay(b.dataset.day), i = +b.dataset.i, act = b.dataset.act, days = routineDraft.days;
+  const swap = (arr, a, z) => { if (z < 0 || z >= arr.length) return; [arr[a], arr[z]] = [arr[z], arr[a]]; };
+  if (act === 'add-day') { if (days.length < RE_MAX_DAYS) days.push({ id: newRoutineId(), name: `Day ${days.length + 1}`, exercises: [] }); }
+  else if (act === 'day-up') swap(days, days.indexOf(d), days.indexOf(d) - 1);
+  else if (act === 'day-down') swap(days, days.indexOf(d), days.indexOf(d) + 1);
+  else if (act === 'day-del') { if (days.length > 1 && (!d.exercises.length || confirm(`Delete ${d.name || 'this day'} and its ${d.exercises.length} exercises?`))) days.splice(days.indexOf(d), 1); }
+  else if (act === 'ex-up') swap(d.exercises, i, i - 1);
+  else if (act === 'ex-down') swap(d.exercises, i, i + 1);
+  else if (act === 'ex-del') d.exercises.splice(i, 1);
+  else if (act === 'add-ex') { openRoutinePicker(d.id); return; }
+  reDirty = true; reRerender();
+}
+async function onReFootClick(e) {
+  const b = e.target.closest('[data-foot]'); if (!b) return;
+  if (b.dataset.foot === 'cancel') closeRoutineEditor();
+  else if (b.dataset.foot === 'save') await saveRoutineFromEditor();
+  else if (b.dataset.foot === 'delete') {
+    if (!confirm('Delete this routine? Workouts you have already logged stay in your history.')) return;
+    customRoutines = customRoutines.filter(r => r.id !== activeRoutineId);
+    activeRoutineId = customRoutines.length ? customRoutines[0].id : null; customDayOverride = null;
+    await saveRoutinesToCloud();
+    closeRoutineEditor(true); renderWorkoutPlan();
+  }
+}
+async function saveRoutineFromEditor() {
+  const r = routineDraft; if (!r) return;
+  r.name = cleanExerciseName(r.name) || 'My Routine';
+  const used = new Set();
+  r.days.forEach((d, i) => {
+    let n = cleanExerciseName(d.name) || `Day ${i + 1}`; const base = n; let k = 2;
+    while (used.has(n.toLowerCase())) n = `${base} ${k++}`;
+    used.add(n.toLowerCase()); d.name = n;
+    d.exercises.forEach(e => { e.name = cleanExerciseName(e.name); e.sets = String(e.sets || '').trim() || '3 × 10'; });
+  });
+  const empty = r.days.find(d => !d.exercises.length);
+  if (empty) { reError(`Add at least one exercise to ${empty.name}, or delete that day.`); return; }
+  const at = customRoutines.findIndex(x => x.id === r.id);
+  if (at >= 0) customRoutines[at] = r; else customRoutines.push(r);
+  activeRoutineId = r.id; workoutPlanMode = 'custom'; customDayOverride = null;
+  const sel = document.getElementById('setWorkoutPlanMode'); if (sel) sel.value = 'custom';
+  await saveRoutinesToCloud({ workoutPlanMode: 'custom' });
+  closeRoutineEditor(true);
+  workoutSessionState = {}; workoutNotesState = {}; workoutVariationState = {}; todaysSwaps = {};
+  renderWorkoutPlan(); if (typeof updateStats === 'function') updateStats();
+}
+
+// ── the library picker (second sheet) ──
+function openRoutinePicker(dayId) {
+  rePickDay = dayId; reQuery = ''; reGroup = 'All'; reCreateOpen = false; reNewGroup = null;
+  const d = reDay(dayId);
+  document.getElementById('rePickTitle').textContent = `Add to ${d ? d.name || 'this day' : 'this day'}`;
+  document.getElementById('rePickSearch').value = '';
+  document.getElementById('rePicker').style.display = 'flex';
+  renderPickerGroups(); renderPickerList(); renderPickerCreate();
+}
+function closeRoutinePicker() { document.getElementById('rePicker').style.display = 'none'; reRerender(); }
+function renderPickerGroups() {
+  const hasMine = customLibrary.length > 0;
+  document.getElementById('rePickGroups').innerHTML = ['All', ...MUSCLE_MAP_GROUPS, ...(hasMine ? ['Mine'] : [])]
+    .map(g => `<button type="button" class="re-g${g === reGroup ? ' on' : ''}" data-g="${g}">${g === 'Mine' ? 'My exercises' : g}</button>`).join('');
+}
+function renderPickerList() {
+  const d = reDay(rePickDay); const inDay = new Set(d ? d.exercises.map(e => libKey(e.name)) : []);
+  const q = reQuery.trim().toLowerCase();
+  const items = exerciseLibrary().filter(e => (reGroup === 'All' || e.group === reGroup || (reGroup === 'Mine' && e.source === 'mine')) && (!q || e.name.toLowerCase().includes(q)));
+  let html = '', last = null;
+  items.forEach(e => {
+    if (reGroup === 'All' && e.group !== last) { html += `<div class="re-grp-head">${escapeHtml(e.group)}</div>`; last = e.group; }
+    const on = inDay.has(libKey(e.name));
+    html += `<div class="re-item"><div class="re-item-main"><div class="re-item-name">${escapeHtml(e.name)}</div><div class="re-item-sub">${escapeHtml(e.group)} · ${escapeHtml(e.sets)}</div></div><button type="button" class="re-pick${on ? ' on' : ''}" data-pick="${escapeHtml(e.name)}" aria-label="${on ? 'Remove' : 'Add'} ${escapeHtml(e.name)}">${on ? '✓ Added' : '＋ Add'}</button></div>`;
+  });
+  document.getElementById('rePickList').innerHTML = html || `<div class="re-empty">No match. Create it below and it joins your library.</div>`;
+}
+function togglePickedExercise(name) {
+  const d = reDay(rePickDay); if (!d) return;
+  const at = d.exercises.findIndex(e => libKey(e.name) === libKey(name));
+  if (at >= 0) d.exercises.splice(at, 1);
+  else { const lib = exerciseLibrary().find(e => e.name === name); if (lib) d.exercises.push({ name: lib.name, sets: lib.sets }); }
+  reDirty = true; const list = document.getElementById('rePickList'), top = list.scrollTop; renderPickerList(); list.scrollTop = top;
+}
+function renderPickerCreate() {
+  const box = document.getElementById('rePickCreate');
+  const keepName = (document.getElementById('reNewName') || {}).value || '', keepSets = (document.getElementById('reNewSets') || {}).value;
+  if (!reCreateOpen) { box.innerHTML = `<button type="button" class="re-create-toggle" data-cact="toggle">＋ Create my own exercise</button>`; return; }
+  box.innerHTML = `
+    <div class="re-create-form">
+      <div class="re-error" id="reCreateError" hidden></div>
+      <input id="reNewName" class="re-input" placeholder="Exercise name" maxlength="60" autocomplete="off" value="${escapeHtml(keepName)}">
+      <input id="reNewSets" class="re-input" placeholder="3 × 10  (timed: 3 × 30 sec)" maxlength="22" value="${escapeHtml(keepSets == null ? '3 × 10' : keepSets)}">
+      <div class="re-groups">${MUSCLE_MAP_GROUPS.map(g => `<button type="button" class="re-g${g === reNewGroup ? ' on' : ''}" data-cact="grp" data-g="${g}">${g}</button>`).join('')}</div>
+      <div class="re-hint">Pick the muscle it works so your muscle map counts it.</div>
+      <div class="re-create-row"><button type="button" class="btn btn-primary" data-cact="create">Create and add</button><button type="button" class="btn btn-ghost" data-cact="toggle">Cancel</button></div>
+    </div>`;
+}
+function onReCreateClick(e) {
+  const b = e.target.closest('[data-cact]'); if (!b) return;
+  const act = b.dataset.cact;
+  if (act === 'toggle') { reCreateOpen = !reCreateOpen; renderPickerCreate(); }
+  else if (act === 'grp') { reNewGroup = b.dataset.g; renderPickerCreate(); }
+  else if (act === 'create') {
+    const err = m => { const x = document.getElementById('reCreateError'); x.textContent = m; x.hidden = false; };
+    const name = cleanExerciseName(document.getElementById('reNewName').value);
+    const sets = (document.getElementById('reNewSets').value || '').trim() || '3 × 10';
+    if (!name) return err('Enter an exercise name.');
+    const known = exerciseLibrary().find(x => libKey(x.name) === libKey(name));
+    if (!known && !reNewGroup && !muscleGroupFor(name)) return err('Pick the muscle it works.');
+    if (!known) addToCustomLibrary(name, sets, reNewGroup);
+    const entry = exerciseLibrary().find(x => libKey(x.name) === libKey(name));
+    const d = reDay(rePickDay);
+    if (d && entry && !d.exercises.some(x => libKey(x.name) === libKey(entry.name))) d.exercises.push({ name: entry.name, sets: known ? entry.sets : sets });
+    reDirty = true; reCreateOpen = false; reNewGroup = null;
+    saveRoutinesToCloud();
+    renderPickerGroups(); renderPickerList(); renderPickerCreate();
+  }
+}
+
+function wireRoutineButtons(root) {
+  (root || document).querySelectorAll('.routine-edit-btn').forEach(b => b.addEventListener('click', () => { if (typeof openRoutineEditor === 'function') openRoutineEditor(); }));
+}
+
+{ const _b = document.getElementById('setupRoutineBtn'); if (_b) _b.addEventListener('click', () => openRoutineEditor()); }
+
 function currentPlanKey() {
   if (workoutPlanMode === 'fullbody') return 'fullbody';
+  if (workoutPlanMode === 'custom') return customPlanKey();
   if (workoutPlanMode === 'ppl') return pplDayOverride || nextPPLDay();
   return splitDayOverride || nextWorkoutDay();
 }
@@ -11510,24 +11941,27 @@ function currentPlanKey() {
 // active PPL override) so the two never disagree.
 function currentPlanDisplayName() {
   const key = currentPlanKey();
+  if (workoutPlanMode === 'custom') { const d = customCurrentDay(); return d ? d.name : 'My Routine'; }
   if (key === 'fullbody') return 'Full Body';
   if (key === 'A' || key === 'B') return 'Day ' + key;
   return key; // Push / Pull / Legs are already display-ready
 }
 
 async function saveWorkoutPlanCustomizations() {
-  await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { customWorkoutExercises, hiddenWorkoutExercises, exerciseOrderOverride, supersetPairs, exerciseRestOverride }, { merge: true });
+  await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { customWorkoutExercises, hiddenWorkoutExercises, exerciseOrderOverride, supersetPairs, exerciseRestOverride, customLibrary }, { merge: true });
 }
 
 async function saveNewWorkoutExercise() {
   const nameEl = document.getElementById('newExerciseName');
   const setsEl = document.getElementById('newExerciseSets');
-  const name = nameEl.value.trim();
+  let name = nameEl.value.trim();
   const sets = setsEl.value.trim() || '3 × 10';
   if (!name) { alert('Enter an exercise name.'); return; }
+  if (cleanExerciseName(name) !== name) { name = cleanExerciseName(name); if (!name) { alert('Enter an exercise name.'); return; } }
   if ([...document.querySelectorAll('.workout-exercise-block')].some(b => (b.dataset.exercise || '').toLowerCase() === name.toLowerCase())) { alert(`${name} is already on today's list.`); return; }
   const key = currentPlanKey();
   customWorkoutExercises[key] = [...(customWorkoutExercises[key] || []), { name, sets, rest: REST_SECONDS }];
+  addToCustomLibrary(name, sets); // anything created here is offered again in the library
   await saveWorkoutPlanCustomizations();
   renderWorkoutPlan();
 }
@@ -11653,6 +12087,7 @@ function renderWorkoutPlan() {
   if (titleEl) {
     const modeLabel = workoutPlanMode === 'fullbody' ? 'Full Body'
       : workoutPlanMode === 'ppl' ? 'PPL'
+      : workoutPlanMode === 'custom' ? (activeRoutine() ? activeRoutine().name : 'My Routine')
       : 'Upper/Lower';
     titleEl.textContent = `Workout Plan · Planet Fitness, ${modeLabel}`;
   }
@@ -11750,6 +12185,51 @@ function renderWorkoutPlan() {
         ${order.map(d => `<div class="chip ppl-day-chip${d === next ? ' on' : ''}" data-ppl-day="${d}">${d}</div>`).join('')}
       </div>`;
     footerHtml = `Sore, tired, or just feel like something else? Tap a different day above — it'll stick for today, then the rotation continues normally from whatever you actually do. Check off each set as you finish it — a rest timer starts automatically. Log it as <b>Strength</b> below (or use the timer) — the plan moves to ${other} Day once you do.`;
+  } else if (workoutPlanMode === 'custom') {
+    const routine = activeRoutine();
+    if (!routine || !routine.days.length) {
+      box.innerHTML = `
+        <div class="routine-empty">
+          <div style="font-weight:800;margin-bottom:6px">Build your own routine</div>
+          <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">Choose your training days and pick each day's exercises from the library. Every workout you log moves you on to the next day automatically.</div>
+          <button type="button" class="btn btn-primary btn-sm routine-edit-btn" style="width:100%">Set up my routine</button>
+        </div>`;
+      wireRoutineButtons(box);
+      return;
+    }
+    const day = customCurrentDay();
+    plan = day.exercises;
+    const daysSince = daysSinceLastWorkout();
+    const showFeelingCheck = !feelingCheckDismissed && daysSince !== null && daysSince <= 2;
+    let feelingCheckHtml = '';
+    if (showFeelingCheck) {
+      if (feelingCheckStep === 'initial') {
+        feelingCheckHtml = `
+          <div class="feeling-check-card" style="background:var(--input-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px">How's your body feeling today?</div>
+            <div style="display:flex;gap:8px">
+              <button type="button" class="btn btn-secondary btn-sm feeling-good-btn" style="flex:1">Feeling good</button>
+              <button type="button" class="btn btn-secondary btn-sm feeling-sore-btn" style="flex:1">A little sore</button>
+            </div>
+          </div>`;
+      } else if (feelingCheckStep === 'fullbody-ack') {
+        feelingCheckHtml = `
+          <div class="feeling-check-card" style="background:var(--input-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px">
+            <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px">Totally fine to go lighter today — or tap a different day below if another one suits how you feel.</div>
+            <button type="button" class="btn btn-secondary btn-sm feeling-ack-btn" style="width:100%">Got it</button>
+          </div>`;
+      }
+    }
+    headerHtml = `
+      ${feelingCheckHtml}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">${escapeHtml(day.name)}</div>
+        <div style="font-size:11px;color:var(--ink-soft)">${customDayOverride ? '' : 'next up · '}${totalStrengthSessions()} sessions logged so far</div>
+      </div>
+      <div class="chip-row custom-day-row" style="margin-bottom:12px">
+        ${routine.days.map(d => `<div class="chip custom-day-chip${d.id === day.id ? ' on' : ''}" data-custom-day="${d.id}">${escapeHtml(d.name)}</div>`).join('')}
+      </div>`;
+    footerHtml = `Tap a different day above to switch — it'll stick for today, then the cycle continues from whatever you actually log. Check off each set as you finish it. <button type="button" class="routine-edit-link routine-edit-btn">Edit my routine</button>`;
   } else {
     const next = splitDayOverride || nextWorkoutDay();
     const other = next === 'A' ? 'B' : 'A';
@@ -15394,6 +15874,7 @@ function showTrainerSummary() {
   const streak = currentLoggingStreak();
   const planLabel = workoutPlanMode === 'fullbody' ? 'Full Body'
     : workoutPlanMode === 'ppl' ? 'Push / Pull / Legs'
+    : workoutPlanMode === 'custom' ? (activeRoutine() ? `Custom routine (${activeRoutine().name})` : 'Custom routine')
     : 'Upper / Lower';
 
   const weeks = weeklyVolumeHistory(8).slice(1).reverse(); // oldest first, complete weeks only
@@ -15533,7 +16014,10 @@ document.getElementById('exportJsonBtn').addEventListener('click', () => {
       exerciseOrderOverride,
       supersetPairs,
       exerciseRestOverride,
-      muscleGoals
+      muscleGoals,
+      customRoutines,
+      activeRoutineId,
+      customLibrary
     }
   };
   // Note: this file contains your API keys and OAuth secrets in plain
