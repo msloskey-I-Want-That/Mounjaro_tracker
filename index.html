@@ -848,6 +848,7 @@ body {
    hold 5 characters like 142.5) take everything left over instead of splitting
    the space proportionally, which left it only ~42px wide on a 375pt phone. */
 .set-reps-field { flex: 0 0 52px; }
+.set-row.no-weight .set-reps-field { flex: 1 1 auto; } /* plank, knee raise…: no weight box, so the time/reps box takes the room */
 .set-field input {
   width: 100%; height: 44px; padding: 0 4px 4px; box-sizing: border-box;
   border: 1.5px solid var(--line); border-radius: 12px;
@@ -4579,7 +4580,7 @@ function computeBadgeData(asOfDate) {
       if (vol > maxSessionVolume) maxSessionVolume = vol;
       Object.entries(x.sets).forEach(([name, setArr]) => {
         uniqueExerciseNames.add(name);
-        const workingSets = setArr.filter(s => !s.warmup);
+        const workingSets = setArr.filter(isWeightedWorkingSet);
         if (!workingSets.length) return; // only warm-ups logged this session — nothing to compare for a PR
         const maxThisSession = Math.max(...workingSets.map(s => s.weight || 0));
         if (!exerciseMaxByName[name] || maxThisSession > exerciseMaxByName[name]) {
@@ -5786,8 +5787,8 @@ function computeDailyActivityLevel(e) {
 // Everything counts direct working sets only (warm-ups excluded), so a
 // muscle that mostly works as a helper (shoulders in a press) reads lower
 // than it really worked. Treat it as a guide, not a measurement.
-const MUSCLE_MAP_GROUPS = ['Chest', 'Shoulders', 'Triceps', 'Back', 'Rear Delts', 'Biceps', 'Quads', 'Hamstrings', 'Calves', 'Core'];
-const MUSCLE_GOAL_DEFAULTS = { Chest: 10, Back: 10, Quads: 10, Hamstrings: 8, Shoulders: 8, Triceps: 8, Biceps: 8, 'Rear Delts': 6, Calves: 6, Core: 6 };
+const MUSCLE_MAP_GROUPS = ['Chest', 'Shoulders', 'Triceps', 'Back', 'Rear Delts', 'Biceps', 'Forearms', 'Quads', 'Hamstrings', 'Calves', 'Core'];
+const MUSCLE_GOAL_DEFAULTS = { Chest: 10, Back: 10, Quads: 10, Hamstrings: 8, Shoulders: 8, Triceps: 8, Biceps: 8, 'Rear Delts': 6, Calves: 6, Core: 6, Forearms: 6 };
 const MUSCLE_COLORS = { teal: 'var(--teal)', amber: '#FFB020', red: '#FF4D5E', green: '#5CE6C0' };
 let muscleGoals = {};      // { group: sets/week } — only the ones you've changed; synced in settings
 let muscleMapMode = 'volume';
@@ -6046,7 +6047,7 @@ function renderMuscleMap() {
     m('Chest', 'ellipse', e(55, 52, 10, 9)), m('Chest', 'ellipse', e(75, 52, 10, 9)),
     m('Core', 'rect', 'x="55" y="64" width="20" height="32" rx="8"'),
     m('Biceps', 'ellipse', e(30, 64, 6.5, 13)), m('Biceps', 'ellipse', e(100, 64, 6.5, 13)),
-    n('ellipse', e(27, 91, 5, 13)), n('ellipse', e(103, 91, 5, 13)), n('circle', 'cx="25" cy="108" r="4.5"'), n('circle', 'cx="105" cy="108" r="4.5"'),
+    m('Forearms', 'ellipse', e(27, 91, 5, 13)), m('Forearms', 'ellipse', e(103, 91, 5, 13)), n('circle', 'cx="25" cy="108" r="4.5"'), n('circle', 'cx="105" cy="108" r="4.5"'),
     n('rect', 'x="50" y="98" width="30" height="13" rx="6"'),
     m('Quads', 'ellipse', e(54, 140, 10.5, 28)), m('Quads', 'ellipse', e(76, 140, 10.5, 28)),
     n('ellipse', e(54, 192, 6.5, 19)), n('ellipse', e(76, 192, 6.5, 19)),
@@ -6062,7 +6063,7 @@ function renderMuscleMap() {
     m('Rear Delts', 'ellipse', e(169, 42, 9, 9)), m('Rear Delts', 'ellipse', e(221, 42, 9, 9)),
     backShape,
     m('Triceps', 'ellipse', e(160, 64, 6.5, 13)), m('Triceps', 'ellipse', e(230, 64, 6.5, 13)),
-    n('ellipse', e(157, 91, 5, 13)), n('ellipse', e(233, 91, 5, 13)), n('circle', 'cx="155" cy="108" r="4.5"'), n('circle', 'cx="235" cy="108" r="4.5"'),
+    m('Forearms', 'ellipse', e(157, 91, 5, 13)), m('Forearms', 'ellipse', e(233, 91, 5, 13)), n('circle', 'cx="155" cy="108" r="4.5"'), n('circle', 'cx="235" cy="108" r="4.5"'),
     n('ellipse', e(185, 106, 10, 9)), n('ellipse', e(205, 106, 10, 9)),
     m('Hamstrings', 'ellipse', e(184, 141, 10.5, 26)), m('Hamstrings', 'ellipse', e(206, 141, 10.5, 26)),
     m('Calves', 'ellipse', e(184, 191, 7.5, 18)), m('Calves', 'ellipse', e(206, 191, 7.5, 18)),
@@ -6445,7 +6446,7 @@ function renderWeightProgressChart(exerciseName) {
     if (!e.ex) return;
     e.ex.forEach(x => {
       if (x.type === 'Strength' && x.sets && x.sets[exerciseName] && x.sets[exerciseName].length) {
-        const workingSets = x.sets[exerciseName].filter(s => !s.warmup);
+        const workingSets = x.sets[exerciseName].filter(isWeightedWorkingSet);
         if (!workingSets.length) return; // only a warm-up logged that session — skip rather than plot it
         const maxWeight = Math.max(...workingSets.map(s => s.weight || 0));
         dates.push(fmtDate(e.date));
@@ -8235,7 +8236,7 @@ const AI_SAFETY_INSTRUCTIONS = `Important constraints: describe only patterns ac
 // genuinely can't do. Both are manual, on-demand calls, never automatic.
 // Sent alongside the data so the AI knows what each field means. (130 matches the fasting-glucose
 // target used elsewhere in the app.)
-const AI_DATA_LEGEND = "Field notes: weight is in lbs and dose in mg. glucose_fasting_mgdl is the first-thing-in-the-morning reading and glucose_2hr_post_meal_mgdl is the reading 2 hours after a meal, both in mg/dL; this person's fasting target is under 130, and glucose is usually only checked on some days, so gaps are normal. meals lists what was eaten (calories and grams of protein/carbs/fat). water_oz is ounces. day_status 'sick' or 'rest' marks a deliberate rest day. 'effort' on a workout is the person's own 1-5 rating of how hard it felt (5 = hardest). strength_sets lists each exercise as weightxreps for every working set (in lbs; warm-up sets are left out), with workout_day being the Push/Pull/Legs (or split) day. injection:true marks the day the weekly dose was taken.";
+const AI_DATA_LEGEND = "Field notes: weight is in lbs and dose in mg. glucose_fasting_mgdl is the first-thing-in-the-morning reading and glucose_2hr_post_meal_mgdl is the reading 2 hours after a meal, both in mg/dL; this person's fasting target is under 130, and glucose is usually only checked on some days, so gaps are normal. meals lists what was eaten (calories and grams of protein/carbs/fat). water_oz is ounces. day_status 'sick' or 'rest' marks a deliberate rest day. 'effort' on a workout is the person's own 1-5 rating of how hard it felt (5 = hardest). strength_sets lists each exercise as weightxreps for every working set (in lbs; warm-up sets are left out), with workout_day being the Push/Pull/Legs (or split) day. injection:true marks the day the weekly dose was taken. Bodyweight sets appear as BWxreps and timed holds/carries as seconds (45s, or 25x40s for 25 lb carried 40 seconds).";
 
 function gatherRecentHealthData(days) {
   const cutoff = new Date(todayStr());
@@ -8267,11 +8268,11 @@ function gatherRecentHealthData(days) {
           if (x.planDay && typeof x.planDay === 'string' && !row.workout_day) row.workout_day = x.planDay;
           Object.entries(x.sets).slice(0, 12).forEach(([name, sets]) => {
             if (!Array.isArray(sets)) return;
-            const working = sets.filter(s => s && !s.warmup && s.weight > 0 && s.reps > 0).slice(0, 10);
+            const working = sets.filter(s => s && !s.warmup && ((s.weight > 0 && s.reps > 0) || s.timed || s.bodyweight)).slice(0, 10);
             if (!working.length) return;
             const variation = x.exerciseVariations && typeof x.exerciseVariations[name] === 'string' ? ` [${x.exerciseVariations[name]}]` : '';
             const note = x.notes && x.notes[name] ? ` — note: ${String(x.notes[name]).slice(0, 100)}` : '';
-            lines.push(`${name}${variation}: ${working.map(s => `${s.weight}x${s.reps}`).join(', ')}${note}`);
+            lines.push(`${name}${variation}: ${working.map(s => fmtSet(s, 'x')).join(', ')}${note}`);
           });
         });
         if (lines.length) row.strength_sets = lines;
@@ -9106,14 +9107,21 @@ async function writeEx(date, ex) {
 function gatherWorkoutSets() {
   const result = {};
   Object.keys(workoutSessionState).forEach(exName => {
+    const mode = exerciseMode(exName);
     const filled = workoutSessionState[exName]
-      .filter(s => s.done && s.weight !== '' && s.reps !== '' && s.weight != null && s.reps != null)
+      .filter(s => s.done)
       .map(s => {
-        const out = { weight: parseFloat(s.weight), reps: parseInt(s.reps, 10) };
-        if (s.warmup) out.warmup = true;
+        const reps = parseInt(s.reps, 10), weight = parseFloat(s.weight);
+        let out = null;
+        // "reps" is the box on the right of the row; for timed exercises it holds seconds.
+        if (mode === 'weighted') { if (weight > 0 && reps > 0) out = { weight, reps }; }
+        else if (mode === 'bodyweight') { if (reps > 0) out = { weight: 0, reps, bodyweight: true }; }
+        else if (mode === 'timed') { if (reps > 0) out = { weight: 0, secs: reps, timed: true }; }
+        else if (mode === 'timedLoaded') { if (reps > 0) out = { weight: weight > 0 ? weight : 0, secs: reps, timed: true }; }
+        if (out && s.warmup) out.warmup = true;
         return out;
       })
-      .filter(s => s.weight > 0 && s.reps > 0);
+      .filter(Boolean);
     if (filled.length) result[exName] = filled;
   });
   return Object.keys(result).length ? result : null;
@@ -9158,7 +9166,7 @@ function buildWorkoutHistorySummaries() {
     const exerciseRows = [];
     let prCount = 0;
     Object.entries(combinedSets).forEach(([name, setArr]) => {
-      const working = setArr.filter(s => !s.warmup);
+      const working = setArr.filter(isWeightedWorkingSet);
       const best = working.length ? working.reduce((b, s) => (s.weight > b.weight ? s : b), working[0]) : null;
       exerciseRows.push({ name, setCount: setArr.length, bestWeight: best ? best.weight : null, bestReps: best ? best.reps : null });
       if (best) {
@@ -9245,13 +9253,13 @@ function lastSessionVolumeForPlanDay(planKey) {
 function detectSessionPRs(sets) {
   const prs = [];
   Object.keys(sets).forEach(exName => {
-    const working = sets[exName].filter(s => !s.warmup);
+    const working = sets[exName].filter(isWeightedWorkingSet);
     if (!working.length) return;
     const todayMax = Math.max(...working.map(s => s.weight));
     let priorMax = 0, hasPrior = false;
     entries.forEach(e => (e.ex || []).forEach(x => {
       if (x.type === 'Strength' && x.sets && x.sets[exName]) {
-        x.sets[exName].filter(s => !s.warmup).forEach(s => {
+        x.sets[exName].filter(isWeightedWorkingSet).forEach(s => {
           hasPrior = true;
           if ((s.weight || 0) > priorMax) priorMax = s.weight;
         });
@@ -9308,7 +9316,7 @@ function showWorkoutSummary(sets, minutes, totalWeight, prs) {
           <div style="margin-bottom:10px">
             <div style="font-size:13px;font-weight:700;margin-bottom:4px">${exName}</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
-              ${exSets.map(s => `<span style="font-family:var(--font-num);font-size:12px;background:var(--input-bg);border-radius:6px;padding:3px 8px;${s.warmup ? 'color:var(--ink-soft);opacity:0.75' : 'color:var(--ink)'};font-weight:700">${s.warmup ? 'W · ' : ''}${s.weight}×${s.reps}</span>`).join('')}
+              ${exSets.map(s => `<span style="font-family:var(--font-num);font-size:12px;background:var(--input-bg);border-radius:6px;padding:3px 8px;${s.warmup ? 'color:var(--ink-soft);opacity:0.75' : 'color:var(--ink)'};font-weight:700">${s.warmup ? 'W · ' : ''}${fmtSet(s, '×')}</span>`).join('')}
             </div>
           </div>
         `).join('')}
@@ -9736,20 +9744,25 @@ const WORKOUT_PLAN_PPL = {
     { name: 'Chest Press (machine)', sets: '3 × 10–12', rest: 120 },
     { name: 'Shoulder Press (machine)', sets: '3 × 10–12', rest: 120 },
     { name: 'Pec Deck (machine)', sets: '2 × 10–12', rest: 75 },
-    { name: 'Triceps Pushdown (cable)', sets: '3 × 12–15', rest: 75 }
+    { name: 'Triceps Pushdown (cable)', sets: '3 × 12–15', rest: 75 },
+    { name: 'Cable Crunch', sets: '3 × 12–15', rest: 60 }
   ],
   Pull: [
     { name: 'Lat Pulldown', sets: '3 × 10–12', rest: 120 },
     { name: 'Seated Row', sets: '3 × 10–12', rest: 120 },
     { name: 'Reverse Fly (machine)', sets: '2 × 10–12', rest: 75 },
-    { name: 'Bicep Curl', sets: '3 × 12–15', rest: 75 }
+    { name: 'Bicep Curl', sets: '3 × 12–15', rest: 75 },
+    { name: 'Wrist Curl (dumbbell)', sets: '3 × 12–15', rest: 60 },
+    { name: 'Reverse Wrist Curl (dumbbell)', sets: '2 × 15–20', rest: 60 }
   ],
   Legs: [
     { name: 'Leg Press', sets: '3 × 10–12', rest: 150 },
     { name: 'Leg Extension (machine)', sets: '3 × 10–12', rest: 90 },
     { name: 'Leg Curl (machine)', sets: '3 × 10–12', rest: 90 },
     { name: 'Calf Raise (machine)', sets: '3 × 12–15', rest: 60 },
-    { name: 'Plank', sets: '3 × 30–45 sec', rest: 60 }
+    { name: 'Plank', sets: '3 × 30–45 sec', rest: 60 },
+    { name: 'Hanging Knee Raise', sets: '3 × 10–15', rest: 60 },
+    { name: 'Farmers Carry (dumbbells)', sets: '3 × 40–60 sec', rest: 60 }
   ]
 };
 
@@ -9770,7 +9783,12 @@ const EXERCISE_MUSCLE_GROUP = {
   'Leg Extension (machine)': 'Quads',
   'Leg Curl (machine)': 'Hamstrings',
   'Calf Raise (machine)': 'Calves',
-  'Plank': 'Core'
+  'Plank': 'Core',
+  'Cable Crunch': 'Core',
+  'Hanging Knee Raise': 'Core',
+  'Wrist Curl (dumbbell)': 'Forearms',
+  'Reverse Wrist Curl (dumbbell)': 'Forearms',
+  'Farmers Carry (dumbbells)': 'Forearms'
 };
 
 // Fallback for any exercise not in the table above — checked in order,
@@ -9785,11 +9803,12 @@ const MUSCLE_GROUP_KEYWORDS = [
   [/calf/i, 'Calves'],
   [/row|lat\s*pull|pulldown|pull-?up/i, 'Back'],
   [/rear\s*delt|reverse\s*fly|face\s*pull/i, 'Rear Delts'],
+  [/wrist\s*curl|reverse\s*curl|forearm|farmer|grip|dead\s*hang|pinch/i, 'Forearms'], // before the generic curl rule below
   [/curl/i, 'Biceps'],
   [/tricep|pushdown|dip/i, 'Triceps'],
   [/chest|bench|pec|fly/i, 'Chest'],
   [/shoulder|overhead\s*press|military/i, 'Shoulders'],
-  [/plank|crunch|\bab\b|core/i, 'Core']
+  [/plank|crunch|\bab\b|core|knee\s*raise|leg\s*raise|sit-?up|russian\s*twist|torso\s*rot/i, 'Core']
 ];
 
 function muscleGroupFor(exerciseName) {
@@ -9799,6 +9818,44 @@ function muscleGroupFor(exerciseName) {
   }
   return null; // genuinely unrecognized name - nothing to suggest
 }
+
+// ── EXERCISE MODES ──
+// Not everything is "weight × reps". Four ways a set can be logged:
+//   weighted     lb + reps                    (the default; what PRs, charts, 1RM and progression use)
+//   bodyweight   reps only                    (hanging knee raise, push-ups…)
+//   timed        seconds only                 (plank, dead hang…)
+//   timedLoaded  lb + seconds                 (farmers carry…)
+// Bodyweight and timed sets are saved and shown like any other set and count toward the muscle map,
+// but they have no lifted weight to compare, so PR / chart / 1RM / progression logic ignores them.
+const EXERCISE_MODE = { 'Plank': 'timed', 'Farmers Carry (dumbbells)': 'timedLoaded', 'Hanging Knee Raise': 'bodyweight' };
+function planTargetTextFor(name) { // the "3 × 45 sec" text from whichever plan (or custom exercise) lists this exercise
+  const lists = [];
+  const add = v => { if (Array.isArray(v)) lists.push(v); else if (v && typeof v === 'object') Object.values(v).forEach(add); };
+  add(WORKOUT_PLAN_PPL); if (typeof WORKOUT_PLAN !== 'undefined') add(WORKOUT_PLAN); if (typeof WORKOUT_PLAN_FULLBODY !== 'undefined') add(WORKOUT_PLAN_FULLBODY); if (typeof customWorkoutExercises !== 'undefined') add(customWorkoutExercises);
+  for (const l of lists) { const e = l.find(x => x && x.name === name); if (e) return e.sets || null; }
+  return null;
+}
+function exerciseMode(name) {
+  if (EXERCISE_MODE[name]) return EXERCISE_MODE[name];
+  const target = planTargetTextFor(name);
+  if (target && /sec/i.test(target)) return /carry|farmer|sled|drag/i.test(name) ? 'timedLoaded' : 'timed'; // custom exercises say it in their target
+  if (/plank|dead\s*hang|wall\s*sit|\bhold\b/i.test(name)) return 'timed';
+  if (/carry|farmer/i.test(name)) return 'timedLoaded';
+  if (/knee\s*raise|leg\s*raise|sit-?up|push-?up|bodyweight/i.test(name)) return 'bodyweight';
+  return 'weighted';
+}
+function isWeightedWorkingSet(s) { return !!s && !s.warmup && !s.timed && !s.bodyweight && s.weight > 0 && s.reps > 0; }
+function fmtSet(s, sep = '×') {
+  if (s.timed) return s.weight > 0 ? `${s.weight}${sep}${s.secs}s` : `${s.secs}s`;
+  if (s.bodyweight || !(s.weight > 0)) return `BW${sep}${s.reps}`;
+  return `${s.weight}${sep}${s.reps}`;
+}
+function fmtPrevSet(s) { // the "last …" text in a set row
+  if (s.timed) return s.weight > 0 ? `${s.weight} lb × ${s.secs} s` : `${s.secs} s`;
+  if (s.bodyweight || !(s.weight > 0)) return `${s.reps} reps`;
+  return `${s.weight} lb × ${s.reps}`;
+}
+function bestOf(sets, pick) { const v = (sets || []).filter(s => !s.warmup).map(pick).filter(n => n > 0); return v.length ? Math.max(...v) : null; }
 
 // Common Planet Fitness equipment per muscle group, used as candidates
 // for a same-muscle-group swap — deliberately broader than just what's
@@ -9855,6 +9912,13 @@ const SWAP_SUGGESTIONS_BY_GROUP = {
     { name: 'Cable Crunch', sets: '3 × 12–15' }
   ]
 };
+SWAP_SUGGESTIONS_BY_GROUP['Forearms'] = [
+  { name: 'Wrist Curl (dumbbell)', sets: '3 × 12–15' },
+  { name: 'Reverse Wrist Curl (dumbbell)', sets: '2 × 15–20' },
+  { name: 'Farmers Carry (dumbbells)', sets: '3 × 40–60 sec' },
+  { name: 'Dead Hang', sets: '3 × 20–40 sec' }
+];
+if (SWAP_SUGGESTIONS_BY_GROUP['Core'] && !SWAP_SUGGESTIONS_BY_GROUP['Core'].some(s => s.name === 'Hanging Knee Raise')) SWAP_SUGGESTIONS_BY_GROUP['Core'].push({ name: 'Hanging Knee Raise', sets: '3 × 10–15' });
 
 // Alternatives for a busy machine, targeting the same muscle group,
 // excluding the exercise itself and anything already elsewhere in
@@ -10206,7 +10270,7 @@ function getOrInitSetState(exerciseName, setCount, setsTarget) {
     workoutSessionState[exerciseName] = Array.from({ length: initLength }, (_, i) => {
       const suggested = suggestion && suggestion.sets[i];
       const weight = suggested ? suggested.weight : (prev && prev[i]) ? prev[i].weight : '';
-      const reps = suggested ? suggested.reps : (prev && prev[i]) ? prev[i].reps : '';
+      const reps = suggested ? suggested.reps : (prev && prev[i]) ? (prev[i].reps ?? prev[i].secs ?? '') : '';
       return { weight, reps, done: false, warmup: false };
     });
   }
@@ -10240,7 +10304,7 @@ function fullExerciseHistory(exerciseName) {
     e.ex.forEach(x => {
       if (x.type === 'Strength' && x.sets && x.sets[exerciseName] && x.sets[exerciseName].length) {
         const sets = x.sets[exerciseName];
-        const workingSets = sets.filter(s => !s.warmup);
+        const workingSets = sets.filter(isWeightedWorkingSet);
         const bestSet = workingSets.length
           ? workingSets.reduce((best, s) => (s.weight > best.weight ? s : best), workingSets[0])
           : null;
@@ -10263,7 +10327,7 @@ function bestWeightForExercise(exerciseName) {
   entries.filter(e => e.ex && e.ex.length).forEach(e => {
     e.ex.forEach(x => {
       if (x.type !== 'Strength' || !x.sets || !x.sets[exerciseName]) return;
-      const workingSets = x.sets[exerciseName].filter(s => !s.warmup);
+      const workingSets = x.sets[exerciseName].filter(isWeightedWorkingSet);
       if (!workingSets.length) return;
       const sessionBest = workingSets.reduce((b, s) => (s.weight > b.weight ? s : b), workingSets[0]);
       if (!best || sessionBest.weight > best) best = sessionBest.weight;
@@ -10310,7 +10374,7 @@ function allExercisePRs() {
       if (x.type !== 'Strength' || !x.sets) return;
       Object.entries(x.sets).forEach(([name, sets]) => {
         sessionCounts[name] = (sessionCounts[name] || 0) + 1;
-        const workingSets = sets.filter(s => !s.warmup);
+        const workingSets = sets.filter(isWeightedWorkingSet);
         if (!workingSets.length) return;
         const best = workingSets.reduce((b, s) => (s.weight > b.weight ? s : b), workingSets[0]);
         if (!bestByExercise[name] || best.weight > bestByExercise[name].weight) {
@@ -10361,7 +10425,7 @@ function oneRepMaxTrend(history) {
   return history.map(h => {
     let best = null;
     (h.sets || []).forEach(s => {
-      if (s.warmup) return;
+      if (s.warmup || s.timed || s.bodyweight) return;
       const e = estimatedOneRepMax(s.weight, s.reps);
       if (e != null && (best == null || e > best)) best = e;
     });
@@ -10378,9 +10442,12 @@ function showExerciseHistory(exerciseName) {
   // Best-set weight over time — same lightweight sparkline approach used
   // for the weight trend elsewhere in the app, just scoped to one exercise.
   let chartHtml = '';
-  const withWeight = history.filter(h => h.bestWeight != null);
+  const exMode = exerciseMode(exerciseName);
+  const metricUnit = exMode === 'timed' ? 'sec' : exMode === 'bodyweight' ? 'reps' : 'lb';
+  const metricFor = h => exMode === 'timed' ? bestOf(h.sets, s => s.secs) : exMode === 'bodyweight' ? bestOf(h.sets, s => s.reps) : exMode === 'timedLoaded' ? bestOf(h.sets, s => s.weight) : h.bestWeight;
+  const withWeight = history.filter(h => metricFor(h) != null);
   if (withWeight.length >= 2) {
-    const vals = withWeight.map(h => h.bestWeight);
+    const vals = withWeight.map(metricFor);
     const min = Math.min(...vals), max = Math.max(...vals);
     const range = max - min || 1;
     const stepX = 100 / (withWeight.length - 1);
@@ -10392,7 +10459,7 @@ function showExerciseHistory(exerciseName) {
         </svg>
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:4px">
           <span>${fmtDate(withWeight[0].date)}</span>
-          <span>${min}–${max} lb</span>
+          <span>${min}–${max} ${metricUnit}</span>
           <span>${fmtDate(withWeight[withWeight.length - 1].date)}</span>
         </div>
       </div>
@@ -10427,7 +10494,7 @@ function showExerciseHistory(exerciseName) {
     <div style="padding:10px 16px;border-bottom:1px solid var(--line)">
       <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:5px">${fmtDate(h.date)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${h.sets.map(s => `<span style="font-family:var(--font-num);font-size:12px;background:var(--input-bg);border-radius:6px;padding:3px 8px;${s.warmup ? 'color:var(--ink-soft);opacity:0.75' : 'color:var(--ink)'};font-weight:700">${s.warmup ? 'W · ' : ''}${s.weight}×${s.reps}</span>`).join('')}
+        ${h.sets.map(s => `<span style="font-family:var(--font-num);font-size:12px;background:var(--input-bg);border-radius:6px;padding:3px 8px;${s.warmup ? 'color:var(--ink-soft);opacity:0.75' : 'color:var(--ink)'};font-weight:700">${s.warmup ? 'W · ' : ''}${fmtSet(s, '×')}</span>`).join('')}
       </div>
       ${h.note ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:6px;font-style:italic">📝 ${escapeHtml(h.note)}</div>` : ''}
     </div>
@@ -10561,7 +10628,7 @@ function recentWorkingSetsFor(exerciseName, count) {
   for (const e of sorted) {
     for (const x of e.ex) {
       if (x.type === 'Strength' && x.sets && x.sets[exerciseName]) {
-        const working = x.sets[exerciseName].filter(s => !s.warmup);
+        const working = x.sets[exerciseName].filter(isWeightedWorkingSet);
         if (working.length) sessions.push(working);
       }
     }
@@ -10942,7 +11009,7 @@ function showRestTimerDone() {
   restTimerAutoHideTimer = setTimeout(hideRestTimerPopup, 8000);
 }
 
-function focusNextSetInput() { if (!restTimerContext) return; const ctx = restTimerContext; restTimerContext = null; const names = Object.keys(workoutSessionState); let tName = null, tIdx = -1; const sets = workoutSessionState[ctx.exerciseName] || []; tIdx = sets.findIndex((s, i) => i > ctx.setIdx && !s.done); if (tIdx !== -1) { tName = ctx.exerciseName; } else { const exIdx = names.indexOf(ctx.exerciseName); for (let i = exIdx + 1; i < names.length; i++) { const firstUndone = workoutSessionState[names[i]].findIndex(s => !s.done); if (firstUndone !== -1) { tName = names[i]; tIdx = firstUndone; break; } } } if (!tName) return; const row = document.querySelector('.set-row[data-exercise="' + CSS.escape(tName) + '"][data-set-idx="' + tIdx + '"]'); const wIn = row && row.querySelector('.set-weight-input'); if (wIn) { wIn.focus(); wIn.select(); } } function workoutNudgeHtml() {
+function focusNextSetInput() { if (!restTimerContext) return; const ctx = restTimerContext; restTimerContext = null; const names = Object.keys(workoutSessionState); let tName = null, tIdx = -1; const sets = workoutSessionState[ctx.exerciseName] || []; tIdx = sets.findIndex((s, i) => i > ctx.setIdx && !s.done); if (tIdx !== -1) { tName = ctx.exerciseName; } else { const exIdx = names.indexOf(ctx.exerciseName); for (let i = exIdx + 1; i < names.length; i++) { const firstUndone = workoutSessionState[names[i]].findIndex(s => !s.done); if (firstUndone !== -1) { tName = names[i]; tIdx = firstUndone; break; } } } if (!tName) return; const row = document.querySelector('.set-row[data-exercise="' + CSS.escape(tName) + '"][data-set-idx="' + tIdx + '"]'); const wIn = row && (row.querySelector('.set-weight-input') || row.querySelector('.set-reps-input')); if (wIn) { wIn.focus(); wIn.select(); } } function workoutNudgeHtml() {
   const todayEntry = entries.find(x => x.date === todayStr());
   if (todayEntry && todayEntry.restDay) {
     const sick = todayEntry.restDay === 'sick';
@@ -10976,11 +11043,12 @@ function workoutAccentColor(index) {
 let lastCheckedSetKey = null;
 
 function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
-  const prevText = prevData ? `last ${prevData.weight} lb × ${prevData.reps}${prevData.warmup ? ' (W)' : ''}` : 'no history yet';
+  const mode = exerciseMode(exerciseName), hasWeight = mode === 'weighted' || mode === 'timedLoaded', isTimed = mode === 'timed' || mode === 'timedLoaded';
+  const prevText = prevData ? `last ${fmtPrevSet(prevData)}${prevData.warmup ? ' (W)' : ''}` : 'no history yet';
   const numberDisplay = setData.warmup ? 'W' : (idx + 1);
   const justDone = setData.done && lastCheckedSetKey === `${exerciseName}:${idx}`;
   return `
-    <div class="set-row${setData.done ? ' done' : ''}" data-exercise="${exerciseName}" data-set-idx="${idx}" style="--accent:${accent || '#5CE6C0'}">
+    <div class="set-row${setData.done ? ' done' : ''}${hasWeight ? '' : ' no-weight'}" data-exercise="${exerciseName}" data-set-idx="${idx}" style="--accent:${accent || '#5CE6C0'}">
       <div class="set-row-top">
         <button type="button" class="set-number-toggle${setData.warmup ? ' warmup' : ''}" title="Tap to mark as a warm-up set">${numberDisplay}</button>
         <span class="set-prev">${prevText}</span>
@@ -10988,12 +11056,12 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
         <button type="button" class="set-remove-btn" data-exercise="${exerciseName}" data-set-idx="${idx}" aria-label="Remove this set">✕</button>
       </div>
       <div class="set-row-main">
-        <div class="set-weight-group">
+        ${hasWeight ? `        <div class="set-weight-group">
           <button type="button" class="set-step-btn set-weight-minus" aria-label="Decrease weight by 5 pounds">−</button>
           <div class="set-field"><input type="number" class="set-weight-input" inputmode="decimal" step="2.5" value="${setData.weight}" placeholder="0"><span class="unit">lb</span></div>
           <button type="button" class="set-step-btn set-weight-plus" aria-label="Increase weight by 5 pounds">+</button>
-        </div>
-        <div class="set-field set-reps-field"><input type="number" class="set-reps-input" inputmode="numeric" value="${setData.reps}" placeholder="0"><span class="unit">reps</span></div>
+        </div>` : ''}
+        <div class="set-field set-reps-field"><input type="number" class="set-reps-input" inputmode="numeric" value="${setData.reps}" placeholder="0"><span class="unit">${isTimed ? 'sec' : 'reps'}</span></div>
         <button type="button" class="set-check-btn${justDone ? ' set-just-done' : ''}" aria-label="${setData.done ? 'Mark set not done' : 'Mark set done'}">✓</button>
       </div>
     </div>${restInlineHtml(exerciseName, idx)}`;
@@ -12071,7 +12139,7 @@ function renderActivityHistory() {
       <span style="text-align:right;font-family:var(--font-num);font-weight:700">
         <div class="lab-val">${x.min} min</div>
         ${x.dist ? `<div style="font-size:11px;color:var(--ink-soft)">${x.dist} mi${computePace(x.min, x.dist) ? ` · ${computePace(x.min, x.dist)} mph` : ''}</div>` : ''}
-        ${x.sets ? `<div style="font-size:11px;color:var(--ink-soft)">${Object.entries(x.sets).map(([name, s]) => `${name}: ${s.map(set => `${set.weight}×${set.reps}`).join('/')}`).join(' · ')}</div>` : ''}
+        ${x.sets ? `<div style="font-size:11px;color:var(--ink-soft)">${Object.entries(x.sets).map(([name, s]) => `${name}: ${s.map(set => `${fmtSet(set, '×')}`).join('/')}`).join(' · ')}</div>` : ''}
       </span>
     </div>`).join('');
   box.querySelectorAll('[data-activity-date]').forEach(row => {
