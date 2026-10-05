@@ -5810,6 +5810,17 @@ async function saveMuscleGoals() {
   catch (err) { console.error('Failed to save muscle goals:', err); }
 }
 
+// A grip can change what an exercise mainly works. Reverse-grip curls load the forearms more than the
+// biceps, so sets logged with that grip count toward Forearms on the map instead of Biceps. (Neutral /
+// hammer stays with Biceps: the brachialis it emphasizes is part of the arm-flexor group the map calls
+// Biceps.) Workouts logged without a grip choice, or before grips existed, are unaffected.
+const VARIATION_MUSCLE_OVERRIDE = { 'Bicep Curl': { reverse: 'Forearms' } };
+function muscleGroupForSet(name, item) {
+  const ev = item && item.exerciseVariations, v = ev && typeof ev === 'object' ? ev[name] : null;
+  const o = typeof v === 'string' && VARIATION_MUSCLE_OVERRIDE[name] ? VARIATION_MUSCLE_OVERRIDE[name][v] : null;
+  return o || muscleGroupFor(name);
+}
+
 function muscleSetsLastDays(days) {
   const counts = {}; MUSCLE_MAP_GROUPS.forEach(g => { counts[g] = 0; });
   const cutoff = new Date(todayStr() + 'T00:00:00'); cutoff.setDate(cutoff.getDate() - (days - 1));
@@ -5820,7 +5831,7 @@ function muscleSetsLastDays(days) {
       if (x.type !== 'Strength' || !x.sets) return;
       sessions++;
       Object.entries(x.sets).forEach(([name, sets]) => {
-        const group = muscleGroupFor(name);
+        const group = muscleGroupForSet(name, x);
         if (!group || !(group in counts)) return;
         counts[group] += (sets || []).filter(s => !s.warmup).length;
       });
@@ -5839,12 +5850,14 @@ function muscleSessionIndex() {
       const t = (typeof x.ts === 'number' && x.ts > 1e11) ? x.ts : new Date(e.date + 'T12:00:00').getTime();
       const per = {};
       Object.entries(x.sets).forEach(([name, sets]) => {
-        const g = muscleGroupFor(name);
+        const g = muscleGroupForSet(name, x);
         if (!g || !(g in idx)) return;
         const n = (sets || []).filter(s => !s.warmup).length;
         if (!n) return;
         const p = (per[g] = per[g] || { sets: 0, ex: [] });
-        p.sets += n; p.ex.push({ name, sets: n });
+        // when the grip moved it to another muscle, say so in the breakdown ("Bicep Curl (Overhand / Reverse)")
+        const gripNote = g !== muscleGroupFor(name) ? ` (${EXERCISE_VARIATION_CONFIG[name].options[x.exerciseVariations[name]].label})` : '';
+        p.sets += n; p.ex.push({ name: name + gripNote, sets: n });
       });
       const effort = (Number(x.effort) >= 1 && Number(x.effort) <= 5) ? Number(x.effort) : null;
       Object.entries(per).forEach(([g, p]) => idx[g].push({ t, date: e.date, sets: p.sets, ex: p.ex, effort }));
