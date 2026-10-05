@@ -9774,6 +9774,8 @@ const WORKOUT_PLAN_PPL = {
     { name: 'Seated Row', sets: '3 × 10–12', rest: 120 },
     { name: 'Reverse Fly (machine)', sets: '2 × 10–12', rest: 75 },
     { name: 'Bicep Curl', sets: '3 × 12–15', rest: 75 },
+    { name: 'Hammer Curl', sets: '3 × 12–15', rest: 75 },
+    { name: 'Reverse Curl', sets: '3 × 12–15', rest: 75 },
     { name: 'Wrist Curl (dumbbell)', sets: '3 × 12–15', rest: 60 },
     { name: 'Reverse Wrist Curl (dumbbell)', sets: '2 × 15–20', rest: 60 }
   ],
@@ -9810,7 +9812,9 @@ const EXERCISE_MUSCLE_GROUP = {
   'Hanging Knee Raise': 'Core',
   'Wrist Curl (dumbbell)': 'Forearms',
   'Reverse Wrist Curl (dumbbell)': 'Forearms',
-  'Farmers Carry (dumbbells)': 'Forearms'
+  'Farmers Carry (dumbbells)': 'Forearms',
+  'Hammer Curl': 'Biceps',
+  'Reverse Curl': 'Forearms'
 };
 
 // Fallback for any exercise not in the table above — checked in order,
@@ -9938,8 +9942,10 @@ SWAP_SUGGESTIONS_BY_GROUP['Forearms'] = [
   { name: 'Wrist Curl (dumbbell)', sets: '3 × 12–15' },
   { name: 'Reverse Wrist Curl (dumbbell)', sets: '2 × 15–20' },
   { name: 'Farmers Carry (dumbbells)', sets: '3 × 40–60 sec' },
+  { name: 'Reverse Curl', sets: '3 × 12–15' },
   { name: 'Dead Hang', sets: '3 × 20–40 sec' }
 ];
+if (!SWAP_SUGGESTIONS_BY_GROUP['Biceps'].some(s => s.name === 'Hammer Curl')) SWAP_SUGGESTIONS_BY_GROUP['Biceps'].push({ name: 'Hammer Curl', sets: '3 × 12–15' });
 if (SWAP_SUGGESTIONS_BY_GROUP['Core'] && !SWAP_SUGGESTIONS_BY_GROUP['Core'].some(s => s.name === 'Hanging Knee Raise')) SWAP_SUGGESTIONS_BY_GROUP['Core'].push({ name: 'Hanging Knee Raise', sets: '3 × 10–15' });
 
 // Alternatives for a busy machine, targeting the same muscle group,
@@ -11519,6 +11525,7 @@ async function saveNewWorkoutExercise() {
   const name = nameEl.value.trim();
   const sets = setsEl.value.trim() || '3 × 10';
   if (!name) { alert('Enter an exercise name.'); return; }
+  if ([...document.querySelectorAll('.workout-exercise-block')].some(b => (b.dataset.exercise || '').toLowerCase() === name.toLowerCase())) { alert(`${name} is already on today's list.`); return; }
   const key = currentPlanKey();
   customWorkoutExercises[key] = [...(customWorkoutExercises[key] || []), { name, sets, rest: REST_SECONDS }];
   await saveWorkoutPlanCustomizations();
@@ -11796,7 +11803,8 @@ function renderWorkoutPlan() {
   const planKey = currentPlanKey();
   const hidden = hiddenWorkoutExercises[planKey] || [];
   const custom = customWorkoutExercises[planKey] || [];
-  plan = [...plan, ...custom].filter(ex => !hidden.includes(ex.name));
+  const builtInNames = new Set(plan.map(e => e.name)); // a custom exercise with the same name as a built-in one is ignored (the built-in wins)
+  plan = [...plan, ...custom.filter(e => !builtInNames.has(e.name))].filter(ex => !hidden.includes(ex.name));
 
   // Apply any saved custom order for this day — an exercise not in the
   // saved order (e.g. a new one added since the order was last saved)
