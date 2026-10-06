@@ -855,6 +855,7 @@ body {
 .re-create { padding: 8px 16px 14px; border-top: 1px solid var(--line); }
 .re-create-form .re-input { margin-bottom: 8px; }
 .re-create-row { display: flex; gap: 8px; margin-top: 8px; } .re-create-row .btn { flex: 1; }
+.re-pick:disabled { opacity: 1; cursor: default; }
 .rm-card { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 12px; }
 .rm-card.in-use { border-color: var(--teal); }
 .rm-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -1296,7 +1297,8 @@ body {
 </div>
 
 <!-- ── REST TIMER POPUP (workout sets) ── -->
-<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="routineManager" class="re-overlay" style="display:none"></div>
+<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exPicker" class="re-overlay" style="display:none"></div>
+<div id="routineManager" class="re-overlay" style="display:none"></div>
 <div id="routineEditor" class="re-overlay" style="display:none"></div>
 <div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="trainerSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:708"></div><div id="trainerSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:709;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="cardioTrendsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:706"></div><div id="cardioTrendsModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:707;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
 <div id="restTimerWrap" style="display:none;flex-direction:row;align-items:center;gap:8px;position:fixed;bottom:88px;right:14px;background:var(--card);border:1.5px solid var(--teal);border-radius:17px;padding:9px 11px 9px 15px;box-shadow:0 8px 26px rgba(0,0,0,0.28);z-index:601;text-align:center">
@@ -11575,14 +11577,15 @@ function wireWorkoutPlanEvents() {
   if (showAddBtn) {
     showAddBtn.addEventListener('click', () => {
       document.getElementById('addExerciseForm').style.display = 'block';
-      showAddBtn.style.display = 'none';
-      document.getElementById('newExerciseName').focus();
+      showAddBtn.style.display = 'none'; // no auto-focus: it would raise the keyboard over the library button
     });
   }
   const cancelAddBtn = document.getElementById('cancelNewExerciseBtn');
   if (cancelAddBtn) cancelAddBtn.addEventListener('click', renderWorkoutPlan);
   const saveAddBtn = document.getElementById('saveNewExerciseBtn');
-  if (saveAddBtn) saveAddBtn.addEventListener('click', saveNewWorkoutExercise); const resumeInd = document.getElementById('resumeWorkoutIndicator'); if (resumeInd) resumeInd.addEventListener('click', () => setWorkoutFullscreen(true));
+  if (saveAddBtn) saveAddBtn.addEventListener('click', saveNewWorkoutExercise);
+  const pickLibBtn = document.getElementById('pickLibraryExerciseBtn'); if (pickLibBtn) pickLibBtn.addEventListener('click', openWorkoutLibraryPicker);
+  const resumeInd = document.getElementById('resumeWorkoutIndicator'); if (resumeInd) resumeInd.addEventListener('click', () => setWorkoutFullscreen(true));
 }
 
 // One-time wiring for the rest-timer popup — it now lives outside
@@ -12055,6 +12058,81 @@ async function removeRoutine(id) {
   if (activeRoutineId === id) { activeRoutineId = customRoutines.length ? customRoutines[0].id : null; customDayOverride = null; if (workoutPlanMode === 'custom') resetWorkoutScreenState(); }
   await saveRoutinesToCloud();
   renderWorkoutPlan(); if (typeof updateStats === 'function') updateStats();
+}
+
+// ── CHOOSING AN EXERCISE FROM THE LIBRARY, MID-WORKOUT ──────────────────
+// The same library the routine editor uses, opened from "+ Add Exercise". Adding puts the exercise on today's
+// day exactly as typing it would. Something the person removed from the day is brought back rather than
+// duplicated; something already on the list offers "＋ Variation" (a second card needs its own name, since
+// sets are kept by name), which sets up the name box as "Leg Press ()" ready for "wide stance".
+let xpQuery = '', xpGroup = 'All', xpAdded = new Set();
+function todaysExerciseNames() { return [...document.querySelectorAll('.workout-exercise-block')].map(b => b.dataset.exercise); }
+function ensureWorkoutPickerDom() {
+  const el = document.getElementById('exPicker');
+  if (!el || el.dataset.ready) return;
+  el.dataset.ready = '1';
+  el.innerHTML = `
+    <div class="re-sheet" role="dialog" aria-modal="true" aria-label="Choose an exercise">
+      <div class="re-top"><div class="re-title">Add to today's workout</div><button type="button" class="re-done" id="xpDone">Done</button></div>
+      <div class="re-pick-controls">
+        <input type="search" id="xpSearch" class="re-input" placeholder="Search exercises" autocomplete="off">
+        <div class="re-groups" id="xpGroups"></div>
+      </div>
+      <div class="re-body" id="xpList"></div>
+      <div class="re-create"><div class="re-hint" style="margin:0">Not here? Tap Done and type its name instead. Doing a second version of one already on the list (another stance or grip)? Tap ＋ Variation.</div></div>
+    </div>`;
+  el.querySelector('#xpDone').addEventListener('click', closeWorkoutLibraryPicker);
+  el.querySelector('#xpSearch').addEventListener('input', e => { xpQuery = e.target.value; renderWorkoutPicker(); });
+  el.querySelector('#xpGroups').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (b) { xpGroup = b.dataset.g; renderWorkoutPicker(); } });
+  el.querySelector('#xpList').addEventListener('click', e => {
+    const b = e.target.closest('[data-xp]'); if (!b || b.disabled) return;
+    if (b.dataset.xp === 'add') addLibraryExerciseToToday(b.dataset.name); else startVariationFromPicker(b.dataset.name);
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('exPicker').style.display !== 'none') closeWorkoutLibraryPicker(); });
+}
+function openWorkoutLibraryPicker() {
+  ensureWorkoutPickerDom();
+  xpQuery = ''; xpGroup = 'All'; xpAdded = new Set();
+  document.getElementById('xpSearch').value = '';
+  document.getElementById('exPicker').style.display = 'flex';
+  renderWorkoutPicker();
+}
+function closeWorkoutLibraryPicker() { const el = document.getElementById('exPicker'); if (el) el.style.display = 'none'; }
+function renderWorkoutPicker() {
+  const onList = new Set(todaysExerciseNames().map(libKey)), q = xpQuery.trim().toLowerCase();
+  document.getElementById('xpGroups').innerHTML = ['All', ...MUSCLE_MAP_GROUPS, ...(customLibrary.length ? ['Mine'] : [])]
+    .map(g => `<button type="button" class="re-g${g === xpGroup ? ' on' : ''}" data-g="${g}">${g === 'Mine' ? 'My exercises' : g}</button>`).join('');
+  const items = exerciseLibrary().filter(e => (xpGroup === 'All' || e.group === xpGroup || (xpGroup === 'Mine' && e.source === 'mine')) && (!q || e.name.toLowerCase().includes(q)));
+  let html = '', last = null;
+  items.forEach(e => {
+    if (xpGroup === 'All' && e.group !== last) { html += `<div class="re-grp-head">${escapeHtml(e.group)}</div>`; last = e.group; }
+    const k = libKey(e.name), just = xpAdded.has(k), on = onList.has(k);
+    const btn = just ? `<button type="button" class="re-pick on" disabled>✓ Added</button>`
+      : on ? `<button type="button" class="re-pick" data-xp="var" data-name="${escapeHtml(e.name)}" aria-label="Add a variation of ${escapeHtml(e.name)}">＋ Variation</button>`
+      : `<button type="button" class="re-pick" data-xp="add" data-name="${escapeHtml(e.name)}" aria-label="Add ${escapeHtml(e.name)}">＋ Add</button>`;
+    html += `<div class="re-item"><div class="re-item-main"><div class="re-item-name">${escapeHtml(e.name)}</div><div class="re-item-sub">${escapeHtml(e.group)} · ${escapeHtml(e.sets)}${on && !just ? ' · on today\'s list' : ''}</div></div>${btn}</div>`;
+  });
+  document.getElementById('xpList').innerHTML = html || `<div class="re-empty">No match. Tap Done and type its name instead.</div>`;
+}
+async function addLibraryExerciseToToday(name) {
+  const e = exerciseLibrary().find(x => x.name === name); if (!e) return;
+  const key = currentPlanKey();
+  const hidden = hiddenWorkoutExercises[key] || [], removed = hidden.find(n => libKey(n) === libKey(name));
+  if (removed) hiddenWorkoutExercises[key] = hidden.filter(n => n !== removed); // it was taken off the day earlier: bring it back
+  else customWorkoutExercises[key] = [...(customWorkoutExercises[key] || []), { name: e.name, sets: e.sets, rest: REST_SECONDS }];
+  xpAdded.add(libKey(name));
+  const list = document.getElementById('xpList'), top = list.scrollTop;
+  await saveWorkoutPlanCustomizations();
+  renderWorkoutPlan(); renderWorkoutPicker(); list.scrollTop = top;
+}
+function startVariationFromPicker(name) {
+  closeWorkoutLibraryPicker();
+  const form = document.getElementById('addExerciseForm'), nameEl = document.getElementById('newExerciseName'), setsEl = document.getElementById('newExerciseSets');
+  if (!form || !nameEl) return;
+  form.style.display = 'block';
+  const base = todaysExerciseNames().find(n => libKey(n) === libKey(name)) || name, lib = exerciseLibrary().find(x => libKey(x.name) === libKey(name));
+  nameEl.value = `${base} ()`; if (setsEl && lib) setsEl.value = lib.sets;
+  setTimeout(() => { nameEl.focus(); const p = nameEl.value.length - 1; try { nameEl.setSelectionRange(p, p); } catch (err) { /* not every input type allows it */ } }, 0);
 }
 
 function wireRoutineButtons(root) {
@@ -12589,6 +12667,8 @@ function renderWorkoutPlan() {
         <button type="button" class="btn btn-ghost btn-sm" id="reorderExercisesBtn" style="flex:1">${reorderingExercises ? '✓ Done Reordering' : '⠿ Reorder'}</button>
       </div>
       <div id="addExerciseForm" style="display:none;margin-top:8px;padding:10px;border:1.5px dashed var(--line);border-radius:10px">
+        <button type="button" class="btn btn-primary btn-sm" id="pickLibraryExerciseBtn" style="width:100%;margin-bottom:8px">Choose from the exercise library</button>
+        <div style="font-size:11px;color:var(--ink-soft);text-align:center;margin-bottom:6px">or type your own:</div>
         <div style="display:flex;gap:6px;margin-bottom:6px">
           <input type="text" id="newExerciseName" placeholder="Exercise name" style="flex:1.4;min-width:0;padding:7px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:12px;background:var(--input-bg);color:var(--ink)">
           <input type="text" id="newExerciseSets" placeholder="e.g. 3 × 10" style="flex:1;min-width:0;padding:7px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:12px;background:var(--input-bg);color:var(--ink)">
