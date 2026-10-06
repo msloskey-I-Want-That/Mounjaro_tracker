@@ -856,6 +856,15 @@ body {
 .re-create-form .re-input { margin-bottom: 8px; }
 .re-create-row { display: flex; gap: 8px; margin-top: 8px; } .re-create-row .btn { flex: 1; }
 .re-pick:disabled { opacity: 1; cursor: default; }
+.eg-overlay { z-index: 1400; }
+.eg-overlay .re-sheet { height: auto; max-height: 88vh; }
+.eg-works { font-size: 13px; color: var(--ink-soft); margin-bottom: 4px; } .eg-works b { color: var(--ink); }
+.eg-variant { font-size: 12px; background: var(--input-bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; margin: 8px 0 2px; }
+.eg-h { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal); margin: 14px 0 3px; }
+.eg-p { font-size: 15px; line-height: 1.45; }
+.eg-log { font-size: 13px; font-weight: 700; margin-top: 14px; padding: 8px 10px; border-radius: 8px; background: var(--input-bg); }
+.eg-foot { font-size: 11px; color: var(--ink-soft); margin-top: 16px; line-height: 1.4; }
+.re-info { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--line); background: none; color: var(--ink-soft); font-size: 15px; cursor: pointer; padding: 0; }
 .rm-card { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 12px; }
 .rm-card.in-use { border-color: var(--teal); }
 .rm-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -1297,7 +1306,8 @@ body {
 </div>
 
 <!-- ── REST TIMER POPUP (workout sets) ── -->
-<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exPicker" class="re-overlay" style="display:none"></div>
+<div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exGuide" class="re-overlay eg-overlay" style="display:none"></div>
+<div id="exPicker" class="re-overlay" style="display:none"></div>
 <div id="routineManager" class="re-overlay" style="display:none"></div>
 <div id="routineEditor" class="re-overlay" style="display:none"></div>
 <div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="trainerSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:708"></div><div id="trainerSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:709;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="cardioTrendsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:706"></div><div id="cardioTrendsModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:707;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
@@ -11573,6 +11583,7 @@ function wireWorkoutPlanEvents() {
   document.querySelectorAll('.remove-exercise-btn').forEach(btn => {
     btn.addEventListener('click', () => removeWorkoutExercise(btn.dataset.exercise));
   });
+  document.querySelectorAll('.exercise-info-btn').forEach(btn => btn.addEventListener('click', () => openExerciseGuide(btn.dataset.exercise)));
   const showAddBtn = document.getElementById('showAddExerciseBtn');
   if (showAddBtn) {
     showAddBtn.addEventListener('click', () => {
@@ -11740,7 +11751,7 @@ function ensureRoutineEditorDom() {
   el.querySelector('#rePickDone').addEventListener('click', closeRoutinePicker);
   el.querySelector('#rePickSearch').addEventListener('input', e => { reQuery = e.target.value; renderPickerList(); });
   el.querySelector('#rePickGroups').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (b) { reGroup = b.dataset.g; renderPickerGroups(); renderPickerList(); } });
-  el.querySelector('#rePickList').addEventListener('click', e => { const b = e.target.closest('[data-pick]'); if (b) togglePickedExercise(b.dataset.pick); });
+  el.querySelector('#rePickList').addEventListener('click', e => { const g = e.target.closest('[data-guide]'); if (g) { openExerciseGuide(g.dataset.guide); return; } const b = e.target.closest('[data-pick]'); if (b) togglePickedExercise(b.dataset.pick); });
   el.querySelector('#rePickCreate').addEventListener('click', onReCreateClick);
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape' || el.style.display === 'none') return;
@@ -11901,7 +11912,7 @@ function renderPickerList() {
   items.forEach(e => {
     if (reGroup === 'All' && e.group !== last) { html += `<div class="re-grp-head">${escapeHtml(e.group)}</div>`; last = e.group; }
     const on = inDay.has(libKey(e.name));
-    html += `<div class="re-item"><div class="re-item-main"><div class="re-item-name">${escapeHtml(e.name)}</div><div class="re-item-sub">${escapeHtml(e.group)} · ${escapeHtml(e.sets)}</div></div><button type="button" class="re-pick${on ? ' on' : ''}" data-pick="${escapeHtml(e.name)}" aria-label="${on ? 'Remove' : 'Add'} ${escapeHtml(e.name)}">${on ? '✓ Added' : '＋ Add'}</button></div>`;
+    html += `<div class="re-item"><div class="re-item-main"><div class="re-item-name">${escapeHtml(e.name)}</div><div class="re-item-sub">${escapeHtml(e.group)} · ${escapeHtml(e.sets)}</div></div>${guideInfoBtn(e.name)}<button type="button" class="re-pick${on ? ' on' : ''}" data-pick="${escapeHtml(e.name)}" aria-label="${on ? 'Remove' : 'Add'} ${escapeHtml(e.name)}">${on ? '✓ Added' : '＋ Add'}</button></div>`;
   });
   document.getElementById('rePickList').innerHTML = html || `<div class="re-empty">No match. Create it below and it joins your library.</div>`;
 }
@@ -12085,6 +12096,7 @@ function ensureWorkoutPickerDom() {
   el.querySelector('#xpSearch').addEventListener('input', e => { xpQuery = e.target.value; renderWorkoutPicker(); });
   el.querySelector('#xpGroups').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (b) { xpGroup = b.dataset.g; renderWorkoutPicker(); } });
   el.querySelector('#xpList').addEventListener('click', e => {
+    const g = e.target.closest('[data-guide]'); if (g) { openExerciseGuide(g.dataset.guide); return; }
     const b = e.target.closest('[data-xp]'); if (!b || b.disabled) return;
     if (b.dataset.xp === 'add') addLibraryExerciseToToday(b.dataset.name); else startVariationFromPicker(b.dataset.name);
   });
@@ -12110,7 +12122,7 @@ function renderWorkoutPicker() {
     const btn = just ? `<button type="button" class="re-pick on" disabled>✓ Added</button>`
       : on ? `<button type="button" class="re-pick" data-xp="var" data-name="${escapeHtml(e.name)}" aria-label="Add a variation of ${escapeHtml(e.name)}">＋ Variation</button>`
       : `<button type="button" class="re-pick" data-xp="add" data-name="${escapeHtml(e.name)}" aria-label="Add ${escapeHtml(e.name)}">＋ Add</button>`;
-    html += `<div class="re-item"><div class="re-item-main"><div class="re-item-name">${escapeHtml(e.name)}</div><div class="re-item-sub">${escapeHtml(e.group)} · ${escapeHtml(e.sets)}${on && !just ? ' · on today\'s list' : ''}</div></div>${btn}</div>`;
+    html += `<div class="re-item"><div class="re-item-main"><div class="re-item-name">${escapeHtml(e.name)}</div><div class="re-item-sub">${escapeHtml(e.group)} · ${escapeHtml(e.sets)}${on && !just ? ' · on today\'s list' : ''}</div></div>${guideInfoBtn(e.name)}${btn}</div>`;
   });
   document.getElementById('xpList').innerHTML = html || `<div class="re-empty">No match. Tap Done and type its name instead.</div>`;
 }
@@ -12133,6 +12145,120 @@ function startVariationFromPicker(name) {
   const base = todaysExerciseNames().find(n => libKey(n) === libKey(name)) || name, lib = exerciseLibrary().find(x => libKey(x.name) === libKey(name));
   nameEl.value = `${base} ()`; if (setsEl && lib) setsEl.value = lib.sets;
   setTimeout(() => { nameEl.focus(); const p = nameEl.value.length - 1; try { nameEl.setSelectionRange(p, p); } catch (err) { /* not every input type allows it */ } }, 0);
+}
+
+// ── HOW TO DO EACH EXERCISE ──────────────────────────────────────────────
+// A short guide per exercise: set up, do it, what to avoid. Opened from the ⓘ on each exercise card and on each
+// row of the exercise pickers. Names that are a version of a guided one ("Leg Press (high and wide)") show the
+// guide for the standard exercise, with a note naming the version. Anything without a guide shows no ⓘ.
+// [name, "also works", set up, do it, avoid]
+const EXERCISE_GUIDES = [
+  ['Chest Press (machine)', 'front shoulders, triceps', "Adjust the seat so the handles are level with the middle of your chest. Back flat on the pad, feet flat on the floor.", "Press the handles straight out until your arms are nearly straight. Return slowly, about 2 seconds, until your chest feels a stretch.", "Locking your elbows hard, shrugging your shoulders up, or bouncing the weights."],
+  ['Incline Chest Press (Smith machine)', 'front shoulders, triceps', "Set an adjustable bench to a low incline (about 30 degrees) with the bar over your upper chest. Feet flat, shoulder blades pinched back. Twist the bar to unhook it.", "Lower the bar to your upper chest, press straight up until your arms are nearly straight, then twist the bar to re-hook it.", "A bench set so the bar comes down toward your neck, flaring your elbows straight out, or forgetting to re-hook the bar."],
+  ['Pec Deck (machine)', 'front shoulders', "Adjust the seat so the handles are at chest height. Back against the pad, forearms on the pads or hands on the grips.", "Bring the handles together in a wide hugging arc and squeeze your chest. Open slowly until you feel a stretch, no further back than your shoulders.", "Letting your arms go behind your body, using momentum, or shrugging."],
+  ['Cable Fly', 'front shoulders', "Set both pulleys at chest height. Stand in a split stance with a slight forward lean and a small bend in your elbows.", "Sweep your hands together in a wide arc in front of your chest, squeeze, then open slowly until your chest feels a stretch.", "Bending and straightening your elbows like a press, or using so much weight that your shoulders roll forward."],
+  ['Dumbbell Bench Press', 'front shoulders, triceps', "Sit with the dumbbells on your thighs, lie back and bring them to chest level. Feet flat, shoulder blades pinched back and down.", "Press up until your arms are nearly straight over your chest, then lower slowly with your elbows about 45 degrees from your body.", "Bouncing at the bottom, arching your back sharply, or letting the dumbbells drift wide. Ask for a spot on heavy sets."],
+  ['Incline Dumbbell Press', 'front shoulders, triceps', "Set the bench to a low incline (about 30 degrees). Hold the dumbbells at your upper chest with your shoulder blades pinched back.", "Press up and slightly together until your arms are nearly straight, then lower slowly to your upper chest.", "An incline so steep it becomes a shoulder press, bouncing, or flaring your elbows wide."],
+  ['Smith Machine Bench Press', 'front shoulders, triceps', "Center the bench so the bar lowers to mid-chest. Feet flat, shoulder blades pinched back. Set the safety stops just below your chest. Twist the bar to unhook it.", "Lower to mid-chest, press straight up until your arms are nearly straight, then twist the bar to re-hook it.", "A bench set so the bar lands on your neck or stomach, skipping the safety stops, or forgetting to re-hook the bar."],
+  ['Push-up', 'front shoulders, triceps, core', "Hands slightly wider than your shoulders, body in one straight line from head to heels, abs tight. Too hard? Put your hands on a bench.", "Lower your chest toward the floor with your elbows about 45 degrees from your body, then push back up.", "Sagging hips, flared elbows, or short partial reps."],
+  ['Shoulder Press (machine)', 'triceps, upper chest', "Adjust the seat so the handles start at about shoulder height. Back flat against the pad.", "Press up until your arms are nearly straight, then lower slowly back to shoulder height.", "Arching your back, shrugging, or locking your elbows hard."],
+  ['Dumbbell Shoulder Press', 'triceps', "Sit with your back supported, or stand with your abs tight. Hold the dumbbells at shoulder height with your palms facing forward.", "Press overhead until your arms are nearly straight, then lower slowly to shoulder height.", "Arching your lower back, pressing out in front of you, or going too heavy."],
+  ['Smith Machine Shoulder Press', 'triceps', "Set an upright bench so the bar starts at about chin height. Feet flat, back supported. Twist the bar to unhook it.", "Press straight overhead until your arms are nearly straight, lower to chin height, then twist the bar to re-hook it.", "A bench set so the bar pushes your head forward, arching your back, or forgetting to re-hook the bar."],
+  ['Lateral Raise', 'upper traps', "Stand tall with light dumbbells at your sides and a slight bend in your elbows.", "Raise your arms out to the sides until about shoulder height, then lower slowly.", "Swinging your body, shrugging, lifting above shoulder height, or using too much weight."],
+  ['Cable Lateral Raise', 'upper traps', "Set the pulley low and stand sideways to the stack, holding the handle in your far hand across your body.", "Raise your arm out to the side to about shoulder height with a soft elbow, then lower slowly.", "Leaning or swinging to lift it, or shrugging."],
+  ['Front Raise (dumbbell)', 'upper chest', "Stand tall with dumbbells in front of your thighs and your abs tight.", "Raise your arms straight in front of you to about shoulder height, then lower slowly.", "Swinging, arching your back, or lifting above shoulder height."],
+  ['Triceps Pushdown (cable)', '', "Set the pulley high with a rope or bar. Stand close with your elbows pinned to your sides and a slight forward lean.", "Push down until your arms are straight and squeeze. Let the handle rise slowly until your forearms are about level.", "Elbows drifting forward, leaning over the weight, or using body momentum."],
+  ['Overhead Triceps Extension (cable)', '', "Attach a rope to a low or mid pulley. Face away, step forward, and hold the rope behind your head with your elbows pointing up.", "Straighten your arms overhead and squeeze, then bend slowly back down behind your head.", "Flaring your elbows wide or arching your back."],
+  ['Dumbbell Triceps Extension', '', "Sit or stand holding one dumbbell in both hands overhead, with your elbows pointing forward.", "Lower the dumbbell behind your head by bending your elbows, then straighten your arms.", "Flared elbows, or a weight so heavy it strains your elbows. Go light to moderate."],
+  ['Assisted Dip (machine)', 'chest, front shoulders', "Pick an assist weight (more assist is easier). Step onto the pad, grip the handles, and keep your shoulders down.", "Lower until your elbows are about 90 degrees, then press back up.", "Dropping fast, shrugging, or going deeper than is comfortable for your shoulders."],
+  ['Triceps Dip (machine)', '', "Adjust the seat so the handles are by your sides. Back against the pad.", "Press the handles down until your arms are straight, then let them rise slowly.", "Shrugging, locking out hard, or letting the weights crash."],
+  ['Lat Pulldown', 'biceps, upper back', "Adjust the thigh pad so your legs are snug. Grip the bar a little wider than your shoulders, palms forward, with a slight lean back.", "Pull the bar to your upper chest, driving your elbows down and back. Let it rise slowly until your arms are straight.", "Leaning far back to swing the weight, pulling behind your neck, or shrugging."],
+  ['Seated Row', 'biceps, rear shoulders', "Adjust the chest pad so your arms reach the handles with a straight back. Feet on the supports, knees slightly bent.", "Pull the handles toward your lower ribs and squeeze your shoulder blades together. Return slowly.", "Rocking back and forth, shrugging, or rounding your back."],
+  ['Assisted Pull-Up (machine)', 'biceps', "Pick an assist weight (more assist is easier). Stand or kneel on the platform and grip the handles about shoulder-width.", "Pull your chest up toward the handles with your elbows down, then lower slowly until your arms are straight.", "Kicking or bouncing, short partial reps, or shrugging."],
+  ['Cable Row (single-arm)', 'biceps, rear shoulders', "Attach a handle to a low cable. Sit or stand in a split stance with a straight back.", "Pull the handle to your ribs with your elbow along your side, squeeze, then return slowly.", "Twisting your torso, shrugging, or jerking the weight."],
+  ['Dumbbell Row', 'biceps, rear shoulders', "Place one hand and the same-side knee on a bench. Keep your back flat and let the dumbbell hang straight below your shoulder.", "Pull the dumbbell toward your hip with your elbow close to your body, then lower slowly.", "Twisting your torso, rounding your back, or yanking the weight."],
+  ['Chest-Supported Row (machine)', 'biceps, rear shoulders', "Adjust the seat so your chest rests firmly on the pad and you can reach the handles with straight arms.", "Pull your elbows back and squeeze your shoulder blades together, then return slowly.", "Lifting your chest off the pad, shrugging, or jerking."],
+  ['Straight-Arm Pulldown (cable)', '', "Put a rope or bar on a high pulley. Step back, hinge slightly forward, and keep your arms nearly straight.", "Push the bar down in an arc to your thighs with straight arms, squeeze, then let it rise slowly.", "Bending your elbows into a pushdown, or swinging your body."],
+  ['Back Extension', 'glutes, hamstrings', "Adjust the pad so it sits below your hip bones and your ankles are secured. Cross your arms over your chest.", "Lower your upper body slowly with a flat back, then raise until your body is in a straight line.", "Swinging up past straight, arching your back at the top, or jerking."],
+  ['Reverse Fly (machine)', 'upper back', "Face the pad with your chest against it and the seat set so the handles are at shoulder height.", "Sweep your arms out and back in a wide arc until they are in line with your body. Squeeze your shoulder blades, then return slowly.", "Pulling past your body line, shrugging, or using momentum."],
+  ['Face Pull (cable)', 'upper back', "Set a rope at about face height. Step back so your arms are straight, thumbs toward you.", "Pull toward your face with your elbows high, ending with your hands beside your ears. Squeeze, then return slowly.", "Leaning back, using too much weight, or pulling down toward your chest."],
+  ['Rear Delt Fly (dumbbell)', 'upper back', "Hinge forward with a flat back, or rest your chest on an incline bench. Hold light dumbbells with a soft bend in your elbows.", "Raise your arms out to the sides to shoulder height, squeeze, then lower slowly.", "Swinging, going too heavy, or shrugging."],
+  ['Bicep Curl', 'forearms', "Adjust the seat so your upper arms rest on the pad and your elbows line up with the machine's pivot. Grip with your palms up.", "Curl the handles toward your shoulders and squeeze, then lower slowly until your arms are nearly straight.", "Lifting your elbows off the pad, swinging, or dropping the weight."],
+  ['Hammer Curl', 'forearms', "Stand tall with dumbbells at your sides, palms facing each other, elbows pinned to your sides.", "Curl up with your palms still facing each other, squeeze, then lower slowly.", "Swinging your body, or letting your elbows drift forward."],
+  ['Preacher Curl (machine)', 'forearms', "Adjust the seat so your upper arms lie flat on the pad with your armpits at the top. Palms up.", "Curl the handles up and squeeze, then lower slowly until your arms are nearly straight.", "Letting the weight drop at the bottom, or lifting your shoulders and hips."],
+  ['Cable Curl', 'forearms', "Attach a bar or handle to a low pulley. Step back with your elbows at your sides.", "Curl to your shoulders and squeeze, then lower slowly.", "Leaning back to swing it up, or letting your elbows drift forward."],
+  ['Dumbbell Curl', 'forearms', "Stand or sit tall with dumbbells at your sides, palms forward, elbows pinned.", "Curl up (both arms or alternating), squeeze, then lower slowly.", "Swinging your torso, or doing half reps."],
+  ['Incline Dumbbell Curl', 'forearms', "Set the bench to about 60 degrees. Lie back with your arms hanging straight down, palms forward.", "Curl up while keeping your upper arms still, then lower slowly to a full stretch.", "Swinging your elbows forward, or using a weight so heavy the stretch strains your shoulder."],
+  ['Wrist Curl (dumbbell)', '', "Sit with your forearms resting on your thighs or a bench, palms up, wrists hanging off the edge. Use a light dumbbell.", "Curl your wrists up and squeeze, then lower slowly to a full stretch.", "Lifting your forearms off the support, bouncing, or using too much weight."],
+  ['Reverse Wrist Curl (dumbbell)', '', "Same position as the wrist curl but with your palms down. Use a very light dumbbell, because these muscles are small.", "Lift the backs of your hands up, then lower slowly.", "Going heavy, bouncing, or lifting your forearms off the support."],
+  ['Reverse Curl', 'biceps', "Stand tall with dumbbells (or a bar) in an overhand grip, palms down, elbows at your sides.", "Curl up with straight wrists, then lower slowly. Use much less weight than a normal curl.", "Letting your wrists bend back, or swinging."],
+  ['Farmers Carry (dumbbells)', 'core, upper back', "Pick a pair of dumbbells you can hold for 40 to 60 seconds. Pick them up with a flat back, hinging at your hips.", "Stand tall with your shoulders down and walk with short, steady steps for the full time. Set them down with control.", "Leaning, shrugging, letting the weights swing, or dropping them."],
+  ['Dead Hang', 'shoulders, upper back', "Grip a bar (or the assisted pull-up handles) about shoulder-width. Use a step to get up, then let your feet leave the floor.", "Hang with your arms straight and your shoulders gently pulled down for the full time. Step down carefully.", "Shrugging up to your ears, swinging, or hanging until your grip fails."],
+  ['Leg Press', 'glutes, hamstrings', "Adjust the seat so your knees bend to about 90 degrees at the bottom. Feet flat and shoulder-width on the plate, back and hips against the pad.", "Push through your whole foot until your legs are nearly straight, then lower slowly. Higher, wider feet work more glutes and hamstrings; lower, narrower feet work more quads.", "Locking your knees hard, letting your hips lift or your lower back round at the bottom, or your knees caving in."],
+  ['Leg Extension (machine)', '', "Adjust the back pad so your knees line up with the machine's pivot and the pad rests on your lower shins.", "Straighten your legs until nearly locked and squeeze your quads, then lower slowly.", "Kicking the weight up, locking out hard, or lifting your hips."],
+  ['Smith Machine Squat', 'glutes', "Set the bar on your upper back (not your neck), feet slightly in front of the bar and shoulder-width. Set the safety stops. Twist the bar to unhook it.", "Sit down and back until your thighs are about parallel, then drive up through your whole foot. Re-hook the bar when done.", "Heels lifting, knees caving in, leaning forward, or skipping the safety stops."],
+  ['Goblet Squat (dumbbell)', 'glutes', "Hold one dumbbell upright against your chest with your elbows pointing down. Feet shoulder-width, toes slightly out.", "Sit down between your knees with your chest up until your thighs are about parallel, then stand by pushing through your whole foot.", "Heels lifting, knees caving in, or rounding your back."],
+  ['Walking Lunge (dumbbell)', 'glutes, hamstrings', "Hold dumbbells at your sides with room to walk forward.", "Step forward and lower your back knee toward the floor until your front thigh is about parallel, then push through your front foot into the next step.", "Leaning forward, tiny steps, or slamming your back knee into the floor. Count each step as one rep."],
+  ['Step-up (dumbbell)', 'glutes', "Use a stable box or bench about knee height. Hold dumbbells at your sides.", "Step up with one foot and drive through that heel until you stand tall, then step down slowly. Finish all reps on one leg, then switch.", "Pushing off your back foot, leaning forward, or using an unstable box."],
+  ['Hack Squat (machine)', 'glutes', "Put your shoulders under the pads, back flat on the pad, feet shoulder-width. Set the safety.", "Lower until your knees are about 90 degrees or as deep as is comfortable, then press up through your whole foot.", "Locking your knees, lifting your heels, or letting your hips peel off the pad."],
+  ['Leg Curl (machine)', 'calves', "Adjust the machine so the pad sits just above your heels and your knees line up with the pivot.", "Curl your heels toward your glutes and squeeze, then return slowly.", "Lifting your hips off the pad, jerking, or dropping the weight."],
+  ['Romanian Deadlift (dumbbell)', 'glutes, lower back', "Stand tall with dumbbells in front of your thighs and soft knees.", "Push your hips back and slide the dumbbells down your legs with a flat back until you feel a hamstring stretch, then drive your hips forward to stand.", "Rounding your back, bending your knees into a squat, or letting the dumbbells drift away from your legs."],
+  ['Hip Thrust (Smith machine)', 'hamstrings', "Rest your upper back on a bench with a padded bar across your hips. Feet flat, knees about 90 degrees at the top.", "Drive through your heels to lift your hips until your body is straight from shoulders to knees, squeeze your glutes, then lower slowly.", "Arching your lower back at the top, pushing through your toes, or using a bar with no pad."],
+  ['Glute Kickback (cable)', 'hamstrings', "Strap your ankle to a low pulley and hold the machine for balance with a slight forward lean.", "Kick your leg straight back and squeeze your glute, then return slowly.", "Arching your back, swinging, or kicking higher than you can control."],
+  ['Calf Raise (machine)', '', "Place the balls of your feet on the platform with the pads on your shoulders.", "Lower your heels for a full stretch, press up as high as you can onto your toes, pause, then lower slowly.", "Bouncing, short range, or bending your knees."],
+  ['Seated Calf Raise (machine)', '', "Sit with the pad on your thighs and the balls of your feet on the platform.", "Lower your heels for a full stretch, press up as high as you can, pause, then lower slowly.", "Bouncing or short range."],
+  ['Standing Calf Raise (Smith machine)', '', "Set the bar on your upper back and stand with the balls of your feet on a step or plate. Twist the bar to unhook it.", "Lower your heels for a stretch, rise onto your toes, pause, then lower slowly. Re-hook the bar when done.", "Bouncing, losing your balance (hold the bar), or short range."],
+  ['Plank', 'shoulders, glutes', "Forearms on the floor with your elbows under your shoulders. Body in one straight line from head to heels.", "Hold, squeezing your abs and glutes, and keep breathing normally.", "Sagging hips, hips too high, or holding your breath."],
+  ['Side Plank', 'obliques', "Lie on your side with your elbow under your shoulder and your feet stacked. Lift your hips so your body is straight.", "Hold, then switch sides. Log the time for one side.", "Letting your hips sag, or rolling forward or back."],
+  ['Cable Crunch', '', "Attach a rope to a high pulley. Kneel facing it with the rope beside your head and your hips back.", "Curl your ribs toward your hips, rounding your spine, and squeeze your abs. Return slowly.", "Pulling with your arms, sitting back onto your heels, or bending at the hips instead of curling your spine."],
+  ['Ab Crunch (machine)', '', "Adjust the seat so the pivot lines up with your waist. Hold the handles or place your arms on the pad.", "Curl your torso forward and down, exhale, and squeeze your abs. Return slowly.", "Pulling with your arms, using your hips, or going too heavy."],
+  ['Hanging Knee Raise', 'hip flexors', "Forearms on the pads, hands on the handles, back against the pad. Let your legs hang straight down.", "Lift your knees toward your chest and tuck your hips up a little, pause, then lower over 2 to 3 seconds.", "Swinging, lifting only your thighs without the hip tuck, or arching your lower back."],
+  ['Cable Woodchopper', 'obliques', "Set the cable high or low. Stand sideways to it with both hands on the handle, feet shoulder-width.", "Pull the handle diagonally across your body, rotating through your torso, then return under control. Do all reps on one side, then switch.", "Pulling with just your arms, twisting your lower back, or going too heavy."],
+  ['Torso Rotation (machine)', 'obliques', "Sit with your legs locked in and your arms on the pads. Set your starting position facing forward.", "Rotate your torso smoothly with your hips still, pause, then return slowly. Do one side, then the other.", "Using momentum, or going too heavy."],
+  ['Dead Bug', '', "Lie on your back with your arms up toward the ceiling and your knees bent at 90 degrees above your hips. Press your lower back into the floor.", "Slowly lower the opposite arm and leg toward the floor without letting your back arch, then return and switch sides.", "Letting your lower back lift off the floor, or rushing. Count each arm-and-leg pair as one rep."],
+  ['Bicycle Crunch', 'obliques', "Lie on your back with your hands lightly behind your head and your knees up.", "Bring one elbow toward the opposite knee while you extend the other leg, then switch sides with control.", "Pulling on your neck, or moving so fast you bounce."],
+  ['Russian Twist', 'obliques', "Sit with your knees bent and lean back slightly. Keep your feet down, or lift them to make it harder. Clasp your hands together.", "Rotate your torso to one side, then the other, with control.", "Swinging only your arms, rounding your back, or using momentum."]
+];
+// older spellings from earlier plans share the guide of the standard exercise
+const GUIDE_ALIASES = { 'Lateral Raise (dumbbell)': 'Lateral Raise', 'Front Pulldowns': 'Lat Pulldown', 'Leg Curl (light)': 'Leg Curl (machine)', 'Overhead Press (Smith machine)': 'Smith Machine Shoulder Press' };
+let GUIDE_MAP = null;
+function exerciseGuide(name) {
+  if (!name) return null;
+  if (!GUIDE_MAP) { GUIDE_MAP = {}; EXERCISE_GUIDES.forEach(([n, also, setup, move, avoid]) => { GUIDE_MAP[libKey(n)] = { name: n, also, setup, move, avoid }; }); Object.entries(GUIDE_ALIASES).forEach(([a, t]) => { GUIDE_MAP[libKey(a)] = GUIDE_MAP[libKey(t)]; }); }
+  const n = String(name).trim(); let g = GUIDE_MAP[libKey(n)] || null, variant = null;
+  if (!g) { const m = /^(.*?)\s*\(([^)]*)\)\s*$/.exec(n); if (m && GUIDE_MAP[libKey(m[1])]) { g = GUIDE_MAP[libKey(m[1])]; variant = m[2].trim() || null; } }
+  return g ? { ...g, variant } : null;
+}
+function guideInfoBtn(name) { return exerciseGuide(name) ? `<button type="button" class="re-info" data-guide="${escapeHtml(name)}" aria-label="How to do ${escapeHtml(name)}">ⓘ</button>` : ''; }
+function exGuideOpen() { const el = document.getElementById('exGuide'); return !!el && el.style.display !== 'none'; }
+function closeExerciseGuide() { const el = document.getElementById('exGuide'); if (el) el.style.display = 'none'; }
+function ensureExerciseGuideDom() {
+  const el = document.getElementById('exGuide');
+  if (!el || el.dataset.ready) return;
+  el.dataset.ready = '1';
+  el.addEventListener('click', e => { if (e.target === el || e.target.closest('#egDone')) closeExerciseGuide(); });
+  // capture + stop: Escape closes only the guide, not the picker or editor underneath it
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && exGuideOpen()) { e.stopImmediatePropagation(); e.preventDefault(); closeExerciseGuide(); } }, true);
+}
+function openExerciseGuide(name) {
+  const g = exerciseGuide(name); if (!g) return;
+  ensureExerciseGuideDom();
+  const group = muscleGroupFor(name) || muscleGroupFor(g.name) || '', mode = exerciseMode(name);
+  const logNote = mode === 'bodyweight' ? 'Log reps only: there is no weight box.' : mode === 'timed' ? 'Log your time in seconds.' : mode === 'timedLoaded' ? 'Log the weight of ONE dumbbell and your time in seconds.' : '';
+  document.getElementById('exGuide').innerHTML = `
+    <div class="re-sheet" role="dialog" aria-modal="true" aria-label="How to do ${escapeHtml(g.name)}">
+      <div class="re-top"><div class="re-title">${escapeHtml(g.name)}</div><button type="button" class="re-done" id="egDone">Done</button></div>
+      <div class="re-body">
+        <div class="eg-works">Works: <b>${escapeHtml(group || 'full body')}</b>${g.also ? ` (also ${escapeHtml(g.also)})` : ''}</div>
+        ${g.variant ? `<div class="eg-variant">Your version: ${escapeHtml(g.variant)}. The steps below are for the standard exercise.</div>` : ''}
+        <div class="eg-h">Set up</div><div class="eg-p">${escapeHtml(g.setup)}</div>
+        <div class="eg-h">Do it</div><div class="eg-p">${escapeHtml(g.move)}</div>
+        <div class="eg-h">Avoid</div><div class="eg-p">${escapeHtml(g.avoid)}</div>
+        ${logNote ? `<div class="eg-log">${escapeHtml(logNote)}</div>` : ''}
+        <div class="eg-foot">Machines differ from gym to gym, so adjust the seat and pads until the movement feels smooth. Use a weight you can control on every rep, and stop if you feel sharp pain.</div>
+      </div>
+    </div>`;
+  document.getElementById('exGuide').style.display = 'flex';
 }
 
 function wireRoutineButtons(root) {
@@ -12639,6 +12765,7 @@ function renderWorkoutPlan() {
             <span>${ex.name}</span>
             <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-soft);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
+          ${exerciseGuide(ex.name) ? `<button type="button" class="exercise-info-btn" data-exercise="${ex.name}" title="How to do this" aria-label="How to do ${ex.name}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:4px;flex-shrink:0;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>` : ''}
           <button type="button" class="exercise-history-btn" data-exercise="${ex.name}" title="View history for ${ex.name}" aria-label="View history for ${ex.name}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:4px;flex-shrink:0;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></button>
           <button type="button" class="remove-exercise-btn" data-exercise="${ex.name}" title="Remove from today's list" aria-label="Remove ${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:17px;line-height:1;cursor:pointer;padding:4px;margin-left:2px;flex-shrink:0">✕</button>
         </div>
