@@ -877,6 +877,16 @@ body {
 .lb-rules { font-size: 12px; background: var(--input-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.5; }
 .lb-code { font-family: var(--font-num); font-size: 26px; font-weight: 800; letter-spacing: 0.08em; text-align: center; padding: 12px; background: var(--input-bg); border: 1.5px dashed var(--teal); border-radius: 12px; margin: 8px 0; }
 .lb-foot { font-size: 11px; color: var(--ink-soft); margin-top: 16px; line-height: 1.4; }
+.lb-tabs { display: flex; gap: 6px; margin-bottom: 4px; overflow-x: auto; }
+.lb-tab { flex: 1 0 auto; padding: 8px 10px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--input-bg); color: var(--ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.lb-tab.on { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border-color: transparent; color: #0a2e28; }
+.lb-main { flex: 1; min-width: 0; display: flex; flex-direction: column; } .lb-sub { font-size: 11px; color: var(--ink-soft); font-weight: 600; }
+.lb-cheer { flex: 0 0 auto; min-width: 40px; height: 34px; border-radius: 17px; border: 1.5px solid var(--line); background: var(--input-bg); font-size: 15px; cursor: pointer; padding: 0 8px; }
+.lb-cheer.on { border-color: var(--teal); opacity: 0.85; cursor: default; font-size: 12px; font-weight: 700; color: var(--ink); }
+.lb-team { background: var(--input-bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 4px; }
+.lb-team-top { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; margin-bottom: 6px; } .lb-team-top span:last-child { font-family: var(--font-num); font-weight: 800; }
+.lb-bar { height: 10px; border-radius: 6px; background: rgba(255,255,255,0.12); overflow: hidden; } .lb-bar > div { height: 100%; background: linear-gradient(90deg, #37C6FF, #5CE6C0); border-radius: 6px; }
+.lb-recap { font-size: 13px; line-height: 1.5; background: var(--input-bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-top: 12px; }
 .rm-card { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 12px; }
 .rm-card.in-use { border-color: var(--teal); }
 .rm-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -12284,86 +12294,100 @@ function openExerciseGuide(name) {
 
 // ── LEADERBOARD ──────────────────────────────────────────────────────────
 // A weekly board between people who join the same group. Friendly, but with real rankings.
-// Only these are shared: a display name, workouts this week, sets this week, PRs this month, and the
-// streak. NEVER weight, glucose, medication, food, notes, or the person's sync ID. Each phone works out
-// its own numbers and writes them to its own member document at groups/<code>/members/<memberId>;
-// everyone in the group reads the list. The group code is the secret that lets someone in.
-const LB_MAX_MEMBERS = 8, LB_WORKOUT_CAP = 6, LB_STREAK_MIN = 3, LB_CODE_LEN = 10;
+// Shared: a display name; this week's workouts / sets / PRs / streak; the same four numbers for each of the
+// last 26 weeks (so past weeks can be ranked and champions crowned); personal records (best streak, most sets
+// in a week...); the date of the last workout; and the week they joined. NEVER weight, glucose, medication,
+// food, notes, or the person's sync ID. Each phone works out its own numbers and writes them to its own member
+// document at groups/<code>/members/<memberId>; everyone reads the list. Cheers are tiny documents at
+// groups/<code>/cheers/<week>_<from>_<to> (so one per person per friend per week). The group code is the secret.
+const LB_MAX_MEMBERS = 8, LB_WORKOUT_CAP = 6, LB_STREAK_MIN = 3, LB_CODE_LEN = 10, LB_HISTORY_WEEKS = 26, LB_TEAM_TARGET = 3;
 const LB_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I/L: easy to read out and type
-let lbConfig = null;   // { code, memberId, name, sharing } — kept in the person's own settings
-let lbMembers = [];    // everyone in the group, as last read
-let lbUnsub = null, lbSubCode = null, lbError = '', lbPublishTimer = null, lbLastSent = '', lbLastSentAt = 0;
-let lbSheetMode = 'board', lbSheetErr = '', lbJustCopied = false;
+let lbConfig = null;   // { code, memberId, name, sharing, joinedWeek } — kept in the person's own settings
+let lbMembers = [], lbCheers = [];
+let lbUnsub = null, lbCheerUnsub = null, lbSubCode = null, lbError = '', lbPublishTimer = null, lbLastSent = '', lbLastSentAt = 0;
+let lbSheetMode = 'board', lbTab = 'week', lbSheetErr = '', lbJustCopied = false;
 
 function lbPad(n) { return String(n).padStart(2, '0'); }
 function lbFmt(d) { return `${d.getFullYear()}-${lbPad(d.getMonth() + 1)}-${lbPad(d.getDate())}`; }
 function lbParse(s) { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); }
 function lbWeekStart(s) { const d = lbParse(s); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return lbFmt(d); } // the Monday of that week
 function lbAddDays(s, n) { const d = lbParse(s); d.setDate(d.getDate() + n); return lbFmt(d); }
+function lbWeekMonth(w) { return lbAddDays(w, 3).slice(0, 7); } // a week belongs to the month its Thursday falls in
 function lbRandomString(chars, n) { const b = new Uint32Array(n); (window.crypto || window.msCrypto).getRandomValues(b); return Array.from(b, v => chars[v % chars.length]).join(''); }
 function lbNewCode() { return lbRandomString(LB_CODE_CHARS, LB_CODE_LEN); }
 function lbNormalizeCode(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
 function lbShowCode(code) { return code && code.length > 5 ? `${code.slice(0, 5)}-${code.slice(5)}` : (code || ''); }
 function lbCleanName(s) { return cleanExerciseName(s).slice(0, 16); }
 
-// This person's numbers, from their own workout log.
-function lbComputeStats() {
-  const today = todayStr(), wk = lbWeekStart(today), month = today.slice(0, 7);
-  const days = {}, sessions = [];
+// Everything the board needs from THIS person's own workout log, worked out in one pass.
+function lbAnalyze() {
+  const today = todayStr(), wk = lbWeekStart(today);
+  const days = {}, setsBy = {}, sessions = [];
   entries.forEach(e => (e.ex || []).forEach(x => {
-    if (!x || x.type !== 'Strength') return;
+    if (!x || x.type !== 'Strength' || !e.date) return;
     const w = lbWeekStart(e.date); (days[w] = days[w] || new Set()).add(e.date);
-    sessions.push({ date: e.date, ts: x.ts || 0, sets: x.sets && typeof x.sets === 'object' ? x.sets : {} });
+    const sets = x.sets && typeof x.sets === 'object' ? x.sets : {};
+    let n = 0; Object.values(sets).forEach(arr => { if (Array.isArray(arr)) n += arr.filter(t => t && !t.warmup).length; });
+    setsBy[w] = (setsBy[w] || 0) + n;
+    sessions.push({ date: e.date, ts: x.ts || 0, sets });
   }));
-  let sets = 0;
-  sessions.forEach(s => { if (lbWeekStart(s.date) === wk) Object.values(s.sets).forEach(arr => { if (Array.isArray(arr)) sets += arr.filter(t => t && !t.warmup).length; }); });
-  // PRs this month: beating your OWN earlier best on an exercise. The first time you log one never counts.
-  const best = {}; let prs = 0;
+  // PRs: beating your OWN earlier best on an exercise. The first time you log one never counts.
+  const best = {}, prDates = [];
   sessions.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.ts - b.ts)).forEach(s => {
     Object.entries(s.sets).forEach(([name, arr]) => {
       if (!Array.isArray(arr)) return;
       const top = Math.max(0, ...arr.filter(isWeightedWorkingSet).map(t => t.weight));
       if (top <= 0) return;
-      if (best[name] > 0 && top > best[name] && s.date.startsWith(month)) prs++;
+      if (best[name] > 0 && top > best[name]) prDates.push(s.date);
       best[name] = Math.max(best[name] || 0, top);
     });
   });
-  // Streak: weeks in a row with at least 3 workout days. A week still in progress never breaks it.
+  const prsThrough = day => prDates.filter(d => d.slice(0, 7) === day.slice(0, 7) && d <= day).length; // PRs this calendar month, up to that day
   const hit = w => (days[w] ? days[w].size : 0) >= LB_STREAK_MIN;
-  let streak = hit(wk) ? 1 : 0;
-  for (let w = lbAddDays(wk, -7); hit(w); w = lbAddDays(w, -7)) streak++;
-  return { weekStart: wk, month, workouts: Math.min(days[wk] ? days[wk].size : 0, LB_WORKOUT_CAP), sets, prs, streak };
+  const first = Object.keys(days).sort()[0] || wk;
+  const weeks = {}; let streak = 0, bestStreak = 0, bestSets = 0, bestWeek = 0;
+  for (let w = first; w <= wk; w = lbAddDays(w, 7)) {
+    const d = days[w] ? days[w].size : 0, sets = setsBy[w] || 0;
+    if (w < wk) streak = hit(w) ? streak + 1 : 0; else if (hit(w)) streak++; // the week in progress never breaks a streak
+    weeks[w] = [Math.min(d, LB_WORKOUT_CAP), sets, prsThrough(w === wk ? today : lbAddDays(w, 6)), streak];
+    bestStreak = Math.max(bestStreak, streak); bestSets = Math.max(bestSets, sets); bestWeek = Math.max(bestWeek, Math.min(d, LB_WORKOUT_CAP));
+  }
+  const perMonth = {}; prDates.forEach(d => { perMonth[d.slice(0, 7)] = (perMonth[d.slice(0, 7)] || 0) + 1; });
+  const keep = {}; Object.keys(weeks).sort().slice(-LB_HISTORY_WEEKS).forEach(k => { keep[k] = weeks[k]; });
+  const cur = weeks[wk], last = sessions.reduce((m, s) => (s.date > m ? s.date : m), '');
+  return { weekStart: wk, month: today.slice(0, 7), workouts: cur[0], sets: cur[1], prs: cur[2], streak: cur[3], weeks: keep,
+    best: { streak: bestStreak, setsWeek: bestSets, prsMonth: Math.max(0, ...Object.values(perMonth)), workoutsWeek: bestWeek }, last: last || null };
 }
-function lbPayload() { const s = lbComputeStats(); return { name: lbConfig.name, weekStart: s.weekStart, month: s.month, workouts: s.workouts, sets: s.sets, prs: s.prs, streak: s.streak, updatedAt: Date.now(), v: 1 }; }
+function lbComputeStats() { return lbAnalyze(); }
+function lbPayload() { const a = lbAnalyze(); return { name: lbConfig.name, since: lbConfig.joinedWeek || a.weekStart, weekStart: a.weekStart, month: a.month, workouts: a.workouts, sets: a.sets, prs: a.prs, streak: a.streak, weeks: a.weeks, best: a.best, last: a.last, updatedAt: Date.now(), v: 2 }; }
 function lbMemberRef(code, id) { return doc(db, 'groups', code, 'members', id); }
 async function lbPublish(force) {
   if (!lbConfig || !lbConfig.sharing || !lbConfig.code) return;
+  if (!lbConfig.joinedWeek) { lbConfig.joinedWeek = lbWeekStart(todayStr()); lbSaveConfig(); } // groups joined before history existed
   const p = lbPayload(), sig = JSON.stringify({ ...p, updatedAt: 0 });
   if (!force && sig === lbLastSent && Date.now() - lbLastSentAt < 6 * 3600 * 1000) return; // nothing new to say
   try { await setDoc(lbMemberRef(lbConfig.code, lbConfig.memberId), p); lbLastSent = sig; lbLastSentAt = Date.now(); lbError = ''; }
   catch (err) { console.error(err); lbError = "Couldn't update the group just now."; }
 }
 function lbSchedulePublish() { if (!lbConfig || !lbConfig.sharing) return; clearTimeout(lbPublishTimer); lbPublishTimer = setTimeout(() => lbPublish(false), 2500); }
-function lbUnsubscribe() { if (lbUnsub) lbUnsub(); lbUnsub = null; lbSubCode = null; }
+function lbUnsubscribe() { if (lbUnsub) lbUnsub(); if (lbCheerUnsub) lbCheerUnsub(); lbUnsub = null; lbCheerUnsub = null; lbSubCode = null; }
 function lbSubscribe() {
-  if (!lbConfig || !lbConfig.code) { lbUnsubscribe(); lbMembers = []; return; }
+  if (!lbConfig || !lbConfig.code) { lbUnsubscribe(); lbMembers = []; lbCheers = []; return; }
   if (lbUnsub && lbSubCode === lbConfig.code) return;
   lbUnsubscribe(); lbSubCode = lbConfig.code;
   lbUnsub = onSnapshot(collection(db, 'groups', lbConfig.code, 'members'),
     snap => { lbMembers = snap.docs.map(d => ({ id: d.id, ...d.data() })); lbError = ''; renderLeaderboard(); },
     err => { console.error(err); lbError = "Couldn't reach the group. Check your connection; if it keeps happening, the database permissions may need updating."; renderLeaderboard(); });
+  lbCheerUnsub = onSnapshot(collection(db, 'groups', lbConfig.code, 'cheers'),
+    snap => { lbCheers = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderLeaderboard(); },
+    err => { console.error(err); /* cheers are a nice extra: the board works without them */ });
 }
 async function lbSaveConfig() { if (!syncId) return; await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { leaderboard: lbConfig || null }, { merge: true }); }
 
-// Turn everyone's shared numbers into the board. Numbers from an earlier week or month don't count for this one.
-function lbBoard(members) {
-  const wk = lbWeekStart(todayStr()), month = todayStr().slice(0, 7), prevWk = lbAddDays(wk, -7);
-  const rows = members.map(m => {
-    const cur = m.weekStart === wk;
-    return { id: m.id, name: String(m.name || 'Someone'), workouts: cur ? (+m.workouts || 0) : 0, sets: cur ? (+m.sets || 0) : 0, prs: m.month === month ? (+m.prs || 0) : 0, streak: (cur || m.weekStart === prevWk) ? (+m.streak || 0) : 0, points: 0 };
-  });
+// ── ranking ──
+function lbRank(rows) { // rows: { id, name, workouts, sets, prs, streak } -> points per category rank, then overall
   const cats = [['workouts', 'Workouts', 'this week (max 6)', '🏋️'], ['sets', 'Sets', 'this week', '💪'], ['prs', 'PRs', 'this month', '🏆'], ['streak', 'Streak', 'weeks in a row', '🔥']];
-  const n = rows.length, ranked = {};
+  const n = rows.length, ranked = {}; rows.forEach(r => { r.points = 0; });
   cats.forEach(([k]) => {
     const sorted = [...rows].sort((a, b) => b[k] - a[k] || a.name.localeCompare(b.name));
     let rank = 0, prev = null;
@@ -12372,13 +12396,88 @@ function lbBoard(members) {
   });
   const overall = [...rows].sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
   let rank = 0, prev = null; overall.forEach((r, i) => { if (r.points !== prev) { rank = i + 1; prev = r.points; } r.rank = rank; });
-  return { wk, month, cats, ranked, overall, n };
+  return { cats, ranked, overall, n };
 }
+function lbBoard(members) { // this week, live. Numbers from an earlier week or month don't count for this one.
+  const wk = lbWeekStart(todayStr()), month = todayStr().slice(0, 7), prevWk = lbAddDays(wk, -7);
+  const rows = members.map(m => { const cur = m.weekStart === wk;
+    return { id: m.id, name: String(m.name || 'Someone'), workouts: cur ? (+m.workouts || 0) : 0, sets: cur ? (+m.sets || 0) : 0, prs: m.month === month ? (+m.prs || 0) : 0, streak: (cur || m.weekStart === prevWk) ? (+m.streak || 0) : 0, points: 0 }; });
+  return { wk, month, ...lbRank(rows) };
+}
+function lbWeekResult(members, w) { // a finished week, from everyone's published history
+  const rows = members.filter(m => (m.v || 1) >= 2 && (!m.since || m.since <= w)).map(m => { const a = (m.weeks && m.weeks[w]) || [0, 0, 0, 0];
+    return { id: m.id, name: String(m.name || 'Someone'), workouts: +a[0] || 0, sets: +a[1] || 0, prs: +a[2] || 0, streak: +a[3] || 0, points: 0 }; });
+  const r = lbRank(rows);
+  return { week: w, n: rows.length, overall: r.overall, winners: rows.length >= 2 ? r.overall.filter(x => x.rank === 1 && x.points > 0) : [] };
+}
+function lbGroupWeeks(members) { // the finished weeks the group has existed for
+  const since = members.filter(m => (m.v || 1) >= 2 && m.since).map(m => m.since).sort(); if (!since.length) return [];
+  const out = [], last = lbAddDays(lbWeekStart(todayStr()), -7);
+  for (let w = since[0]; w <= last; w = lbAddDays(w, 7)) out.push(w);
+  return out.slice(-LB_HISTORY_WEEKS);
+}
+function lbMonths(members) { // points per month = the sum of that month's weekly points; this week's live points join the current month
+  const by = {}, add = (mo, id, name, pts) => { const o = by[mo] = by[mo] || { month: mo, pts: {}, names: {} }; o.pts[id] = (o.pts[id] || 0) + pts; o.names[id] = name; };
+  const curMonth = lbWeekMonth(lbWeekStart(todayStr()));
+  lbGroupWeeks(members).forEach(w => lbWeekResult(members, w).overall.forEach(x => add(lbWeekMonth(w), x.id, x.name, x.points)));
+  lbBoard(members).overall.forEach(x => add(curMonth, x.id, x.name, x.points));
+  return Object.values(by).map(o => {
+    const standings = Object.keys(o.pts).map(id => ({ id, name: o.names[id], pts: o.pts[id] })).sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name));
+    const complete = o.month < curMonth;
+    return { month: o.month, complete, standings, champions: complete && standings.length >= 2 && standings[0].pts > 0 ? standings.filter(s => s.pts === standings[0].pts) : [] };
+  }).sort((a, b) => (a.month < b.month ? 1 : -1));
+}
+function lbWins(members) {
+  const wins = {}, bump = (id, k) => { (wins[id] = wins[id] || { weeks: 0, months: 0 })[k]++; };
+  lbGroupWeeks(members).forEach(w => lbWeekResult(members, w).winners.forEach(x => bump(x.id, 'weeks')));
+  lbMonths(members).filter(m => m.complete).forEach(m => m.champions.forEach(c => bump(c.id, 'months')));
+  return wins;
+}
+function lbRecords(members) {
+  const defs = [['streak', '🔥', 'Longest streak', ' weeks'], ['workoutsWeek', '🏋️', 'Most workouts in a week', ''], ['setsWeek', '💪', 'Most sets in a week', ''], ['prsMonth', '🏆', 'Most PRs in a month', '']];
+  return defs.map(([key, icon, label, unit]) => {
+    const vals = members.filter(m => (m.v || 1) >= 2 && m.best).map(m => ({ id: m.id, name: String(m.name || 'Someone'), v: +m.best[key] || 0 }));
+    const max = Math.max(0, ...vals.map(x => x.v));
+    return { key, icon, label, unit, value: max, holders: max > 0 ? vals.filter(x => x.v === max) : [] };
+  });
+}
+function lbMostImproved(members, w) { // last finished week vs the person's OWN recent weeks, so it is fair whatever your level
+  let best = null;
+  members.filter(m => (m.v || 1) >= 2 && m.weeks && m.weeks[w] && (!m.since || m.since <= w)).forEach(m => {
+    const prior = [1, 2, 3, 4].map(k => lbAddDays(w, -7 * k)).filter(pw => m.weeks[pw]).map(pw => +m.weeks[pw][1] || 0);
+    if (prior.length < 2) return;
+    const avg = prior.reduce((a, b) => a + b, 0) / prior.length; if (avg < 10) return;
+    const gain = ((+m.weeks[w][1] || 0) - avg) / avg;
+    if (gain >= 0.15 && (!best || gain > best.gain)) best = { id: m.id, name: String(m.name || 'Someone'), gain };
+  });
+  return best;
+}
+function lbTeamGoal(members) {
+  const wk = lbWeekStart(todayStr()), goal = LB_TEAM_TARGET * members.length;
+  const done = members.reduce((s, m) => s + (m.weekStart === wk ? Math.min(+m.workouts || 0, LB_TEAM_TARGET) : 0), 0);
+  return { done, goal, pct: goal ? Math.round(100 * done / goal) : 0, reached: goal > 0 && done >= goal };
+}
+
+// ── drawing ──
 function lbMedal(rank, value) { return value <= 0 ? '–' : rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : String(rank); }
 function lbWeekLabel(wk) { const o = { month: 'short', day: 'numeric' }; return `${lbParse(wk).toLocaleDateString('en-US', o)} – ${lbParse(lbAddDays(wk, 6)).toLocaleDateString('en-US', o)}`; }
-function lbRows(list, key, board) {
+function lbMonthLabel(mo) { return new Date(+mo.slice(0, 4), +mo.slice(5, 7) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); }
+function lbAgo(d) { if (!d) return ''; const n = Math.round((lbParse(todayStr()) - lbParse(d)) / 86400000); return n <= 0 ? 'trained today' : n === 1 ? 'trained yesterday' : n <= 30 ? `trained ${n} days ago` : ''; }
+function lbRows(list, key) {
   return list.map(r => { const you = lbConfig && r.id === lbConfig.memberId, rk = key ? r['rank_' + key] : r.rank, v = key ? r[key] : r.points;
-    return `<div class="lb-row${you ? ' lb-you' : ''}"><span class="lb-rank">${lbMedal(rk, v)}</span><span class="lb-name">${escapeHtml(r.name)}${you ? ' (you)' : ''}</span><span class="lb-val">${v}${key ? '' : ' pts'}</span></div>`; }).join('');
+    return `<div class="lb-row${you ? ' lb-you' : ''}"><span class="lb-rank">${lbMedal(rk, v)}</span><span class="lb-main"><span class="lb-name">${escapeHtml(r.name)}${you ? ' (you)' : ''}</span></span><span class="lb-val">${v}${key ? '' : ' pts'}</span></div>`; }).join('');
+}
+function lbOverallRows(b) { // the main list: medal, name, when they last trained, cheers, and a 👏 button for everyone but you
+  return b.overall.map(r => {
+    const you = lbConfig && r.id === lbConfig.memberId, m = lbMembers.find(x => x.id === r.id) || {};
+    const cheers = lbCheers.filter(c => c.week === b.wk && c.to === r.id), cheered = !!lbConfig && cheers.some(c => c.from === lbConfig.memberId);
+    const sub = [lbAgo(m.last), cheers.length ? `👏 ${cheers.length}` : ''].filter(Boolean).join(' · ');
+    return `<div class="lb-row${you ? ' lb-you' : ''}"><span class="lb-rank">${lbMedal(r.rank, r.points)}</span><span class="lb-main"><span class="lb-name">${escapeHtml(r.name)}${you ? ' (you)' : ''}</span>${sub ? `<span class="lb-sub">${escapeHtml(sub)}</span>` : ''}</span>${you ? '' : `<button type="button" class="lb-cheer${cheered ? ' on' : ''}" data-lb="cheer" data-to="${escapeHtml(r.id)}" ${cheered ? 'disabled' : ''} aria-label="${cheered ? 'You cheered' : 'Cheer'} ${escapeHtml(r.name)}">${cheered ? '👏 ✓' : '👏'}</button>`}<span class="lb-val">${r.points} pts</span></div>`;
+  }).join('');
+}
+function lbTeamHtml() {
+  const g = lbTeamGoal(lbMembers); if (!lbMembers.length) return '';
+  return `<div class="lb-team"><div class="lb-team-top"><span><b>Team goal:</b> everyone trains ${LB_TEAM_TARGET} times this week</span><span>${g.done} / ${g.goal}</span></div><div class="lb-bar"><div style="width:${Math.min(100, g.pct)}%"></div></div>${g.reached ? '<div class="lb-note">🎉 Team goal reached!</div>' : ''}</div>`;
 }
 
 function renderLeaderboard() {
@@ -12387,12 +12486,15 @@ function renderLeaderboard() {
     body.innerHTML = `<div class="lb-intro">Compete with friends on a weekly board: workouts, sets, PRs, and streaks. Only those numbers and a name you choose are shared. Never your weight, glucose, medication, food, or notes.</div>
       <div class="lb-actions"><button type="button" class="btn btn-primary btn-sm" data-lb="start">Start a group</button><button type="button" class="btn btn-secondary btn-sm" data-lb="join">Join with a code</button></div>`;
   } else {
-    const b = lbBoard(lbMembers);
+    const b = lbBoard(lbMembers), g = lbTeamGoal(lbMembers);
+    const mine = lbCheers.filter(c => c.week === b.wk && c.to === lbConfig.memberId).map(c => (lbMembers.find(m => m.id === c.from) || {}).name).filter(Boolean);
     body.innerHTML = `
       ${lbError ? `<div class="lb-error">${escapeHtml(lbError)}</div>` : ''}
       <div class="lb-week">Week of ${lbWeekLabel(b.wk)} · ${b.n} in the group</div>
       ${!lbConfig.sharing ? '<div class="lb-note">Sharing is paused: you are hidden from the board.</div>' : ''}
-      ${b.n ? lbRows(b.overall.slice(0, 3), null, b) : '<div class="lb-note">Loading the group…</div>'}
+      ${b.n ? lbRows(b.overall.slice(0, 3), null) : '<div class="lb-note">Loading the group…</div>'}
+      ${b.n ? `<div class="lb-note">Team goal: ${g.done} of ${g.goal} workouts${g.reached ? ' 🎉' : ''}</div>` : ''}
+      ${mine.length ? `<div class="lb-note">👏 Cheered by ${escapeHtml(mine.join(', '))} this week</div>` : ''}
       <button type="button" class="btn btn-secondary btn-sm" data-lb="open" style="width:100%;margin-top:10px">Open leaderboard</button>`;
   }
   if (lbSheetOpen()) renderLbSheet();
@@ -12407,11 +12509,51 @@ function ensureLbSheetDom() {
 }
 function openLbSheet(mode) { ensureLbSheetDom(); lbSheetMode = mode || (lbConfig && lbConfig.code ? 'board' : 'start'); lbSheetErr = ''; document.getElementById('lbSheet').style.display = 'flex'; renderLbSheet(); }
 function closeLbSheet() { const el = document.getElementById('lbSheet'); if (el) el.style.display = 'none'; }
+function lbTabWeek(b) {
+  const prevWk = lbAddDays(b.wk, -7), prev = lbWeekResult(lbMembers, prevWk), imp = lbMostImproved(lbMembers, prevWk);
+  const mine = lbCheers.filter(c => c.week === b.wk && c.to === lbConfig.memberId).map(c => (lbMembers.find(m => m.id === c.from) || {}).name).filter(Boolean);
+  const recap = (prev.winners.length || imp) ? `<div class="lb-recap"><b>Last week</b> (${lbWeekLabel(prevWk)})${prev.winners.length ? `<br>🥇 ${escapeHtml(prev.winners.map(x => x.name).join(' & '))} won with ${prev.winners[0].points} pts` : ''}${imp ? `<br>📈 Most improved: ${escapeHtml(imp.name)} (+${Math.round(imp.gain * 100)}% sets vs their own recent weeks)` : ''}</div>` : '';
+  return `<div class="lb-week">Week of ${lbWeekLabel(b.wk)} · ${b.n} in the group</div>
+    ${!lbConfig.sharing ? '<div class="lb-note">Sharing is paused: you are hidden from the board.</div>' : ''}
+    ${lbTeamHtml()}
+    <div class="lb-h">Overall <span>points from every category</span></div>${b.n ? lbOverallRows(b) : '<div class="lb-note">Loading the group…</div>'}
+    ${mine.length ? `<div class="lb-note">👏 Cheered by ${escapeHtml(mine.join(', '))} this week</div>` : '<div class="lb-note">Tap 👏 to cheer a friend. One cheer per friend per week.</div>'}
+    ${recap}
+    ${b.cats.map(([k, label, sub, icon]) => `<div class="lb-h">${icon} ${label} <span>${sub}</span></div>${lbRows(b.ranked[k], k)}`).join('')}
+    <div class="lb-foot">For fun and motivation. Workouts stop counting at ${LB_WORKOUT_CAP} a week, so it never pays to overdo it. Rest days are part of training. Each category earns more points the higher you rank.</div>`;
+}
+function lbTieRanks(list, key) { let rk = 0, prev = null; return list.map((x, i) => { if (x[key] !== prev) { rk = i + 1; prev = x[key]; } return rk; }); } // equal scores share a rank
+function lbTabMonth() {
+  const months = lbMonths(lbMembers), cur = months.find(m => !m.complete), past = months.filter(m => m.complete && m.champions.length).slice(0, 6);
+  const ranks = cur ? lbTieRanks(cur.standings, 'pts') : [];
+  const curRows = cur ? cur.standings.map((s, i) => { const you = lbConfig && s.id === lbConfig.memberId; return `<div class="lb-row${you ? ' lb-you' : ''}"><span class="lb-rank">${lbMedal(ranks[i], s.pts)}</span><span class="lb-main"><span class="lb-name">${escapeHtml(s.name)}${you ? ' (you)' : ''}</span></span><span class="lb-val">${s.pts} pts</span></div>`; }).join('') : '';
+  return `<div class="lb-h">${cur ? lbMonthLabel(cur.month) : lbMonthLabel(lbWeekMonth(lbWeekStart(todayStr())))} so far <span>points from every week this month</span></div>
+    ${curRows || '<div class="lb-note">Standings appear once people have logged workouts.</div>'}
+    <div class="lb-h">Past champions <span>the most points in a month</span></div>
+    ${past.length ? past.map(m => `<div class="lb-row"><span class="lb-rank">👑</span><span class="lb-main"><span class="lb-name">${lbMonthLabel(m.month)}</span></span><span class="lb-val">${escapeHtml(m.champions.map(c => c.name).join(' & '))}</span></div>`).join('') : '<div class="lb-note">A champion is crowned when a month is complete, with at least two people and some points. Nobody can be crowned for a month before the group existed.</div>'}`;
+}
+function lbTabRecords() {
+  const recs = lbRecords(lbMembers), wins = lbWins(lbMembers);
+  const recRows = recs.map(r => `<div class="lb-row"><span class="lb-rank">${r.icon}</span><span class="lb-main"><span class="lb-name">${r.label}</span>${r.holders.length ? `<span class="lb-sub">${escapeHtml(r.holders.map(h => h.name).join(' & '))}</span>` : ''}</span><span class="lb-val">${r.value > 0 ? r.value + r.unit : '–'}</span></div>`).join('');
+  const winRows = lbMembers.map(m => ({ name: String(m.name || 'Someone'), id: m.id, w: wins[m.id] || { weeks: 0, months: 0 } })).sort((a, b) => (b.w.months - a.w.months) || (b.w.weeks - a.w.weeks) || a.name.localeCompare(b.name))
+    .map(x => { const you = lbConfig && x.id === lbConfig.memberId; return `<div class="lb-row${you ? ' lb-you' : ''}"><span class="lb-rank">🏅</span><span class="lb-main"><span class="lb-name">${escapeHtml(x.name)}${you ? ' (you)' : ''}</span></span><span class="lb-val">${x.w.weeks} wk · ${x.w.months} mo</span></div>`; }).join('');
+  return `<div class="lb-h">Records <span>the best any of you has done</span></div>${recRows}
+    <div class="lb-h">Wins <span>weeks and months won</span></div>${winRows || '<div class="lb-note">Nobody has won a week yet.</div>'}`;
+}
+function lbTabGroup() {
+  return `<div class="lb-h">Your group</div><div class="lb-code">${escapeHtml(lbShowCode(lbConfig.code))}</div>
+    <div class="lb-actions"><button type="button" class="btn btn-secondary btn-sm" data-lb="copy">${lbJustCopied ? 'Copied ✓' : 'Copy code'}</button><button type="button" class="btn btn-secondary btn-sm" data-lb="share-toggle">${lbConfig.sharing ? 'Pause sharing' : 'Resume sharing'}</button></div>
+    <div class="lb-h">Your name</div>
+    <div class="lb-actions" style="margin-top:4px"><input id="lbRename" class="re-input" maxlength="16" autocomplete="off" value="${escapeHtml(lbConfig.name)}" aria-label="Your name"><button type="button" class="btn btn-secondary btn-sm" data-lb="rename" style="flex:0 0 90px">Save</button></div>
+    <button type="button" class="re-delete-routine" data-lb="leave" style="margin-top:14px">Leave this group</button>
+    <div class="lb-foot">For fun and motivation. Workouts stop counting at ${LB_WORKOUT_CAP} a week, so it never pays to overdo it. Rest days are part of training. Each category earns more points the higher you rank. What is shared: your name, those four numbers for each recent week, your personal records, and the date you last trained. Never your weight, glucose, medication, food, or notes.</div>`;
+}
 function renderLbSheet() {
   const el = document.getElementById('lbSheet'); if (!el) return;
+  if ((lbSheetMode === 'board' || lbSheetMode === 'created') && (!lbConfig || !lbConfig.code)) lbSheetMode = 'start'; // the group was cleared (e.g. you left it on another device) while this was open
   const keepName = (document.getElementById('lbName') || {}).value || '', keepCode = (document.getElementById('lbCode') || {}).value || '';
   const err = lbSheetErr ? `<div class="lb-error">${escapeHtml(lbSheetErr)}</div>` : '';
-  const shared = `<div class="lb-rules"><b>Shared:</b> your name, workouts this week, sets this week, PRs this month, and your streak.<br><b>Never shared:</b> weight, glucose, medication, food, notes, or anything else.</div>`;
+  const shared = `<div class="lb-rules"><b>Shared:</b> your name, workouts this week, sets this week, PRs this month, and your streak (plus the same numbers for recent weeks, your personal records, and the date you last trained).<br><b>Never shared:</b> weight, glucose, medication, food, notes, or anything else.</div>`;
   let title = 'Leaderboard', inner = '';
   if (lbSheetMode === 'start') {
     title = 'Start a group';
@@ -12429,16 +12571,10 @@ function renderLbSheet() {
       <div class="lb-actions"><button type="button" class="btn btn-primary" data-lb="copy">${lbJustCopied ? 'Copied ✓' : 'Copy code'}</button><button type="button" class="btn btn-ghost" data-lb="board">See the board</button></div>`;
   } else {
     const b = lbBoard(lbMembers);
+    const tabs = [['week', 'This week'], ['month', 'Month'], ['records', 'Records'], ['group', 'Group']];
     inner = `${err}${lbError ? `<div class="lb-error">${escapeHtml(lbError)}</div>` : ''}
-      <div class="lb-week">Week of ${lbWeekLabel(b.wk)} · ${b.n} in the group</div>
-      ${!lbConfig.sharing ? '<div class="lb-note">Sharing is paused: you are hidden from the board.</div>' : ''}
-      <div class="lb-h">Overall <span>points from every category</span></div>${b.n ? lbRows(b.overall, null, b) : '<div class="lb-note">Loading the group…</div>'}
-      ${b.cats.map(([k, label, sub, icon]) => `<div class="lb-h">${icon} ${label} <span>${sub}</span></div>${lbRows(b.ranked[k], k, b)}`).join('')}
-      <div class="lb-h">Your group</div>
-      <div class="lb-code">${escapeHtml(lbShowCode(lbConfig.code))}</div>
-      <div class="lb-actions"><button type="button" class="btn btn-secondary btn-sm" data-lb="copy">${lbJustCopied ? 'Copied ✓' : 'Copy code'}</button><button type="button" class="btn btn-secondary btn-sm" data-lb="share-toggle">${lbConfig.sharing ? 'Pause sharing' : 'Resume sharing'}</button></div>
-      <button type="button" class="re-delete-routine" data-lb="leave" style="margin-top:10px">Leave this group</button>
-      <div class="lb-foot">For fun and motivation. Workouts stop counting at ${LB_WORKOUT_CAP} a week, so it never pays to overdo it. Rest days are part of training. Each category earns more points the higher you rank.</div>`;
+      <div class="lb-tabs">${tabs.map(([k, l]) => `<button type="button" class="lb-tab${lbTab === k ? ' on' : ''}" data-lb="tab" data-tab="${k}">${l}</button>`).join('')}</div>
+      ${lbTab === 'month' ? lbTabMonth() : lbTab === 'records' ? lbTabRecords() : lbTab === 'group' ? lbTabGroup() : lbTabWeek(b)}`;
   }
   el.innerHTML = `<div class="re-sheet" role="dialog" aria-modal="true" aria-label="${title}"><div class="re-top"><div class="re-title">${title}</div><button type="button" class="re-done" data-lb="close">Done</button></div><div class="re-body">${inner}</div></div>`;
 }
@@ -12450,7 +12586,7 @@ async function lbCopyCode() {
 async function lbCreateGroup() {
   const name = lbCleanName((document.getElementById('lbName') || {}).value);
   if (!name) { lbSheetErr = 'Enter a name your friends will see.'; return renderLbSheet(); }
-  lbConfig = { code: lbNewCode(), memberId: lbRandomString('0123456789abcdef', 16), name, sharing: true };
+  lbConfig = { code: lbNewCode(), memberId: lbRandomString('0123456789abcdef', 16), name, sharing: true, joinedWeek: lbWeekStart(todayStr()) };
   await lbSaveConfig(); await lbPublish(true); lbSubscribe();
   lbSheetErr = ''; lbSheetMode = 'created'; renderLbSheet(); renderLeaderboard();
 }
@@ -12465,15 +12601,15 @@ async function lbJoinGroup() {
   if (!there.length) { lbSheetErr = 'No group found with that code. Check it and try again.'; return renderLbSheet(); }
   if (there.length >= LB_MAX_MEMBERS) { lbSheetErr = `That group is full (${LB_MAX_MEMBERS} people).`; return renderLbSheet(); }
   if (there.some(m => String(m.name).toLowerCase() === name.toLowerCase())) { lbSheetErr = 'Someone in that group already uses that name. Pick another.'; return renderLbSheet(); }
-  lbConfig = { code, memberId: lbRandomString('0123456789abcdef', 16), name, sharing: true };
+  lbConfig = { code, memberId: lbRandomString('0123456789abcdef', 16), name, sharing: true, joinedWeek: lbWeekStart(todayStr()) };
   await lbSaveConfig(); await lbPublish(true); lbSubscribe();
-  lbSheetErr = ''; lbSheetMode = 'board'; renderLbSheet(); renderLeaderboard();
+  lbSheetErr = ''; lbSheetMode = 'board'; lbTab = 'week'; renderLbSheet(); renderLeaderboard();
 }
 async function lbLeave() {
   if (!lbConfig || !confirm('Leave this group? Your numbers are removed from the board. You can join again with the code.')) return;
   const old = lbConfig;
   try { await deleteDoc(lbMemberRef(old.code, old.memberId)); } catch (err) { console.error(err); }
-  lbConfig = null; lbMembers = []; lbError = ''; lbUnsubscribe(); lbLastSent = '';
+  lbConfig = null; lbMembers = []; lbCheers = []; lbError = ''; lbUnsubscribe(); lbLastSent = '';
   await lbSaveConfig(); closeLbSheet(); renderLeaderboard();
 }
 async function lbToggleSharing() {
@@ -12484,8 +12620,23 @@ async function lbToggleSharing() {
   if (lbConfig.sharing) await lbPublish(true);
   renderLbSheet(); renderLeaderboard();
 }
+async function lbCheer(toId) {
+  if (!lbConfig || !toId || toId === lbConfig.memberId) return;
+  const wk = lbWeekStart(todayStr()), id = `${wk}_${lbConfig.memberId}_${toId}`;
+  if (lbCheers.some(c => c.id === id)) return; // one per friend per week
+  lbCheers.push({ id, from: lbConfig.memberId, to: toId, week: wk }); renderLbSheet(); renderLeaderboard(); // shown straight away
+  try { await setDoc(doc(db, 'groups', lbConfig.code, 'cheers', id), { from: lbConfig.memberId, to: toId, week: wk, at: Date.now() }); }
+  catch (err) { console.error(err); lbCheers = lbCheers.filter(c => c.id !== id); lbSheetErr = "Couldn't send the cheer. Try again in a moment."; renderLbSheet(); renderLeaderboard(); }
+}
+async function lbRename() {
+  const name = lbCleanName((document.getElementById('lbRename') || {}).value);
+  if (!name) { lbSheetErr = 'Enter a name.'; return renderLbSheet(); }
+  if (lbMembers.some(m => m.id !== lbConfig.memberId && String(m.name).toLowerCase() === name.toLowerCase())) { lbSheetErr = 'Someone in the group already uses that name.'; return renderLbSheet(); }
+  lbConfig.name = name; lbSheetErr = '';
+  await lbSaveConfig(); await lbPublish(true); renderLbSheet(); renderLeaderboard();
+}
 function onLbClick(e) {
-  const b = e.target.closest('[data-lb]'); if (!b) return;
+  const b = e.target.closest('[data-lb]'); if (!b || b.disabled) return;
   const a = b.dataset.lb;
   if (a === 'close') closeLbSheet();
   else if (a === 'create') lbCreateGroup();
@@ -12494,6 +12645,9 @@ function onLbClick(e) {
   else if (a === 'board') { lbSheetMode = 'board'; renderLbSheet(); }
   else if (a === 'leave') lbLeave();
   else if (a === 'share-toggle') lbToggleSharing();
+  else if (a === 'tab') { lbTab = b.dataset.tab; lbSheetErr = ''; renderLbSheet(); }
+  else if (a === 'cheer') lbCheer(b.dataset.to);
+  else if (a === 'rename') lbRename();
 }
 // the buttons on the Badges card
 document.addEventListener('click', e => {
