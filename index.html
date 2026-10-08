@@ -3321,6 +3321,7 @@ body {
       <div class="settings-section">
         <div class="settings-title">Food Search APIs</div>
         <div class="settings-card">
+          <div class="settings-row" style="align-items:center"><div class="settings-row-sub" style="margin:0">🔒 Keys are saved on <b>this device only</b>, never in the shared database or in backup files. Enter them once on each phone you use.</div></div>
           <div class="settings-row">
             <div>
               <div class="settings-row-label">USDA Food Database Key</div>
@@ -3646,7 +3647,7 @@ async function applyPendingHealthSync() {
 const TREATMENT_START  = new Date(2026, 6, 18);
 let baselineWeight     = 242;   // editable in Settings, synced to Firestore
 let goalWeight         = 197;   // editable in Settings, synced to Firestore
-let usdaKey            = 'DEMO_KEY'; // optional user key, synced to Firestore
+let usdaKey            = 'DEMO_KEY'; // optional user key, kept on THIS DEVICE only (never in the shared database)
 let userHeightIn = 0;        // inches — 0 means not yet set
 let userAge = 0;             // years — 0 means not yet set
 let userSex = 'male';
@@ -3658,12 +3659,15 @@ let activeRoutineId = null;
 let customLibrary = [];       // exercises the person created, offered again in the library: [{ name, sets, group }]
 let customDayOverride = null; // day id picked by tapping a day chip, until that workout is logged
 const ACTIVITY_MULTIPLIERS = { sedentary: 1.2, light: 1.375, moderate: 1.55, very: 1.725 };
-let spoonacularKey      = '';        // optional user key, synced to Firestore — empty means not connected
-let fatSecretClientId     = '';      // optional OAuth 2.0 credential, synced to Firestore
+let spoonacularKey      = '';        // optional user key, kept on this device only — empty means not connected
+let fatSecretClientId     = '';      // optional OAuth 2.0 credential, kept on this device only
 let anthropicKey = ''; // optional, powers "Estimate from Photo" — visible client-side when used, see Settings note
-let fatSecretClientSecret = '';      // optional OAuth 2.0 credential, synced to Firestore
+let fatSecretClientSecret = '';      // optional OAuth 2.0 credential, kept on this device only
 let fatSecretAccessToken  = '';      // short-lived bearer token, kept in memory only (never synced)
 let fatSecretTokenExp     = 0;       // epoch ms when fatSecretAccessToken expires
+const KEY_FIELDS = ['usdaKey', 'spoonacularKey', 'fatSecretClientId', 'fatSecretClientSecret', 'anthropicKey'];
+const DEVICE_KEYS_STORE = 'mounjaro-device-keys';
+loadDeviceKeys();                    // the keys above come from this device's own storage
 let themeOverride       = '';        // '' = auto, or 'light' / 'dark'
 let pinnedFavorites     = [];        // user-starred foods, synced to Firestore, always shown
 let pinnedRecipes       = [];        // saved multi-ingredient recipes, synced to Firestore
@@ -5293,7 +5297,7 @@ function startListening() {
       const s = snap.data();
       if (s.baselineWeight != null) baselineWeight = parseFloat(s.baselineWeight);
       if (s.goalWeight != null)     goalWeight     = parseFloat(s.goalWeight);
-      if (s.usdaKey)                usdaKey        = s.usdaKey;
+      adoptLegacyKeysFrom(s); // keys an older version saved to the shared database move to this device, then are erased there
       if (s.heightIn)               userHeightIn   = parseFloat(s.heightIn) || 0;
       if (s.age)                    userAge        = parseInt(s.age) || 0;
       if (s.sex)                    userSex        = s.sex;
@@ -5305,10 +5309,6 @@ function startListening() {
       if (Array.isArray(s.customLibrary)) { customLibrary = s.customLibrary; registerCustomLibrary(); }
       lbConfig = (s.leaderboard && s.leaderboard.code && s.leaderboard.memberId) ? s.leaderboard : null;
       lbSubscribe(); lbSchedulePublish(); renderLeaderboard();
-      if (s.spoonacularKey)         spoonacularKey = s.spoonacularKey;
-      if (s.fatSecretClientId)      fatSecretClientId     = s.fatSecretClientId;
-      if (s.fatSecretClientSecret)  fatSecretClientSecret = s.fatSecretClientSecret;
-      if (s.anthropicKey)           anthropicKey = s.anthropicKey;
       stepGoalOverride = s.stepGoal != null ? parseInt(s.stepGoal) || 0 : 0;
       if (s.theme != null) themeOverride = s.theme;
       pinnedFavorites = Array.isArray(s.favoriteFoods) ? s.favoriteFoods : [];
@@ -12655,6 +12655,32 @@ document.addEventListener('click', e => {
   if (b.dataset.lb === 'start') openLbSheet('start'); else if (b.dataset.lb === 'join') openLbSheet('join'); else if (b.dataset.lb === 'open') openLbSheet('board');
 });
 
+// ── KEYS STAY ON THE DEVICE ──────────────────────────────────────────────
+// API keys (the paid Anthropic one above all) live in this device's own storage, never in the shared
+// database or in backup files. A key an OLDER version saved to the database is adopted by the first device
+// that sees it, then erased there. Other devices simply enter the key once.
+function getKeyVar(f) { return f === 'usdaKey' ? usdaKey : f === 'spoonacularKey' ? spoonacularKey : f === 'fatSecretClientId' ? fatSecretClientId : f === 'fatSecretClientSecret' ? fatSecretClientSecret : anthropicKey; }
+function setKeyVar(f, v) { if (f === 'usdaKey') usdaKey = v; else if (f === 'spoonacularKey') spoonacularKey = v; else if (f === 'fatSecretClientId') fatSecretClientId = v; else if (f === 'fatSecretClientSecret') fatSecretClientSecret = v; else if (f === 'anthropicKey') anthropicKey = v; }
+function deviceHasKey(f) { const v = getKeyVar(f); return f === 'usdaKey' ? (!!v && v !== 'DEMO_KEY') : !!v; }
+function readDeviceKeys() { try { const o = JSON.parse(localStorage.getItem(DEVICE_KEYS_STORE) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } }
+function loadDeviceKeys() { const k = readDeviceKeys(); KEY_FIELDS.forEach(f => { if (typeof k[f] === 'string' && k[f]) setKeyVar(f, k[f]); }); }
+function saveDeviceKeys() { const o = {}; KEY_FIELDS.forEach(f => { if (deviceHasKey(f)) o[f] = getKeyVar(f); }); try { localStorage.setItem(DEVICE_KEYS_STORE, JSON.stringify(o)); } catch (e) { /* storage blocked or full */ } }
+function adoptLegacyKeysFrom(s) {
+  const inCloud = KEY_FIELDS.filter(f => s && s[f]);
+  if (!inCloud.length) return;
+  let adopted = false;
+  inCloud.forEach(f => { if (!deviceHasKey(f) && !(f === 'usdaKey' && s[f] === 'DEMO_KEY')) { setKeyVar(f, s[f]); adopted = true; } });
+  if (adopted) saveDeviceKeys();
+  const wipe = {}; inCloud.forEach(f => { wipe[f] = null; });
+  if (syncId) Promise.resolve(setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), wipe, { merge: true })).catch(err => console.error(err));
+}
+function adoptKeysFromBackup(settings) { // returns the settings WITHOUT any keys
+  const s = { ...settings }; let adopted = false;
+  KEY_FIELDS.forEach(f => { if (s[f] && !deviceHasKey(f) && !(f === 'usdaKey' && s[f] === 'DEMO_KEY')) { setKeyVar(f, s[f]); adopted = true; } delete s[f]; });
+  if (adopted) saveDeviceKeys();
+  return s;
+}
+
 function wireRoutineButtons(root) {
   (root || document).querySelectorAll('.routine-edit-btn').forEach(b => b.addEventListener('click', () => { if (typeof openRoutineEditor === 'function') openRoutineEditor(); }));
   (root || document).querySelectorAll('.routine-manage-btn').forEach(b => b.addEventListener('click', () => { if (typeof openRoutineManager === 'function') openRoutineManager(); }));
@@ -16729,11 +16755,10 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 // ── JSON FULL BACKUP / RESTORE ──
 // Unlike the CSV export, this preserves full structure (itemized meals,
 // recipes, favorites) so it can be restored exactly, not just read in a
-// spreadsheet. Includes every settings field, API keys and OAuth
-// credentials included, since a "full" backup should actually be
-// complete and restorable — the download itself carries a warning that
-// it should be treated like a password file, not shared or uploaded
-// anywhere public.
+// spreadsheet. Includes every settings field EXCEPT API keys and OAuth
+// credentials: those stay on the device they were typed on, so the file
+// is safe to keep in cloud storage. (A backup made by an older version may
+// still contain keys; restoring one puts them on THIS device only.)
 document.getElementById('exportJsonBtn').addEventListener('click', () => {
   const backup = {
     app: 'mounjaro-tracker',
@@ -16744,11 +16769,6 @@ document.getElementById('exportJsonBtn').addEventListener('click', () => {
     settings: {
       baselineWeight,
       goalWeight,
-      usdaKey,
-      spoonacularKey,
-      fatSecretClientId,
-      fatSecretClientSecret,
-      anthropicKey,
       heightIn: userHeightIn,
       age: userAge,
       sex: userSex,
@@ -16815,7 +16835,7 @@ document.getElementById('restoreJsonInput').addEventListener('change', async (e)
   const hasSettings = !!backup.settings;
   if (!confirm(`Restore ${entryCount} day${entryCount === 1 ? '' : 's'} of entries` +
     (labCount ? `, ${labCount} lab result${labCount === 1 ? '' : 's'}` : '') +
-    (hasSettings ? ', and settings (goals, favorites, recipes, combos, medications, workout customizations, API keys)' : '') +
+    (hasSettings ? ', and settings (goals, favorites, recipes, combos, medications, workout customizations)' : '') +
     `?\n\nThis merges into what you already have — it won't delete anything not in the backup file, but matching dates will be overwritten with the backup's values.`)) {
     return;
   }
@@ -16830,7 +16850,8 @@ document.getElementById('restoreJsonInput').addEventListener('change', async (e)
       ));
     }
     if (backup.settings) {
-      await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), backup.settings, { merge: true });
+      const cleaned = adoptKeysFromBackup(backup.settings); // keys inside an older backup go to THIS device, never to the cloud
+      await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), cleaned, { merge: true });
     }
     statusEl.textContent = `✓ Restored ${entryCount} day${entryCount === 1 ? '' : 's'}${labCount ? ` + ${labCount} lab${labCount === 1 ? '' : 's'}` : ''}. Everything should update automatically.`;
   } catch (err) {
@@ -16856,15 +16877,16 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async () =>
   const settingsRef = doc(db, 'trackers', syncId, 'meta', 'settings');
   const payload = { baselineWeight: b, goalWeight: g };
   const uKey = document.getElementById('setUsdaKey').value.trim();
-  if (uKey) payload.usdaKey = uKey;
+  if (uKey) usdaKey = uKey;
   const spKey = document.getElementById('setSpoonacularKey').value.trim();
-  if (spKey) payload.spoonacularKey = spKey;
+  if (spKey) spoonacularKey = spKey;
   const fsId = document.getElementById('setFatSecretClientId').value.trim();
   const fsSec = document.getElementById('setFatSecretClientSecret').value.trim();
-  if (fsId) payload.fatSecretClientId = fsId;
-  if (fsSec) payload.fatSecretClientSecret = fsSec;
+  if (fsId) fatSecretClientId = fsId;
+  if (fsSec) fatSecretClientSecret = fsSec;
   const aKey = document.getElementById('setAnthropicKey').value.trim();
-  if (aKey) payload.anthropicKey = aKey;
+  if (aKey) anthropicKey = aKey;
+  saveDeviceKeys(); // keys stay on this device only; the payload below is what gets synced
   const heightVal = parseFloat(document.getElementById('setHeightIn').value);
   if (heightVal > 0) payload.heightIn = heightVal;
   const ageVal = parseInt(document.getElementById('setAge').value);
