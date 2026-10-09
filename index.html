@@ -993,6 +993,20 @@ body {
 .tw-meta { font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 2px; }
 .tw-last { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
 .hist-pr { margin-left: 2px; }
+.log-ctx-card { margin-bottom: 12px !important; }
+#logSubtabRow { flex-wrap: nowrap; gap: 6px; }
+#logSubtabRow .chip { flex: 1 1 0; min-width: 0; justify-content: center; padding-left: 8px; padding-right: 8px; white-space: nowrap; }
+@media (max-width: 420px) { #logSubtabRow .chip svg { display: none; } }
+#quickLogCard input[type="date"] { font-size: 14px; padding-left: 10px; padding-right: 6px; min-width: 0; }
+.inj-wrap { display: flex; align-items: flex-end; padding-bottom: 12px; }
+#quickWeightField label, #quickDoseField label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#quickLogCard .check-field { min-height: 46px; box-sizing: border-box; padding-top: 0; padding-bottom: 0; }
+.field-row.single { grid-template-columns: minmax(0,1fr); }
+.dose-day-banner { margin-bottom: 12px; }
+.dose-day-btn { width: 100%; padding: 13px 14px; border: 1.5px solid var(--teal); border-radius: 12px; background: rgba(55,198,255,0.12); color: var(--ink); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; text-align: left; }
+.link-btn { background: none; border: none; color: var(--teal); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 6px 0; }
+.weight-hint { font-weight: 600; color: var(--ink-soft); }
+.ah-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 11px; color: var(--ink-soft); text-align: right; }
 .exercise-collapse-btn { background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 4px 2px; flex-shrink: 0; display: flex; touch-action: manipulation; }
 .workout-exercise-block > div:first-child { gap: 2px !important; }
 .workout-exercise-block > div:first-child > button { padding: 6px 3px !important; margin-left: 0 !important; }
@@ -1894,19 +1908,22 @@ body {
 
     <!-- Log -->
     <div class="view" id="view-log">
+        <div class="form-card log-ctx-card" id="logContextCard" style="padding:12px 16px">
+        <div id="logContextBody" style="font-size:12px;color:var(--ink-soft);line-height:1.6"></div>
+      </div>
       <div class="form-card" id="quickLogCard">
           <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
             <span><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polygon points="13 2 3 14 11 14 9 22 21 10 13 10 13 2"/></svg> Quick Log <span style="font-weight:500;font-size:11px;color:var(--ink-soft);text-transform:none">(most days)</span></span>
             <span id="quickLogChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
           </div>
+          <div class="dose-day-banner" id="doseDayBanner" style="display:none"><button type="button" class="dose-day-btn" id="doseDayBtn"><span id="doseDayText"></span></button></div>
           <div class="field-row">
             <div class="field">
               <label for="fDate">Date</label>
               <input type="date" id="fDate">
             </div>
-            <div style="display:flex;align-items:flex-end">
-              <div class="field" style="width:100%">
-                <label>&nbsp;</label>
+            <div class="inj-wrap">
+              <div class="field" style="width:100%;margin-bottom:0">
                 <label class="check-field">
                   <input type="checkbox" id="fInjection">
                   <span>Injection day</span>
@@ -1914,6 +1931,25 @@ body {
               </div>
             </div>
           </div>
+          <div class="field-row" id="quickWeightDoseRow" style="margin-top:2px">
+            <div class="field" id="quickWeightField">
+              <label for="fWeight">Weight (lb) <span class="weight-hint" id="weightHint"></span></label>
+              <input type="number" id="fWeight" step="0.1" inputmode="decimal" placeholder="e.g. 238.5">
+            </div>
+            <div class="field" id="quickDoseField">
+              <label for="fDose">Dose (mg)</label>
+              <select id="fDose">
+                <option value="">— select —</option>
+                <option value="2.5">2.5 mg</option>
+                <option value="5">5 mg</option>
+                <option value="7.5">7.5 mg</option>
+                <option value="10">10 mg</option>
+                <option value="12.5">12.5 mg</option>
+                <option value="15">15 mg</option>
+              </select>
+            </div>
+          </div>
+          <button type="button" class="link-btn" id="addWeightLink" style="display:none">＋ Add weight</button>
           <div class="field" style="margin-top:2px">
             <label>Day status <span style="font-weight:500;color:var(--ink-soft)">· pauses your streak instead of breaking it</span></label>
             <div class="chip-row" id="dayStatusRow">
@@ -2044,9 +2080,6 @@ body {
         </div>
       </div>
 
-        <div class="form-card" id="logContextCard" style="padding:12px 16px">
-        <div id="logContextBody" style="font-size:12px;color:var(--ink-soft);line-height:1.6"></div>
-      </div>
 
       <div class="chip-row" id="logSubtabRow" style="margin-bottom:14px">
         <div class="chip log-subtab-chip" data-logsub="meds"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/></svg> Medications</div>
@@ -2055,6 +2088,11 @@ body {
       </div>
 
       <div class="log-subpanel" id="logSub-meds" style="display:none">
+        <div class="form-card">
+          <div class="form-section-title">Current Medications</div>
+          <div id="medList" style="font-size:12.5px">No medications added yet.</div>
+        </div>
+
         <div class="form-card">
           <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span id="medFormTitle">Add Medication</span><span id="addMedChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
           <div class="field-row">
@@ -2094,11 +2132,6 @@ body {
           <div class="save-msg" id="medSaveMsg">✓ Saved</div>
         </div>
 
-        <div class="form-card">
-          <div class="form-section-title">Current Medications</div>
-          <div id="medList" style="font-size:12.5px">No medications added yet.</div>
-        </div>
-
         <div class="form-card" id="checkInteractionsCard">
           <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Check Interactions</span><span id="checkInteractionsChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
           <div style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin-bottom:10px">
@@ -2110,6 +2143,10 @@ body {
       </div>
 
       <div class="log-subpanel" id="logSub-results" style="display:none">
+        <div class="form-card">
+          <div class="form-section-title">Latest Results</div>
+          <div id="labPanelSummary" style="font-size:12px;color:var(--ink-soft)">No full-panel results logged yet.</div>
+        </div>
         <div class="form-card" id="labA1cCard">
           <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Lab Results — quarterly A1C</span><span id="labA1cChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
           <div class="field-row">
@@ -2424,10 +2461,6 @@ body {
           <div class="save-msg" id="labPanelSaveMsg">✓ Lab panel saved</div>
         </div>
 
-        <div class="form-card">
-          <div class="form-section-title">Latest Results</div>
-          <div id="labPanelSummary" style="font-size:12px;color:var(--ink-soft)">No full-panel results logged yet.</div>
-        </div>
       </div>
 
       <div class="log-subpanel" id="logSub-daily">
@@ -2446,26 +2479,7 @@ body {
             <span><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg> Full Log <span style="font-weight:500;font-size:11px;color:var(--ink-soft);text-transform:none">(weekly)</span></span>
             <span id="fullLogChevron" style="font-size:11px;color:var(--ink-soft)">▶</span>
           </div>
-          <div class="field-row">
-            <div class="field">
-              <label for="fWeight">Weight (lbs)</label>
-              <input type="number" id="fWeight" step="0.1" inputmode="decimal" placeholder="e.g. 238.5">
-            </div>
-            <div class="field">
-              <label for="fDose">Dose this week</label>
-              <select id="fDose">
-                <option value="">— select —</option>
-                <option value="2.5">2.5 mg</option>
-                <option value="5">5 mg</option>
-                <option value="7.5">7.5 mg</option>
-                <option value="10">10 mg</option>
-                <option value="12.5">12.5 mg</option>
-                <option value="15">15 mg</option>
-              </select>
-            </div>
-          </div>
-
-          <div id="measurementsCard" style="margin-top:8px;padding-top:10px;border-top:1px solid var(--divider)">
+          <div id="measurementsCard" style="margin-top:0;padding-top:0">
             <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
               <span>Body Measurements</span>
               <span id="measurementsChevron" style="font-size:11px;color:var(--ink-soft)">▶</span>
@@ -2490,23 +2504,6 @@ body {
           </div>
 
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--divider)">
-            <div class="form-section-title">Glucose</div>
-            <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">
-              Same reading as the one up in Quick Log — either box works, they stay in sync.
-            </div>
-            <div class="field-row">
-              <div class="field">
-                <label for="fGlucoseFull">Fasting glucose (mg/dL)</label>
-                <input type="number" id="fGlucoseFull" inputmode="numeric" placeholder="e.g. 128">
-              </div>
-              <div class="field">
-                <label for="fGlucose2hrFull">2hr post-meal (mg/dL)</label>
-                <input type="number" id="fGlucose2hrFull" inputmode="numeric" placeholder="e.g. 165">
-              </div>
-            </div>
-          </div>
-
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--divider)">
             <div class="form-section-title">Side Effects — tap to cycle Mild → Mod → Severe</div>
             <div class="chip-row" id="chipRow">
               <div class="chip" data-tag="Nausea">Nausea</div>
@@ -2527,11 +2524,11 @@ body {
               <input type="text" id="fNotes" placeholder="e.g. skipped lunch, slept poorly">
             </div>
           </div>
+          <button type="button" class="btn btn-primary" id="fullLogSaveBtn" style="margin-top:16px;width:100%;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#04203a;font-weight:800">Save entry</button>
         </div>
 
-        <button class="btn btn-primary" id="saveBtn" style="background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#04203a;font-weight:800">Save Entry</button>
-        <div class="save-msg" id="saveMsg">✓ Saved and synced</div>
-        <div style="height:8px"></div>
+        <button class="btn btn-primary" id="saveBtn" style="display:none;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#04203a;font-weight:800">Save Entry</button>
+        <div class="save-msg" id="saveMsg" style="display:none">✓ Saved and synced</div>
         <button class="btn btn-ghost" id="clearBtn">Clear Form</button>
       </div>
     </div>
@@ -3413,6 +3410,15 @@ body {
             <input type="number" inputmode="numeric" id="setProteinGoal" placeholder="100" min="30" max="300"
               style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right;font-weight:700">
           </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Weigh-in day</div>
+              <div class="settings-row-sub">The weight box shows in Quick Log on this day (a link adds it any other day)</div>
+            </div>
+            <select id="setWeighInDay" style="width:110px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
+              <option value="any">Any day</option><option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -3751,6 +3757,7 @@ let userAge = 0;             // years — 0 means not yet set
 let userSex = 'male';
 let userActivityLevel = 'moderate';
 let userLossRate = 1;        // lbs/week
+let weighInDay = 'any';       // 'any' or a weekday number '0'-'6' (Sun-Sat): the day the weight box shows in Quick Log
 let userProteinGoal = 100;   // grams/day — default 100; changeable in Settings
 let workoutPlanMode = 'split'; // 'split' (Day A/B alternating), 'fullbody' (one list every session), 'ppl' (Push/Pull/Legs, 3-day rotation), or 'custom' (My Routine)
 let customRoutines = [];      // My Routine: [{ id, name, days: [{ id, name, exercises: [{ name, sets }] }] }] — saved in the person's own settings
@@ -4392,9 +4399,10 @@ function longestStreak(predicate, asOfDate) {
 // matters for staying motivated day to day ("how many days IN A ROW,
 // ending today" rather than "what's the best you've ever managed").
 // Uses the same "logged something" criterion as the Consistency badge.
-function currentLoggingStreak() {
+function currentLoggingStreak(extraEntry) {
   const byDate = {};
   entries.forEach(e => { byDate[e.date] = e; });
+  if (extraEntry) byDate[extraEntry.date] = Object.assign({}, byDate[extraEntry.date], extraEntry); // count a save that has not echoed back yet
   const loggedOn = (ds) => {
     const e = byDate[ds];
     return !!(e && (e.protein || e.steps || e.glucose || e.weight || (e.ex && e.ex.length)));
@@ -5403,6 +5411,7 @@ function startListening() {
       if (s.sex)                    userSex        = s.sex;
       if (s.activityLevel)          userActivityLevel = s.activityLevel;
       if (s.lossRate)               userLossRate   = parseFloat(s.lossRate) || 1;
+      if (s.weighInDay != null)     weighInDay = String(s.weighInDay);
       if (s.proteinGoal)            userProteinGoal = (parseInt(s.proteinGoal) >= 30 && parseInt(s.proteinGoal) <= 300) ? parseInt(s.proteinGoal) : 100;
       if (s.workoutPlanMode)        workoutPlanMode = s.workoutPlanMode;
       if (Array.isArray(s.customRoutines)) customRoutines = s.customRoutines;
@@ -5478,6 +5487,7 @@ function syncSettingsInputs() {
   if (actEl) actEl.value = userActivityLevel;
   if (lossEl) lossEl.value = userLossRate;
   const pgEl = document.getElementById('setProteinGoal'); if (pgEl && document.activeElement !== pgEl) pgEl.value = userProteinGoal;
+  const wdEl = document.getElementById('setWeighInDay'); if (wdEl) wdEl.value = weighInDay;
   const wpmEl = document.getElementById('setWorkoutPlanMode');
   if (wpmEl) wpmEl.value = workoutPlanMode;
   const sg = document.getElementById('setStepGoal');
@@ -6514,8 +6524,6 @@ function editEntry(date) {
   document.getElementById('exDate').value      = e.date; try { syncExDateChip(); } catch (err) { /* chip not built yet */ }
   document.getElementById('fGlucose').value    = e.glucose    || '';
   document.getElementById('fGlucose2hr').value = e.glucose2hr || '';
-  if (document.getElementById('fGlucoseFull'))    document.getElementById('fGlucoseFull').value    = e.glucose    || '';
-  if (document.getElementById('fGlucose2hrFull')) document.getElementById('fGlucose2hrFull').value = e.glucose2hr || '';
   document.getElementById('fWeight').value     = e.weight     || '';
   document.getElementById('fWaist').value      = e.waist      || '';
   document.getElementById('fChest').value      = e.chest      || '';
@@ -7517,6 +7525,83 @@ function prefillLastDose() {
 
 // A quick "where things stand" strip at the top of the Log tab — before
 // this, the form gave zero feedback about anything already logged.
+// ── QUICK LOG: weight (with where you stand), dose-day banner, one Save ──
+var weightManuallyShown = false;
+function weighInVisible(date) {
+  if (weighInDay === 'any') return true;
+  return String(new Date((date || todayStr()) + 'T00:00:00').getDay()) === weighInDay;
+}
+function updateWeightHint() {
+  const hint = document.getElementById('weightHint'); if (!hint) return;
+  const date = document.getElementById('fDate').value || todayStr();
+  const prev = entries.filter(e => e.weight && e.date < date).sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!prev) { hint.textContent = ''; return; }
+  const raw = parseFloat(document.getElementById('fWeight').value);
+  let txt = `· last ${prev.weight}`;
+  if (!isNaN(raw) && raw > 0) { const d = Math.round((raw - parseFloat(prev.weight)) * 10) / 10; txt = d === 0 ? '· same as last' : `· ${d < 0 ? '−' : '+'}${Math.abs(d)} vs last`; }
+  hint.textContent = txt;
+}
+function syncQuickWeight() {
+  const field = document.getElementById('quickWeightField'), link = document.getElementById('addWeightLink'), row = document.getElementById('quickWeightDoseRow'), w = document.getElementById('fWeight');
+  if (!field || !link || !row || !w) return;
+  const show = weighInVisible(document.getElementById('fDate').value) || w.value !== '' || weightManuallyShown || editingLoaded;
+  field.style.display = show ? '' : 'none';
+  row.classList.toggle('single', !show);
+  link.style.display = show ? 'none' : '';
+  updateWeightHint();
+}
+function syncDoseDayBanner() {
+  const b = document.getElementById('doseDayBanner'); if (!b) return;
+  const st = todayDoseStatus();
+  const date = document.getElementById('fDate').value || todayStr();
+  const show = !!st && (st.kind === 'due' || st.kind === 'overdue') && date === todayStr() && !document.getElementById('fInjection').checked;
+  b.style.display = show ? '' : 'none';
+  if (show) document.getElementById('doseDayText').textContent = st.kind === 'due' ? '💉 Injection day: tap to log your dose' : `💉 Your dose is ${st.val}: tap to log it`;
+}
+function refreshQuickSaveLabel() {
+  const q = document.getElementById('quickSaveBtn');
+  if (q && !q.classList.contains('saved')) q.textContent = document.getElementById('fInjection').checked ? 'Save injection' : 'Save';
+}
+// Saving: the quick Save up top, or the one inside the long form (the old third one at the bottom is gone).
+function syncSaveButtons() { /* kept for callers; nothing to toggle any more */ }
+function syncLogHelpers() { try { syncQuickWeight(); syncDoseDayBanner(); refreshQuickSaveLabel(); syncSaveButtons(); } catch (err) { /* page still loading */ } }
+(function wireQuickLogHelpers() {
+  const w = document.getElementById('fWeight');
+  const nativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  Object.defineProperty(w, 'value', { configurable: true, enumerable: true,
+    get() { return nativeValue.get.call(this); },
+    set(v) { nativeValue.set.call(this, v); if (v === '') weightManuallyShown = false; syncLogHelpers(); } });
+  w.addEventListener('input', () => { updateWeightHint(); });
+  document.getElementById('fDate').addEventListener('change', syncLogHelpers);
+  document.getElementById('fInjection').addEventListener('change', syncLogHelpers);
+  document.getElementById('addWeightLink').addEventListener('click', () => { weightManuallyShown = true; syncQuickWeight(); w.focus(); });
+  document.getElementById('doseDayBtn').addEventListener('click', () => {
+    const cb = document.getElementById('fInjection');
+    cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true }));
+    syncLogHelpers();
+    const d = document.getElementById('fDose'); if (d && d.scrollIntoView) d.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  syncLogHelpers();
+})();
+
+// ── SAVE REACTION ── what the save just did, in one line.
+function logSaveReaction(entry) {
+  const parts = [];
+  if (entry.injection) parts.push(`💉 Injection logged${entry.site ? ' · ' + entry.site : ''}${entry.dose ? ' · ' + entry.dose + ' mg' : ''}`);
+  if (entry.weight) {
+    const w = parseFloat(entry.weight);
+    const prev = entries.filter(e => e.weight && e.date < entry.date).sort((a, b) => b.date.localeCompare(a.date))[0];
+    let t = `Weight ${w} lb`;
+    if (prev) { const d = Math.round((w - parseFloat(prev.weight)) * 10) / 10; t += d === 0 ? ` (same as ${fmtDate(prev.date)})` : ` (${d < 0 ? '−' : '+'}${Math.abs(d)} vs ${fmtDate(prev.date)})`; }
+    parts.push(t);
+  }
+  if (entry.glucose) parts.push(`Glucose ${entry.glucose}`);
+  if (!parts.length) parts.push('Saved');
+  const streak = currentLoggingStreak(entry);
+  if (streak >= 2) parts.push(`🔥 ${streak}-day streak`);
+  showGoldToast('✓ ' + parts.join(' · '), 4200);
+}
+
 function updateLogContextStrip() {
   const box = document.getElementById('logContextBody');
   if (!box) return;
@@ -7528,6 +7613,7 @@ function updateLogContextStrip() {
 
   if (!lastWeightEntry && !lastDoseEntry && !lastInjEntry) {
     box.innerHTML = 'No entries yet — this is your first!';
+    syncLogHelpers();
     return;
   }
 
@@ -7541,6 +7627,7 @@ function updateLogContextStrip() {
     parts.push(`<b style="color:var(--ink)">${days}</b> day${days !== 1 ? 's' : ''} since last injection`);
   }
   box.innerHTML = parts.join(' &nbsp;·&nbsp; ');
+  syncLogHelpers();
 }
 
 async function saveLogEntry() {
@@ -7655,6 +7742,7 @@ async function saveLogEntry() {
   const msg = document.getElementById('saveMsg');
   msg.classList.add('show');
   setTimeout(() => msg.classList.remove('show'), 2000);
+  try { logSaveReaction(entry); } catch (err) { console.error('save reaction failed:', err); }
   clearLogForm();
   return true;
 }
@@ -7663,29 +7751,33 @@ async function saveLogEntry() {
 // bottom): ignores a second tap while a save is in flight, and says plainly if it fails.
 let _logSaving = false, _quickSavedTimer = null;
 async function runLogSave(btn) {
-  if (_logSaving) return;
+  if (_logSaving) return false;
   _logSaving = true; btn.disabled = true;
   // a fresh attempt wipes the previous "✓ Saved" at once — otherwise a declined or failed save
   // would still be wearing the last one's confirmation
   const q = document.getElementById('quickSaveBtn');
-  clearTimeout(_quickSavedTimer); q.textContent = 'Save'; q.classList.remove('saved');
+  clearTimeout(_quickSavedTimer); q.classList.remove('saved'); refreshQuickSaveLabel();
   let ok = false;
   try { ok = await saveLogEntry(); }
   catch (err) { console.error('Log save failed:', err); alert("Couldn't save that — check your connection and try again."); }
   finally { _logSaving = false; btn.disabled = false; }
   if (ok && btn.id === 'quickSaveBtn') {
     btn.textContent = '✓ Saved'; btn.classList.add('saved');
-    _quickSavedTimer = setTimeout(() => { btn.textContent = 'Save'; btn.classList.remove('saved'); }, 1800);
+    _quickSavedTimer = setTimeout(() => { btn.classList.remove('saved'); refreshQuickSaveLabel(); }, 1800);
   }
+  return ok;
 }
 document.getElementById('saveBtn').addEventListener('click', () => runLogSave(document.getElementById('saveBtn')));
+document.getElementById('fullLogSaveBtn').addEventListener('click', async () => {
+  const savedOk = await runLogSave(document.getElementById('fullLogSaveBtn'));
+  // the long form is a full-screen popup: once it has saved, put it away
+  if (savedOk) { const t = document.querySelector('#fullLogCard .form-section-title'); const c = t && t.nextElementSibling; if (t && c && c.style.display !== 'none') t.click(); }
+});
 document.getElementById('quickSaveBtn').addEventListener('click', () => runLogSave(document.getElementById('quickSaveBtn')));
 
 function clearLogForm() {
   document.getElementById('fGlucose').value = '';
   document.getElementById('fGlucose2hr').value = '';
-  if (document.getElementById('fGlucoseFull'))    document.getElementById('fGlucoseFull').value = '';
-  if (document.getElementById('fGlucose2hrFull')) document.getElementById('fGlucose2hrFull').value = '';
   document.getElementById('fWeight').value = '';
   document.getElementById('fWaist').value = '';
   document.getElementById('fChest').value = '';
@@ -9946,6 +10038,17 @@ try {
       });
       anchorCard.parentNode.insertBefore(newCard, anchorCard);
       cardsToHide.forEach(c=>{ c.style.display='none'; });
+      try {
+        // Collapsed by default to one line of today's numbers; the tiles (and their edit pencils) open on tap.
+        newCard.id = 'appleHealthCard';
+        title.textContent = '';
+        title.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px';
+        const lab = document.createElement('span'); lab.textContent = 'Apple Health'; lab.style.flexShrink = '0';
+        const sum = document.createElement('span'); sum.id = 'appleHealthSummary'; sum.className = 'ah-summary';
+        const chev = document.createElement('span'); chev.id = 'appleHealthChevron'; chev.style.cssText = 'font-size:11px;color:var(--ink-soft);flex-shrink:0';
+        title.appendChild(lab); title.appendChild(sum); title.appendChild(chev);
+        makeFoodCardCollapsible('appleHealthCard', 'appleHealthChevron', 'mounjaro-applehealth-expanded', false);
+      } catch (err) { console.error('Apple Health collapse failed:', err); }
     }
   }
 } catch (err) { console.error('Apple Health card consolidation failed:', err); }
@@ -13595,6 +13698,13 @@ function computePace(min, dist) {
   return round1(d / (min / 60));
 }
 
+function updateAppleHealthSummary() {
+  const el = document.querySelector('#appleHealthCard .ah-summary'); if (!el) return;
+  const get = id => { const n = document.getElementById(id); const t = n ? n.textContent.trim() : ''; return t && t !== '—' ? t : null; };
+  const bits = [['Steps', 'exViewSteps'], ['Sleep', 'exViewSleep'], ['Active', 'exViewActiveCal'], ['Dist.', 'exViewDistance'], ['HRV', 'exViewHrv']]
+    .map(([l, id]) => { const v = get(id); return v ? `${l} ${v}` : null; }).filter(Boolean);
+  el.textContent = bits.length ? bits.join(' · ') : 'not synced yet';
+}
 function renderExList() {
   const list = document.getElementById('exList');
   if (!list) return;
@@ -13654,6 +13764,7 @@ function renderExList() {
   if (hrvInput && document.activeElement !== hrvInput) {
     hrvInput.value = de && de.hrv ? de.hrv : '';
   }
+  try { updateAppleHealthSummary(); } catch (err) { /* summary is decoration */ }
   const ex = exForDate(date);
   if (!ex.length) { list.innerHTML = ''; }
   else {
@@ -15388,18 +15499,6 @@ try {
 // field) — keeping the two boxes mirrored means it doesn't matter which
 // one you actually type into, and the save logic only ever needs to
 // read from the original Quick Log fields.
-try {
-(function initGlucoseFieldSync() {
-  const pairs = [['fGlucose', 'fGlucoseFull'], ['fGlucose2hr', 'fGlucose2hrFull']];
-  pairs.forEach(([aId, bId]) => {
-    const a = document.getElementById(aId);
-    const b = document.getElementById(bId);
-    if (!a || !b) return;
-    a.addEventListener('input', () => { b.value = a.value; });
-    b.addEventListener('input', () => { a.value = b.value; });
-  });
-})();
-} catch (err) { console.error('initGlucoseFieldSync failed:', err); }
 
 // Favorites tab can grow long (recipes + pinned favorites + quick-add
 // usuals) — this just hides non-matching chips client-side, same
@@ -16152,11 +16251,11 @@ function renderWhatFits() {
 }
 
 // ── GOAL MOMENT ── once a day, when a meal you just logged takes you past your protein goal.
-function showGoldToast(msg) {
+function showGoldToast(msg, ms) {
   const t = document.getElementById('prToast'); if (!t) return;
   t.textContent = msg; t.style.display = 'block';
   clearTimeout(prToastTimer);
-  prToastTimer = setTimeout(() => { t.style.display = 'none'; }, 3200);
+  prToastTimer = setTimeout(() => { t.style.display = 'none'; }, ms || 3200);
 }
 function celebrateProteinGoal(p) {
   const key = 'mounjaro-protein-celebrated';
@@ -16796,7 +16895,7 @@ async function scanLabReport(file) {
 try { makeFoodCardCollapsible('labScanCard', 'labScanChevron', 'mounjaro-labscan-expanded', false); } catch (err) { console.error('labScanCard collapsible setup failed:', err); }
 try { makeFoodCardCollapsible('labPanelCard', 'labPanelChevron', 'mounjaro-labpanel-expanded', false, true); } catch (err) { console.error('labPanelCard collapsible setup failed:', err); }
 try { (function(){ const t = document.getElementById('medFormTitle'); const c = t && t.closest('.form-card'); if (c) c.id = 'addMedCard'; })(); } catch (err) { console.error('addMedCard id rename failed:', err); }
-try { makeFoodCardCollapsible('addMedCard', 'addMedChevron', 'mounjaro-addmed-expanded', true, true); } catch (err) { console.error('addMedCard collapsible setup failed:', err); }
+try { makeFoodCardCollapsible('addMedCard', 'addMedChevron', 'mounjaro-addmed-expanded', false, true); } catch (err) { console.error('addMedCard collapsible setup failed:', err); }
 
 // ── MEDICATIONS ──
 // A simple reference list of current medications (name/dose/frequency/
@@ -17353,6 +17452,7 @@ document.getElementById('exportJsonBtn').addEventListener('click', () => {
       activityLevel: userActivityLevel,
       lossRate: userLossRate,
       proteinGoal: userProteinGoal,
+      weighInDay,
       workoutPlanMode,
       stepGoal: stepGoalOverride,
       theme: themeOverride,
@@ -17473,6 +17573,7 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async () =>
   payload.sex = document.getElementById('setSex').value;
   payload.activityLevel = document.getElementById('setActivityLevel').value;
   payload.lossRate = parseFloat(document.getElementById('setLossRate').value) || 1;
+  payload.weighInDay = document.getElementById('setWeighInDay').value || 'any';
   const pgVal = parseInt(document.getElementById('setProteinGoal').value);
   if (pgVal >= 30 && pgVal <= 300) payload.proteinGoal = pgVal; // anything outside a sane range is ignored, the old goal stays
   payload.workoutPlanMode = document.getElementById('setWorkoutPlanMode').value;
