@@ -11095,7 +11095,7 @@ function clearRestInline() {
 function syncRestTimerPresentation() {
   const wrap = document.getElementById('restTimerWrap');
   if (!wrap || restTimerEndTime == null) return;
-  wrap.style.display = document.querySelector('.rest-inline') ? 'none' : 'flex';
+  wrap.style.display = [...document.querySelectorAll('.rest-inline')].some(el => !el.closest('.exercise-body[data-collapsed]')) ? 'none' : 'flex'; // a rest bar inside a minimized card cannot be seen, so the popup takes over
 }
 
 function startRestTimer(seconds) {
@@ -11641,8 +11641,24 @@ function wireWorkoutPlanEvents() {
         delete workoutSessionState[exName][idx].checkedAt;
         delete workoutSessionState[exName][idx].prBadge; delete workoutSessionState[exName][idx].prPrev;
       }
+      let scrollToName = null;
+      if (!wasDone) {
+        const finishedEx = workoutSessionState[exName].length > 0 && workoutSessionState[exName].every(q => q.done);
+        if (finishedEx) {
+          // Finished this exercise: tuck it away so only what is left stays open, then head for the next unfinished one.
+          collapsedExercises.add(exName);
+          const blocks = [...document.querySelectorAll('.workout-exercise-block')];
+          const at = blocks.findIndex(b => b.dataset.exercise === exName);
+          const notDone = b => !b.classList.contains('workout-exercise-done') && b.dataset.exercise !== exName;
+          const nxt = blocks.slice(at + 1).find(notDone) || blocks.slice(0, Math.max(at, 0)).find(notDone);
+          if (nxt) { scrollToName = nxt.dataset.exercise; collapsedExercises.delete(scrollToName); } // it is the one to do now, so make sure it is open
+        }
+      } else {
+        collapsedExercises.delete(exName); // no longer finished: show its sets again
+      }
       renderWorkoutPlan();
       lastCheckedSetKey = null;
+      if (scrollToName) { const nb = document.querySelector(`.workout-exercise-block[data-exercise="${CSS.escape(scrollToName)}"]`); if (nb) nb.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       if (gotLivePR) { celebrateLivePR(exName, idx); }
       lastPRSetKey = null;
     });
@@ -13376,7 +13392,7 @@ function renderWorkoutPlan() {
         </div>
         ${segHtml}
         ${collapsedSummary}
-        <div class="exercise-body"${isCollapsed ? ' style="display:none"' : ''}>
+        <div class="exercise-body"${isCollapsed ? ' style="display:none" data-collapsed="1"' : ''}>
         <div class="exercise-action-row">
           <span class="exercise-sets-target">${setsTargetText}</span>
           ${variationControl}${supersetControl}${swapControl}${noteControl}
