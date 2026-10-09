@@ -1071,6 +1071,23 @@ body {
 .meal-cal small { display: block; font-size: 10px; font-weight: 700; color: var(--ink-soft); margin-top: 3px; }
 .meal-more { width: 40px; height: 40px; flex-shrink: 0; background: none; border: none; color: var(--ink-soft); font-size: 20px; line-height: 1; cursor: pointer; border-radius: 10px; }
 .meal-more:active { background: var(--input-bg); }
+.adding-to { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 12px; }
+.adding-to-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); flex-shrink: 0; }
+.adding-to .chip-row { margin: 0 !important; flex-wrap: wrap; }
+.meal-group-head.empty { align-items: center; }
+.meal-group-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap; gap: 4px 12px; text-transform: none; letter-spacing: 0; }
+.add-to-meal-row.inline { color: var(--teal); font-size: 12px; font-weight: 700; cursor: pointer; padding: 6px 0; white-space: nowrap; }
+.repeat-meal-btn { background: none; border: 1.5px solid var(--line); border-radius: 999px; padding: 5px 11px; color: var(--ink); font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; text-align: left; max-width: 100%; }
+.food-log-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: -2px 0 10px; }
+.food-log-action { background: none; border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 13px; color: var(--ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.food-strip-photo { flex-shrink: 0; border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; background: none; font-size: 15px; cursor: pointer; }
+.nut-water { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-soft); }
+.nut-water b { color: var(--teal); font-family: var(--font-num); font-weight: 800; margin-left: 4px; }
+.nut-water-btns { display: flex; gap: 6px; }
+.targets-note { display: flex; align-items: flex-start; gap: 8px; font-size: 11px; color: var(--ink-soft); margin-top: 4px; }
+.targets-note-x { background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 0 2px; font-size: 13px; flex-shrink: 0; }
+#favFoodsFilter { width: 100%; box-sizing: border-box; }
+#favFoods [data-pin-scale], #favFoods [data-fav-scale], #favFoods [data-pin-remove], #favFoods [data-fav-pin], #favFoods [data-recipe-remove], #favFoods [data-combo-remove] { font-size: 14px !important; opacity: .8 !important; padding: 4px 3px; }
 /* What fits? — one line per suggestion instead of two */
 .fits-text { display: flex !important; align-items: center; justify-content: space-between; gap: 10px; }
 .fits-macros { margin-top: 0 !important; white-space: nowrap; flex-shrink: 0; font-family: var(--font-num); font-weight: 700; }
@@ -2503,7 +2520,7 @@ body {
     <div class="view" id="view-food">
       <div class="food-strip" id="foodStrip" aria-live="polite">
         <div class="food-strip-text" id="foodStripText"></div>
-        <button type="button" class="food-strip-add" id="foodStripAdd">＋ Add</button>
+        <span style="display:flex;gap:6px;flex-shrink:0"><button type="button" class="food-strip-photo" id="foodStripPhoto" aria-label="Log a meal with a photo">📷</button><button type="button" class="food-strip-add" id="foodStripAdd">＋ Add</button></span>
       </div>
       <div class="date-stepper">
         <button type="button" class="ds-btn" id="foodDatePrev" aria-label="Previous day">‹</button>
@@ -2530,6 +2547,7 @@ body {
 
       <div class="form-card">
         <div class="form-section-title">Today's Food Log</div>
+        <div class="food-log-actions" id="foodLogActions"></div>
         <div id="comboSuggestionBanner" style="display:none;margin-bottom:12px;padding:10px 12px;border:1.5px solid var(--teal);border-radius:10px;background:var(--teal-tint)"></div>
         <div id="mealList"></div>
       </div>
@@ -2538,6 +2556,15 @@ body {
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">Add Food</span>
           <span id="addFoodChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
+        </div>
+        <div class="adding-to">
+          <span class="adding-to-label">Adding to</span>
+          <div class="chip-row" id="mealTypeRow">
+            <div class="chip mt-chip" data-mt="Breakfast">Breakfast</div>
+            <div class="chip mt-chip" data-mt="Lunch">Lunch</div>
+            <div class="chip mt-chip" data-mt="Dinner">Dinner</div>
+            <div class="chip mt-chip" data-mt="Snack">Snack</div>
+          </div>
         </div>
         <div class="chip-row" id="foodTabRow" style="margin-bottom:12px">
           <div class="chip food-tab-chip on" data-food-tab="quick">Quick add</div>
@@ -2621,18 +2648,14 @@ body {
           <div id="recipeEstimateResults"></div>
         </div>
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+          <div id="lookupResults"></div>
+          <button type="button" class="btn btn-ghost btn-sm" id="manualEntryBtn" style="width:100%">✎ Enter macros manually</button>
+          <div id="reviewFormBody" style="display:none">
           <div class="form-section-title" style="font-size:12px;margin-bottom:8px">Review &amp; Add</div>
-          <div class="chip-row" id="mealTypeRow" style="margin-bottom:12px">
-            <div class="chip mt-chip" data-mt="Breakfast">Breakfast</div>
-            <div class="chip mt-chip" data-mt="Lunch">Lunch</div>
-            <div class="chip mt-chip" data-mt="Dinner">Dinner</div>
-            <div class="chip mt-chip" data-mt="Snack">Snack</div>
-          </div>
           <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-soft);margin-bottom:12px;cursor:pointer">
             <input type="checkbox" id="mOffPlan" style="width:16px;height:16px;accent-color:var(--teal)">
             🔸 Off-plan (still logs, but excluded from trend charts)
           </label>
-          <div id="lookupResults"></div>
         <div class="field" style="margin-bottom:10px">
           <label for="mServings">Servings (macros above are per serving)</label>
           <div style="display:flex;align-items:center;gap:6px">
@@ -2681,6 +2704,7 @@ body {
           <button class="btn btn-secondary" id="addMealBtn" style="flex:1;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800">+ Add to Day</button>
           <button class="btn btn-secondary btn-sm" id="pinCurrentBtn" title="Save as Favorite" aria-label="Save current item as favorite" style="white-space:nowrap"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 9.5 16.5 14 18 21 12 17 6 21 7.5 14 2 9.5 9 9"/></svg> Fav</button>
           <button class="btn btn-ghost btn-sm" id="cancelMealEditBtn" style="white-space:nowrap;display:none">Cancel</button>
+        </div>
         </div>
         <div style="display:none">
           <div class="field-row">
@@ -13875,6 +13899,7 @@ document.getElementById('strongFile').addEventListener('change', async e => {
 async function setWater(date, next, prev) {
   upsertLocalEntry(date, e => { e.water = next; });
   document.getElementById('waterInput').value = next;
+  const nutWaterNow = document.getElementById('nutWaterVal'); if (nutWaterNow && date === document.getElementById('foodDate').value) nutWaterNow.textContent = `${Math.round(next)} / 64 oz`;
   // Update the hint + dashboard immediately (don't wait for the server echo)
   const hint = document.getElementById('waterHint');
   hint.textContent = next >= 64 ? '✓ target hit — nice' : `${64 - next} oz to minimum target (64–80 oz)`;
@@ -13959,6 +13984,7 @@ function renderWater() {
   const wIn = document.getElementById('waterInput');
   if (document.activeElement !== wIn) wIn.value = oz;
   const hint = document.getElementById('waterHint');
+  const nutWater = document.getElementById('nutWaterVal'); if (nutWater) nutWater.textContent = `${Math.round(oz)} / 64 oz`;
   hint.textContent = oz >= 64 ? '✓ target hit — nice' : `${oz} / 64 oz · ${Math.round(64 - oz)} to go (target 64–80)`;
   hint.style.color = oz >= 64 ? 'var(--in)' : 'var(--ink-soft)';
   const waterFill = document.getElementById('waterBarFill');
@@ -14709,6 +14735,7 @@ async function quickAddCombo(combo) {
   }));
   pendingFlashDesc = combo.name;
   await writeMeals(date, [...mealsForDate(date), ...newMeals]);
+  showUndoToast(`Added "${combo.name}" to ${mt}`, async () => { const drop = new Set(newMeals.map(m => m.ts)); await writeMeals(date, mealsForDate(date).filter(m => !drop.has(m.ts))); });
 }
 
 // Groups a set of food descriptions into a consistent, order-independent
@@ -14805,6 +14832,7 @@ async function quickAddFood(f, chipEl) {
   const meal = { desc: f.desc, mt: selectedMealType(), protein: f.protein, cal: f.cal, carbs: f.carbs, fat: f.fat, ts: Date.now() };
   pendingFlashDesc = f.desc;
   await writeMeals(date, [...mealsForDate(date), meal]);
+  showUndoToast(`Added "${f.desc}" to ${meal.mt}`, async () => { await writeMeals(date, mealsForDate(date).filter(m => m.ts !== meal.ts)); });
 }
 
 function renderFavorites() {
@@ -15794,6 +15822,34 @@ function cancelEditMeal() {
 
 document.getElementById('cancelMealEditBtn').addEventListener('click', cancelEditMeal);
 
+// ── Add Food: the macro form only appears once there is something to review (a picked food, an AI
+// estimate, an edit) or when you choose to type macros yourself. Programmatic fills from any flow
+// (lookup, photo, label, recipe, edit) are caught by watching the field values, so no flow needed changing.
+var manualReview = false, reviewHadContent = false;
+function syncReviewVisibility() {
+  const body = document.getElementById('reviewFormBody'), btn = document.getElementById('manualEntryBtn');
+  if (!body || !btn) return;
+  const filled = ['mProtein', 'mCal', 'mCarbs', 'mFat'].some(id => { const v = document.getElementById(id).value; return v !== '' && v != null; });
+  const editing = editingMealTs != null;
+  if (filled || editing) reviewHadContent = true;
+  else if (reviewHadContent) { manualReview = false; reviewHadContent = false; }
+  const show = filled || editing || manualReview;
+  body.style.display = show ? '' : 'none';
+  btn.style.display = show ? 'none' : '';
+}
+(function hookMealFields() {
+  const nativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  ['mDesc', 'mProtein', 'mCal', 'mCarbs', 'mFat'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    Object.defineProperty(el, 'value', { configurable: true, enumerable: true,
+      get() { return nativeValue.get.call(this); },
+      set(v) { nativeValue.set.call(this, v); if (id === 'mDesc' && v === '') manualReview = false; try { syncReviewVisibility(); } catch (err) { /* page still loading */ } } });
+  });
+  ['mProtein', 'mCal', 'mCarbs', 'mFat'].forEach(id => document.getElementById(id).addEventListener('input', () => { try { syncReviewVisibility(); } catch (err) { /* ignore */ } }));
+  document.getElementById('manualEntryBtn').addEventListener('click', () => { manualReview = true; syncReviewVisibility(); });
+})();
+try { syncReviewVisibility(); } catch (err) { /* ignore */ }
+
 document.getElementById('addMealBtn').addEventListener('click', async () => {
   const date = document.getElementById('foodDate').value;
   if (!date) { alert('Please select a date first.'); return; }
@@ -15994,7 +16050,7 @@ function macroBarRow(label, logged, goal, color, key) {
     <div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
         <span style="font-size:12px;color:var(--ink-soft)">${label}</span>
-        <span style="font-family:var(--font-num);font-size:12px;color:${color};font-weight:700"><span class="macro-logged-value" data-macro-key="${key}" data-macro-target="${logged}">${fmtThousands(logged)}</span> / ${fmtThousands(goal)}${unit}${remaining > 0 ? ` · ${fmtThousands(remaining)}${unit} left` : ' · met ✓'}</span>
+        <span style="font-family:var(--font-num);font-size:12px;color:${color};font-weight:700"><span class="macro-logged-value" data-macro-key="${key}" data-macro-target="${logged}">${fmtThousands(logged)}</span> / ${fmtThousands(goal)}${unit}${label === 'Calories' && remaining > 0 ? '' : remaining > 0 ? ` · ${fmtThousands(remaining)}${unit} left` : ' · met ✓'}</span>
       </div>
       <div style="height:7px;border-radius:4px;background:var(--line);overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${color};border-radius:4px"></div>
@@ -16056,6 +16112,8 @@ function renderWhatFits() {
   });
 }
 
+function waterOzFor(date) { const e = entries.find(x => x.date === date); return e && e.water ? Math.round(parseFloat(e.water)) : 0; }
+function targetsNoteDismissed() { try { return localStorage.getItem('mounjaro-targets-note-dismissed') === '1'; } catch (err) { return false; } }
 function renderProteinSummary() {
   const box = document.getElementById('proteinSummaryBody');
   if (!box) return;
@@ -16088,9 +16146,13 @@ function renderProteinSummary() {
     ${macroBarRow('Calories', totals.calories || 0, targets.calorieTarget, 'var(--ink)', `${date}:calories`)}
     ${macroBarRow('Carbs', totals.carbs || 0, targets.carbTarget, 'var(--coral)', `${date}:carbs`)}
     ${macroBarRow('Fat', totals.fat || 0, targets.fatTarget, 'var(--sage)', `${date}:fat`)}
-    ${!hasProfile ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:4px">Using estimated calorie/carb/fat targets — add your height and age in Settings to personalize them.</div>` : ''}
+    <div class="nut-water"><span>💧 Water<b id="nutWaterVal">${waterOzFor(date)} / 64 oz</b></span><span class="nut-water-btns"><button type="button" class="btn btn-secondary btn-sm" data-water-quick="8">+8</button><button type="button" class="btn btn-secondary btn-sm" data-water-quick="16">+16</button></span></div>
+    ${!hasProfile && !targetsNoteDismissed() ? `<div class="targets-note"><span>Using estimated calorie/carb/fat targets — add your height and age in Settings to personalize them.</span><button type="button" class="targets-note-x" id="targetsNoteX" aria-label="Dismiss this note">✕</button></div>` : ''}
     ${targets.flooredForSafety ? `<div style="font-size:11px;color:var(--coral);margin-top:4px">Your calculated deficit target was under 1,200 cal — raised to 1,200 as a safety floor.</div>` : ''}
   `;
+  const nx = document.getElementById('targetsNoteX');
+  if (nx) nx.addEventListener('click', () => { try { localStorage.setItem('mounjaro-targets-note-dismissed', '1'); } catch (err) { /* ignore */ } nx.closest('.targets-note').remove(); });
+  box.querySelectorAll('[data-water-quick]').forEach(b => b.addEventListener('click', () => adjustWater(Number(b.dataset.waterQuick))));
   updateFoodStrip(pVal, pTarget, calLeft);
   box.querySelectorAll('.macro-logged-value').forEach(span => {
     const key = span.dataset.macroKey;
@@ -16145,6 +16207,7 @@ function updateFoodStripVisibility() {
   strip.classList.toggle('show', onFood && card.getBoundingClientRect().bottom < main.getBoundingClientRect().top + 8);
 }
 document.getElementById('app-main').addEventListener('scroll', updateFoodStripVisibility, { passive: true });
+document.getElementById('foodStripPhoto').addEventListener('click', () => startPhotoLog());
 document.getElementById('foodStripAdd').addEventListener('click', () => {
   ensureAddFoodOpenOnQuickTab();
   const desc = document.getElementById('mDesc');
@@ -16205,6 +16268,44 @@ async function logMealAgain(fromDate, ts) {
   });
 }
 
+// ── REPEAT ── for the breakfasts and lunches you eat again and again.
+function lastDayWithMeal(date, mt) {
+  for (let i = 1; i <= 14; i++) {
+    const d = dateStrShift(date, -i);
+    const items = mealsForDate(d).filter(m => (m.mt || 'Other') === mt);
+    if (items.length) return { date: d, items };
+  }
+  return null;
+}
+function lastDayWithAnyMeal(date) {
+  for (let i = 1; i <= 14; i++) {
+    const d = dateStrShift(date, -i);
+    const items = mealsForDate(d);
+    if (items.length) return { date: d, items };
+  }
+  return null;
+}
+function dayWordFor(selected, from) {
+  return from === dateStrShift(selected, -1) ? "yesterday's" : `${new Date(from + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' })}'s`;
+}
+function shortDayFor(selected, from) {
+  return from === dateStrShift(selected, -1) ? 'Yesterday' : new Date(from + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+}
+function calSum(items) { let t = 0, any = false; items.forEach(m => { const c = parseFloat(m.cal); if (!isNaN(c)) { t += c; any = true; } }); return any ? Math.round(t) : null; }
+async function repeatMeals(toDate, items, label) {
+  const existing = mealsForDate(toDate);
+  const used = new Set(existing.map(m => m.ts));
+  let ts = Date.now();
+  const copies = items.map(m => { while (used.has(ts)) ts++; used.add(ts); return { ...m, ts: ts++ }; });
+  await writeMeals(toDate, [...existing, ...copies]);
+  showUndoToast(`Added ${label}`, async () => { const drop = new Set(copies.map(c => c.ts)); await writeMeals(toDate, mealsForDate(toDate).filter(m => !drop.has(m.ts))); });
+}
+function startPhotoLog() {
+  ensureAddFoodOpenOnQuickTab();
+  showAddMethod('photo');
+  document.getElementById('photoFileInput').click();
+}
+
 function renderMealList() {
   const list = document.getElementById('mealList');
   if (!list) return;
@@ -16227,6 +16328,13 @@ function renderMealList() {
     const addLink = mt !== 'Other'
       ? `<div class="add-to-meal-row" data-addmeal="${mt}" style="padding:6px 0 8px;color:var(--teal);font-size:12px;font-weight:700;cursor:pointer">+ Add food to ${mt}</div>`
       : '';
+    if (!items.length && mt !== 'Other') {
+      // An empty meal takes one line: its name, a one-tap repeat of the last one you logged, and Add.
+      const prev = lastDayWithMeal(date, mt);
+      const prevCal = prev ? calSum(prev.items) : null;
+      const repeatBtn = prev ? `<button type="button" class="repeat-meal-btn" data-repeatmeal="${mt}" data-repeatfrom="${prev.date}" aria-label="Repeat ${dayWordFor(date, prev.date)} ${mt.toLowerCase()}">↻ ${shortDayFor(date, prev.date)}${prevCal != null ? ` · ${fmtThousands(prevCal)} cal` : ''}</button>` : '';
+      return `<div class="meal-group-head empty"><span>${mt}</span><span class="meal-group-actions">${repeatBtn}<span class="add-to-meal-row inline" data-addmeal="${mt}" role="button" tabindex="0">＋ Add</span></span></div>`;
+    }
     return `<div class="meal-group-head"><span>${mt}</span><span class="meal-group-tot">${subStr}</span></div>` +
       items.map(m => {
         const name = escapeHtml(m.desc || '');
@@ -16251,6 +16359,21 @@ function renderMealList() {
       addLink;
   }).join('');
   wireMealRows(list, date);
+  list.querySelectorAll('[data-repeatmeal]').forEach(b => b.addEventListener('click', () => {
+    const mt = b.dataset.repeatmeal, from = b.dataset.repeatfrom;
+    repeatMeals(date, mealsForDate(from).filter(m => (m.mt || 'Other') === mt), `${dayWordFor(date, from)} ${mt.toLowerCase()}`);
+  }));
+  // Actions above the log: a photo shortcut, and copy-a-whole-day when today is still empty.
+  const actions = document.getElementById('foodLogActions');
+  if (actions) {
+    const prevDay = !meals.length ? lastDayWithAnyMeal(date) : null;
+    const pCal = prevDay ? calSum(prevDay.items) : null;
+    actions.innerHTML = `<button type="button" class="food-log-action" id="foodLogPhotoBtn">📷 Log with a photo</button>` +
+      (prevDay ? `<button type="button" class="food-log-action" id="copyDayBtn" data-copyfrom="${prevDay.date}">↻ Copy ${dayWordFor(date, prevDay.date)} meals · ${prevDay.items.length} item${prevDay.items.length === 1 ? '' : 's'}${pCal != null ? ` · ${fmtThousands(pCal)} cal` : ''}</button>` : '');
+    document.getElementById('foodLogPhotoBtn').addEventListener('click', startPhotoLog);
+    const cd = document.getElementById('copyDayBtn');
+    if (cd) cd.addEventListener('click', () => repeatMeals(date, mealsForDate(cd.dataset.copyfrom), `${dayWordFor(date, cd.dataset.copyfrom)} meals`));
+  }
   list.querySelectorAll('[data-addmeal]').forEach(el => {
     el.addEventListener('click', () => {
       ensureAddFoodOpenOnQuickTab();
