@@ -332,6 +332,23 @@ body {
 }
 .stat-grid.editing .hide-card-btn { display: flex; }
 .timeline-card.home-extra-card { position: relative; }
+.form-card.home-extra-card { position: relative; }
+#view-dashboard.editing-home .form-card.home-extra-card { border-color: var(--teal); }
+#view-dashboard.editing-home .form-card.home-extra-card .hide-card-btn { display: flex; }
+#view-dashboard.editing-home .form-card.home-extra-card .today-head { padding-left: 26px; }
+.today-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:2px; }
+.today-title { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); }
+.today-date { font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+.today-headline { font-size:17px; font-weight:800; color:var(--ink); line-height:1.25; margin:2px 0 10px; }
+.today-chips { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.today-chip { display:flex; align-items:center; gap:8px; min-width:0; padding:9px 10px; border:1px solid var(--line); border-radius:12px; background:transparent; color:var(--ink); font:inherit; text-align:left; cursor:pointer; }
+.today-chip.done { border-color:var(--teal); background:var(--success-tint, transparent); }
+.today-chip.urgent { border-color:var(--coral); }
+.today-chip-ico { font-size:17px; flex-shrink:0; }
+.today-chip-txt { min-width:0; display:flex; flex-direction:column; }
+.today-chip-lbl { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); }
+.today-chip-val { font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.today-week { font-size:12px; color:var(--ink-soft); margin-top:10px; line-height:1.5; }
 #view-dashboard.editing-home .home-extra-card { border-color: var(--teal); }
 #view-dashboard.editing-home .home-extra-card .hide-card-btn { display: flex; }
 #view-dashboard.editing-home .home-extra-card .timeline-title { padding-left: 26px; }
@@ -1438,6 +1455,13 @@ body {
       <div id="quickLogFoodSection" style="display:none;margin-bottom:14px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Quick Log</div>
         <div id="quickLogFoodRow" style="display:flex;gap:8px;overflow-x:auto"></div>
+      </div>
+
+      <div class="form-card home-extra-card" id="todayCard" data-card-key="todaySummary" style="margin-bottom:14px;display:none">
+        <div class="today-head"><span class="today-title">Today</span><span class="today-date" id="todayDate"></span></div>
+        <div class="today-headline" id="todayHeadline">—</div>
+        <div class="today-chips" id="todayChips"></div>
+        <div class="today-week" id="todayWeek"></div>
       </div>
 
       <div class="inj-banner" id="injBanner"></div>
@@ -3828,6 +3852,7 @@ const CARD_CATALOG = {
 
 // The two milestone cards live outside the stat grid (full-width blocks), but hide/show the same way.
 CARD_CATALOG.milestoneProgress = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><path d="M4 22V4"/><path d="M4 4h12l-2 4 2 4H4"/></svg>', label: 'Milestone Progress' };
+CARD_CATALOG.todaySummary = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>', label: 'Today' };
 CARD_CATALOG.milestoneRoadmap = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>', label: 'Milestone Roadmap' };
 
 function applyDashboardOrder(order) {
@@ -5564,6 +5589,7 @@ function updateStats() {
   const diff = daysSinceStart();
 
   try { renderDueToday(); } catch (err) { console.error('Due Today render failed:', err); }
+  try { renderTodayCard(); } catch (err) { console.error('Today card render failed:', err); }
   try { renderQuickLogFood(); } catch (err) { console.error('Quick Log Food render failed:', err); }
 
   // Computed once here rather than per stat card below — each call
@@ -16401,6 +16427,75 @@ function computeDueTodayItems() {
   }
 
   return items;
+}
+
+// ── TODAY CARD ── one glance: what is done today, and how the week is going.
+// Descriptive only: counts and numbers, never advice.
+function todayDoseStatus() {
+  const diff = daysSinceStart();
+  if (diff < 0) return null;
+  const cycleStart = new Date(TREATMENT_START);
+  cycleStart.setDate(cycleStart.getDate() + Math.floor(diff / 7) * 7);
+  const lb = new Date(cycleStart); lb.setDate(lb.getDate() - 2);
+  const lookbackStr = lbFmt(lb);
+  const injected = entries.some(e => e.injection && e.date >= lookbackStr);
+  const daysLate = diff % 7;
+  if (injected) return daysLate === 0 ? { kind: 'done', val: 'Logged ✓' } : { kind: 'upcoming', val: `in ${7 - daysLate} day${7 - daysLate === 1 ? '' : 's'}` };
+  if (daysLate === 0) return { kind: 'due', val: 'Due today' };
+  if (daysLate <= 4) return { kind: 'overdue', val: `${daysLate} day${daysLate > 1 ? 's' : ''} late` };
+  return { kind: 'missed', val: 'Missed window' };
+}
+
+function renderTodayCard() {
+  const card = document.getElementById('todayCard');
+  if (!card) return;
+  const today = todayStr();
+  const t = entries.find(e => e.date === today) || {};
+  const WORKOUT_GOAL = 4, PROTEIN_GOAL = 100, WATER_GOAL = 64;
+  const protein = t.protein ? parseFloat(t.protein) || 0 : 0;
+  const water = t.water ? parseFloat(t.water) || 0 : 0;
+  const lifted = (t.ex || []).some(x => x.type === 'Strength');
+  const dose = todayDoseStatus();
+  const doseNeeded = !!dose && (dose.kind === 'due' || dose.kind === 'overdue');
+
+  const chips = [];
+  if (dose) chips.push({ key: 'dose', ico: '💉', lbl: 'Dose', val: dose.val, done: dose.kind === 'done', urgent: doseNeeded });
+  chips.push({ key: 'workout', ico: '🏋️', lbl: 'Workout', val: lifted ? 'Done ✓' : 'Not yet', done: lifted });
+  chips.push({ key: 'protein', ico: '🥩', lbl: 'Protein', val: `${Math.round(protein)} / ${PROTEIN_GOAL} g`, done: protein >= PROTEIN_GOAL });
+  chips.push({ key: 'water', ico: '💧', lbl: 'Water', val: `${Math.round(water)} / ${WATER_GOAL} oz`, done: water >= WATER_GOAL });
+
+  const tasks = chips.filter(c => c.key !== 'dose' || doseNeeded || dose.kind === 'done');
+  const doneCount = tasks.filter(c => c.done).length;
+  let headline;
+  if (doseNeeded) headline = dose.kind === 'due' ? 'Injection day: log your dose' : 'Your dose is waiting to be logged';
+  else if (doneCount === tasks.length) headline = 'All set for today ✓';
+  else headline = `${doneCount} of ${tasks.length} done today`;
+
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  document.getElementById('todayHeadline').textContent = headline;
+  const box = document.getElementById('todayChips');
+  box.innerHTML = chips.map(c => `<button type="button" class="today-chip${c.done ? ' done' : ''}${c.urgent ? ' urgent' : ''}" data-today-chip="${c.key}"><span class="today-chip-ico">${c.ico}</span><span class="today-chip-txt"><span class="today-chip-lbl">${c.lbl}</span><span class="today-chip-val">${c.val}</span></span></button>`).join('');
+  box.querySelectorAll('[data-today-chip]').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.todayChip;
+    if (k === 'dose') { document.getElementById('fInjection').checked = true; document.getElementById('injSiteWrap').style.display = 'block'; updateLastSiteHint(); showView('log'); }
+    else if (k === 'workout') document.getElementById('quickWorkoutBtn').click();
+    else if (k === 'protein') showView('food');
+  }));
+
+  // Week line: workouts so far, weight movement, logging streak.
+  const wkStart = lbWeekStart(today);
+  const wkWorkouts = entries.filter(e => e.date >= wkStart && e.date <= today && (e.ex || []).some(x => x.type === 'Strength')).length;
+  const parts = [`${wkWorkouts} of ${WORKOUT_GOAL} workouts this week`];
+  try {
+    const wc = weightChangeOverDays(7);
+    if (wc) {
+      const c = Math.round(wc.change * 10) / 10;
+      parts.push(c === 0 ? `weight steady since ${fmtDate(wc.from)}` : `weight ${c < 0 ? 'down' : 'up'} ${Math.abs(c).toFixed(1)} lb since ${fmtDate(wc.from)}`);
+    }
+  } catch (err) { console.error(err); }
+  try { const st = currentLoggingStreak(); if (st > 0) parts.push(`🔥 ${st}-day streak`); } catch (err) { console.error(err); }
+  document.getElementById('todayWeek').textContent = parts.join(' · ');
+  card.style.display = hiddenCards.includes('todaySummary') ? 'none' : '';
 }
 
 function renderDueToday() {
