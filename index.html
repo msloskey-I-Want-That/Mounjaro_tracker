@@ -1157,7 +1157,8 @@ body {
 #muscleMap .sel { filter: drop-shadow(0 0 3px var(--ink)); }
 .muscle-chip { cursor: pointer; }
 .muscle-chip.selected { border-color: var(--teal); background: var(--teal-tint); }
-.muscle-detail { margin-top: 12px; padding: 12px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--input-bg); }
+.muscle-detail { position: fixed; left: 0; right: 0; bottom: 0; z-index: 480; max-height: 78vh; overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 0; padding: 16px 16px max(18px, env(safe-area-inset-bottom)); border: 1.5px solid var(--line); border-bottom: none; border-radius: 20px 20px 0 0; background: rgba(18,16,40,0.94); backdrop-filter: blur(28px) saturate(150%); -webkit-backdrop-filter: blur(28px) saturate(150%); box-shadow: 0 -12px 40px rgba(0,0,0,0.45); }
+[data-theme="light"] .muscle-detail { background: rgba(251,250,255,0.96); }
 .muscle-detail .n { font-family:var(--font-num); color: var(--ink-soft);font-weight:700}
 .md-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin-bottom: 4px; }
 .md-list { font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
@@ -1168,8 +1169,30 @@ body {
 .muscle-balance { font-size: 12px; font-weight: 700; margin-top: 10px; color: #FFB020; }
 .muscle-balance.ok { color: var(--sage); font-weight: 600; }
 [data-theme="light"] .muscle-balance:not(.ok) { color: #9A5B00; }
-.muscle-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.muscle-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 14px; border: 1.5px solid var(--line); font-size: 11px; font-weight: 700; color: var(--ink); }
+.muscle-chips { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px 14px; margin-top: 12px; }
+.muscle-chip { display: block; padding: 5px 7px 6px; border-radius: 10px; border: 1.5px solid transparent; font-size: 11.5px; font-weight: 700; color: var(--ink); }
+.mc-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.mc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-bar { display: block; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.mc-fill { display: block; height: 100%; border-radius: 3px; }
+.mm-modes { display: flex; flex-wrap: nowrap; gap: 6px; margin-bottom: 10px; }
+.mm-modes .chip { flex: 1 1 auto; justify-content: center; text-align: center; padding: 6px 6px; font-size: 12px; white-space: nowrap; }
+.mm-headline { font-size: 13px; color: var(--ink-soft); margin: 0 0 10px; }
+.mm-headline b { color: var(--ink); font-family: var(--font-num); font-weight: 800; }
+.mm-range { margin: -4px 0 10px; gap: 6px; }
+.mm-range .chip { font-size: 11px; padding: 4px 10px; }
+.mm-train { margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--teal); background: var(--teal-tint); }
+.mm-train.ok { border-color: var(--line); background: var(--input-bg); font-size: 12px; color: var(--ink-soft); }
+.mm-train-title { font-size: 14px; }
+.mm-train-title b { font-weight: 800; color: var(--ink); }
+.mm-train-sub { font-size: 12px; color: var(--ink-soft); margin-top: 3px; line-height: 1.45; }
+.mm-info { margin-top: 10px; font-size: 11px; color: var(--ink-soft); }
+.mm-info summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+.mm-info div { margin-top: 4px; line-height: 1.5; }
+.muscle-sheet-bd { position: fixed; inset: 0; z-index: 479; background: rgba(0,0,0,0.5); }
+.tw-muscles { font-size: 12px; color: var(--ink-soft); margin-top: 4px; line-height: 1.5; }
+.tw-muscles .tm-ok { color: var(--teal); font-weight: 800; }
+.tw-muscles .tm-wait { color: #FFB020; font-weight: 800; font-family: var(--font-num); }
 .muscle-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
 .muscle-chip.zero { color: var(--ink-soft); font-weight: 600; }
 .muscle-chip .n { font-family:var(--font-num); color: var(--ink-soft);font-weight:700}
@@ -6034,7 +6057,11 @@ const MUSCLE_GOAL_DEFAULTS = { Chest: 10, Back: 10, Quads: 10, Hamstrings: 8, Sh
 const MUSCLE_COLORS = { teal: 'var(--teal)', amber: '#FFB020', red: '#FF4D5E', green: '#5CE6C0' };
 let muscleGoals = {};      // { group: sets/week } — only the ones you've changed; synced in settings
 let muscleMapMode = 'volume';
-try { const saved = localStorage.getItem('mounjaro-musclemap-mode'); if (saved === 'recovery' || saved === 'effort') muscleMapMode = saved; } catch (err) { /* storage unavailable */ }
+try { const saved = localStorage.getItem('mounjaro-musclemap-mode'); if (saved === 'recovery' || saved === 'effort' || saved === 'progress') muscleMapMode = saved; } catch (err) { /* storage unavailable */ }
+let muscleMapRange = 'this';   // Volume only: 'this' week, 'last' week, or the 4-week 'avg'
+try { const r = localStorage.getItem('mounjaro-musclemap-range'); if (r === 'last' || r === 'avg') muscleMapRange = r; } catch (err) { /* storage unavailable */ }
+var lastMuscleOnGoal;           // how many muscles were on goal at the previous paint (to catch the moment they all are)
+var lastTrainApply = null;      // what the "Set today's workout" button should do
 let muscleMapSelected = null;
 function muscleGoalFor(g) { const v = Number(muscleGoals[g]); return v >= 1 ? v : MUSCLE_GOAL_DEFAULTS[g]; }
 async function saveMuscleGoals() {
@@ -6189,8 +6216,92 @@ function effortNoteHtml(stats) {
   return html + legend + `<div style="margin-top:6px">Colored by how hard your workouts felt (your 1–5 rating), averaged over the last 2 weeks and weighted by sets. One rating covers a whole workout, so every muscle in a session shares it.</div>`;
 }
 
+// ── PROGRESS ── your best weighted working set per lift: the last 4 weeks against the 4 before them.
+function muscleProgress() {
+  const out = {}; MUSCLE_MAP_GROUPS.forEach(g => { out[g] = { exercises: [], pct: null, trained: false }; });
+  const byEx = {};
+  entries.forEach(e => {
+    const d = daysAgoFor(e.date); if (d < 0 || d >= 56) return;
+    (e.ex || []).forEach(x => {
+      if (x.type !== 'Strength' || !x.sets) return;
+      Object.entries(x.sets).forEach(([name, sets]) => {
+        const g = muscleGroupForSet(name, x); if (!g || !(g in out)) return;
+        const w = (sets || []).filter(isWeightedWorkingSet).map(q => q.weight); if (!w.length) return;
+        const top = Math.max(...w), rec = byEx[name] = byEx[name] || { name, group: g, cur: null, base: null };
+        if (d < 28) rec.cur = Math.max(rec.cur == null ? 0 : rec.cur, top); else rec.base = Math.max(rec.base == null ? 0 : rec.base, top);
+      });
+    });
+  });
+  Object.values(byEx).forEach(r => {
+    r.delta = (r.cur != null && r.base != null) ? Math.round((r.cur - r.base) * 10) / 10 : null;
+    r.pct = (r.delta != null && r.base > 0) ? r.delta / r.base * 100 : null;
+    out[r.group].exercises.push(r);
+    if (r.cur != null) out[r.group].trained = true;
+  });
+  MUSCLE_MAP_GROUPS.forEach(g => {
+    const withPct = out[g].exercises.filter(r => r.pct != null);
+    out[g].pct = withPct.length ? withPct.reduce((t, r) => t + r.pct, 0) / withPct.length : null;
+    out[g].exercises.sort((a, b) => (b.pct == null ? -999 : b.pct) - (a.pct == null ? -999 : a.pct));
+  });
+  return out;
+}
+
+// ── TRAIN NEXT ── the day of your own plan that hits what is behind and recovered. Descriptive: it only reads your history.
+function trainNextSuggestion(stats) {
+  const cands = [];
+  if (workoutPlanMode === 'ppl') Object.keys(WORKOUT_PLAN_PPL).forEach(k => cands.push({ key: k, label: k, ex: WORKOUT_PLAN_PPL[k], apply: () => { pplDayOverride = k; } }));
+  else if (workoutPlanMode === 'split') Object.keys(WORKOUT_PLAN).forEach(k => cands.push({ key: k, label: 'Day ' + k, ex: WORKOUT_PLAN[k], apply: () => { splitDayOverride = k; } }));
+  else if (workoutPlanMode === 'custom') {
+    const r = (customRoutines || []).find(x => x.id === activeRoutineId) || (customRoutines || [])[0];
+    if (r && Array.isArray(r.days)) r.days.forEach(d => cands.push({ key: d.id, label: d.name, ex: d.exercises || [], apply: () => { customDayOverride = d.id; } }));
+  }
+  const recentSets = MUSCLE_MAP_GROUPS.reduce((t, g) => t + stats[g].weeks.reduce((a, b) => a + b, 0), 0);
+  if (!cands.length || !recentSets) return null;
+  const scored = cands.map(c => {
+    const groups = []; c.ex.forEach(x => { const g = muscleGroupFor(x.name); if (g && MUSCLE_MAP_GROUPS.includes(g) && !groups.includes(g)) groups.push(g); });
+    let score = 0; const hits = [], blocked = [];
+    groups.forEach(g => {
+      const st = stats[g], ready = st.recovery.state === 'ready' || st.recovery.state === 'none', deficit = Math.max(0, st.goal - st.sets) / st.goal;
+      if (ready) { if (deficit > 0) { score += deficit; hits.push({ g, sets: st.sets, goal: st.goal, deficit }); } }
+      else { score -= st.recovery.state === 'overlap' ? 1 : 0.6; blocked.push(g); }
+    });
+    hits.sort((a, b) => b.deficit - a.deficit);
+    return { c, score, hits: hits.slice(0, 4), blocked };
+  }).sort((a, b) => b.score - a.score);
+  const best = scored[0];
+  if (best.score <= 0.15 || !best.hits.length) return { allGood: true };
+  lastTrainApply = best.c.apply;
+  return { key: best.c.key, label: best.c.label, hits: best.hits, blocked: best.blocked, isCurrent: currentPlanKey() === best.c.key, canSet: true };
+}
+function trainNextHtml(sug) {
+  if (sug.allGood) return '<div class="mm-train ok" id="muscleTrainNext">✓ Every muscle is on goal or still recovering, so nothing is urgent.</div>';
+  const hits = sug.hits.map(h => `${h.g} ${h.sets}/${h.goal}`).join(' · ');
+  const wait = sug.blocked.length ? `<div class="mm-train-sub">Still recovering: ${sug.blocked.join(', ')}</div>` : '';
+  const cta = sug.isCurrent ? '<div class="mm-train-sub">✓ That is already today\'s workout.</div>'
+    : `<button type="button" class="btn btn-secondary btn-sm" id="muscleTrainBtn" data-trainday="${escapeHtml(String(sug.key))}" style="margin-top:8px;width:100%">Set today's workout to ${escapeHtml(sug.label)}</button>`;
+  return `<div class="mm-train" id="muscleTrainNext"><div class="mm-train-title">Train next: <b>${escapeHtml(sug.label)}</b></div><div class="mm-train-sub">Hits ${hits}</div>${wait}${cta}</div>`;
+}
+function celebrateMuscleWeek() {
+  const key = 'mounjaro-muscles-celebrated', wk = lbWeekStart(todayStr());
+  try { if (localStorage.getItem(key) === wk) return; localStorage.setItem(key, wk); } catch (err) { /* no storage: celebrate anyway */ }
+  const card = document.getElementById('muscleMapCard');
+  if (card) { card.style.position = 'relative'; try { spawnConfetti(card); } catch (err) { /* decoration only */ } }
+  showGoldToast('🏆 Every muscle on goal this week', 4200);
+}
+// The line on the Workout tab: today's muscles, ready or still recovering.
+function muscleLineHtml(plan) {
+  try {
+    const stats = muscleStats();
+    if (!MUSCLE_MAP_GROUPS.some(g => stats[g].last)) return '';
+    const seen = []; (plan || []).forEach(x => { const g = muscleGroupFor(x.name); if (g && MUSCLE_MAP_GROUPS.includes(g) && !seen.includes(g)) seen.push(g); });
+    if (!seen.length) return '';
+    const bits = seen.slice(0, 6).map(g => { const r = stats[g].recovery; return (r.state === 'ready' || r.state === 'none') ? `${g} <span class="tm-ok">✓</span>` : `${g} <span class="tm-wait">${r.state === 'overlap' ? '⚠ ' : ''}${fmtHoursLeft(r.hoursLeft)}</span>`; });
+    return `<div class="tw-muscles" id="twMuscles" title="✓ = recovered · hours = recovery time left">Muscles: ${bits.join(' · ')}</div>`;
+  } catch (err) { return ''; }
+}
+
 function muscleStats(now) {
-  const idx = muscleSessionIndex(); now = now || Date.now(); const out = {};
+  const idx = muscleSessionIndex(); now = now || Date.now(); const out = {}; const prog = muscleProgress();
   MUSCLE_MAP_GROUPS.forEach(g => {
     const s = idx[g], goal = muscleGoalFor(g), weeks = [0, 0, 0, 0], exWeek = {};
     s.forEach(x => {
@@ -6200,11 +6311,18 @@ function muscleStats(now) {
     });
     out[g] = { group: g, sets: weeks[0], goal, zone: muscleZone(weeks[0], goal), weeks,
       exercises: Object.entries(exWeek).map(([name, sets]) => ({ name, sets })).sort((a, b) => b.sets - a.sets),
-      last: s.length ? s[s.length - 1] : null, recovery: muscleRecovery(s, now), effort: muscleEffortFor(s) };
+      last: s.length ? s[s.length - 1] : null, recovery: muscleRecovery(s, now), effort: muscleEffortFor(s), progress: prog[g] };
   });
   return out;
 }
 function musclePaint(st, mode) {
+  if (mode === 'progress') {
+    const pr = st.progress; if (!pr || !pr.trained) return null;
+    if (pr.pct == null) return { fill: 'var(--ink-soft)', opacity: 0.35 };   // trained, but nothing earlier to compare with
+    if (pr.pct >= 1) return { fill: MUSCLE_COLORS.green, opacity: Math.min(1, 0.45 + pr.pct / 14) };
+    if (pr.pct > -1) return { fill: MUSCLE_COLORS.teal, opacity: 0.4 };       // steady
+    return { fill: MUSCLE_COLORS.amber, opacity: Math.min(1, 0.45 + Math.abs(pr.pct) / 14) };
+  }
   if (mode === 'effort') {
     if (!st.effort.sessions) return null;
     if (st.effort.avg == null) return { fill: 'var(--ink-soft)', opacity: 0.28 };
@@ -6243,6 +6361,8 @@ function muscleDetailHtml(st, mode) {
     : r.state === 'ready' ? `Ready — last trained ${fmtHoursShort(r.elapsedH)} ago`
     : `${r.state === 'overlap' ? '⚠ Hit again before it recovered · ' : ''}about ${fmtHoursLeft(r.hoursLeft)} until recovered`;
   if (mode === 'effort') status = muscleEffortStatus(st);
+  const pr = st.progress;
+  if (mode === 'progress') status = !pr || !pr.trained ? 'No weighted lifts in the last 4 weeks' : pr.pct == null ? 'Trained this month, with nothing earlier to compare against yet' : `${pr.pct >= 1 ? 'Up' : pr.pct <= -1 ? 'Down' : 'Steady'} ${Math.abs(pr.pct).toFixed(0)}% on average vs the 4 weeks before`;
   const last = st.last ? `Last trained ${fmtDate(st.last.date)} · ${st.last.sets} set${st.last.sets === 1 ? '' : 's'}` : '';
   const effortNote = (r.effort && r.recH)
     ? `Felt ${r.effort}/5 — ${Math.round(r.recH) === Math.round(r.baseH) ? `a normal recovery window (~${Math.round(r.recH)}h)` : `recovery window ~${Math.round(r.recH)}h (${r.recH > r.baseH ? 'longer' : 'shorter'} than the usual ${Math.round(r.baseH)}h)`}` : '';
@@ -6263,8 +6383,8 @@ function muscleDetailHtml(st, mode) {
     <div style="font-size:12px;font-weight:700;margin-bottom:2px">${status}</div>
     ${last ? `<div style="font-size:11px;color:var(--ink-soft);margin-bottom:${effortNote ? '2px' : '8px'}">${last}</div>` : '<div style="margin-bottom:8px"></div>'}
     ${effortNote ? `<div class="md-effort" style="font-size:11px;color:var(--ink-soft);margin-bottom:8px">${effortNote}</div>` : ''}
-    <div class="md-label">This week</div>
-    <div class="md-list">${ex}</div>${recentHtml}
+    ${mode === 'progress' ? `<div class="md-label">Best set per lift · last 4 weeks vs the 4 before</div><div class="md-list">${pr && pr.exercises.length ? pr.exercises.map(r => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${escapeHtml(r.name)}</span><span class="n">${r.base != null ? r.base : '–'} → ${r.cur != null ? r.cur : '–'} lb${r.delta != null ? ` (${r.delta > 0 ? '+' : ''}${r.delta})` : ''}</span></div>`).join('') : '<div style="color:var(--ink-soft)">No weighted lifts logged for this muscle yet.</div>'}</div>` : `<div class="md-label">This week</div>
+    <div class="md-list">${ex}</div>${recentHtml}`}
     <div class="md-label" style="margin-top:10px">Sets per week</div>
     <div style="position:relative;display:flex;align-items:flex-end;gap:6px;height:76px;padding-top:4px">
       <div style="position:absolute;left:0;right:0;bottom:${Math.round(14 + 44 * st.goal / scale)}px;border-top:1.5px dashed var(--ink-soft);opacity:0.45"></div>${bars}
@@ -6283,93 +6403,148 @@ function muscleDetailHtml(st, mode) {
 function renderMuscleMap() {
   const box = document.getElementById('muscleMap');
   if (!box) return;
-  const mode = muscleMapMode, stats = muscleStats();
+  const mode = muscleMapMode, range = muscleMapRange, stats = muscleStats();
+  const rangeWord = range === 'last' ? 'previous 7 days' : range === 'avg' ? '4-week average' : 'last 7 days';
   const titleEl = document.getElementById('muscleMapTitle');
-  if (titleEl) titleEl.textContent = mode === 'recovery' ? "Recovery · what's fresh" : mode === 'effort' ? 'Effort · how hard it felt' : 'Muscles trained · last 7 days';
+  if (titleEl) titleEl.textContent = mode === 'recovery' ? "Recovery · what's fresh" : mode === 'effort' ? 'Effort · how hard it felt' : mode === 'progress' ? 'Progress · lifts vs a month ago' : `Muscles trained · ${rangeWord}`;
   const sessions7 = muscleSetsLastDays(7).sessions;
   const sel = muscleMapSelected && stats[muscleMapSelected] ? muscleMapSelected : null;
-  const attrs = g => { const p = musclePaint(stats[g], mode); return p ? `fill="${p.fill}" fill-opacity="${p.opacity.toFixed(2)}"` : `fill="var(--line)"`; };
-  const tip = g => { const st = stats[g]; if (mode === 'effort') return effortTip(g, st); return mode === 'recovery'
+  // Volume can look at last week or the 4-week average instead of this week
+  const weekAvg = st => Math.round(st.weeks.reduce((x, y) => x + y, 0) / 4 * 10) / 10;
+  const view = g => { const st = stats[g]; if (mode !== 'volume' || range === 'this') return st; const sets = range === 'last' ? st.weeks[1] : weekAvg(st); return { ...st, sets, zone: muscleZone(sets, st.goal) }; };
+  const attrs = g => { const p = musclePaint(view(g), mode); return p ? `fill="${p.fill}" fill-opacity="${p.opacity.toFixed(2)}"` : `fill="var(--line)"`; };
+  const tip = g => { const st = view(g); if (mode === 'effort') return effortTip(g, st); if (mode === 'progress') return `${g} · ${!st.progress.trained ? 'no weighted lifts in the last 4 weeks' : st.progress.pct == null ? 'trained, nothing earlier to compare' : (st.progress.pct >= 0 ? '+' : '−') + Math.abs(st.progress.pct).toFixed(0) + '% vs the 4 weeks before'}`; return mode === 'recovery'
       ? (st.recovery.state === 'none' ? `${g} · not trained yet` : st.recovery.state === 'ready' ? `${g} · ready` : `${g} · ~${fmtHoursLeft(st.recovery.hoursLeft)} to recover`)
-      : `${g} · ${st.sets} set${st.sets === 1 ? '' : 's'} of ${st.goal}`; };
-  const m = (g, tag, a) => `<${tag} ${a} ${attrs(g)} data-muscle="${g}"${sel === g ? ' class="sel"' : ''}><title>${tip(g)}</title></${tag}>`;
+      : `${g} · ${st.sets} set${st.sets === 1 ? '' : 's'} of ${st.goal}${range === 'avg' ? ' (weekly average)' : ''}`; };
+  const m = (g, tag, a) => `<${tag} ${a} ${attrs(g)} stroke="transparent" stroke-width="7" data-muscle="${g}"${sel === g ? ' class="sel"' : ''}><title>${tip(g)}</title></${tag}>`;
   const n = (tag, a) => `<${tag} ${a} fill="var(--line)" fill-opacity="0.5"></${tag}>`;
+  const np = d => `<path d="${d}" fill="var(--line)" fill-opacity="0.5"></path>`;
   const e = (cx, cy, rx, ry) => `cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"`;
+  // shapes are drawn once for the figure's left side, then mirrored / shifted for the right side and the back view
+  const mapX = (d, f) => d.replace(/(-?\d+\.?\d*) (-?\d+\.?\d*)/g, (_, x, y) => `${Math.round(f(+x) * 10) / 10} ${y}`);
+  const R = d => mapX(d, x => 130 - x), BK = d => mapX(d, x => x + 130), BR = d => mapX(d, x => 260 - x);
+  const DELT = 'M30 40 C30 33 40 31 46 37 L45 55 C40 59 32 56 30 48 Z', PEC = 'M47 40 L64 42 L64 62 C58 66 49 63 46 55 Z',
+        CORE = 'M57 66 C57 64 73 64 73 66 L72 95 C69 99 61 99 58 95 Z', ARM = 'M30 58 C25 62 24 74 28 82 L35 82 C37 74 37 64 34 57 Z',
+        FORE = 'M27 85 C23 92 22 103 25 114 L31 114 C34 104 34 92 33 85 Z', LEG = 'M49 104 C44 118 44 150 50 168 L62 168 C64 150 64 118 62 104 Z',
+        SHIN = 'M50 172 C48 185 48 200 51 212 L60 212 C62 200 62 185 61 172 Z', TORSO = 'M44 38 Q65 32 86 38 L84 78 Q83 100 74 102 L56 102 Q47 100 46 78 Z', HIPS = 'M50 98 L80 98 Q82 108 76 112 L54 112 Q48 108 50 98 Z';
   const front = [
     n('circle', 'cx="65" cy="15" r="11"'), n('rect', 'x="60" y="25" width="10" height="9" rx="3"'),
-    n('rect', 'x="44" y="36" width="42" height="64" rx="15"'),
-    m('Shoulders', 'ellipse', e(39, 42, 9, 9)), m('Shoulders', 'ellipse', e(91, 42, 9, 9)),
-    m('Chest', 'ellipse', e(55, 52, 10, 9)), m('Chest', 'ellipse', e(75, 52, 10, 9)),
-    m('Core', 'rect', 'x="55" y="64" width="20" height="32" rx="8"'),
-    m('Biceps', 'ellipse', e(30, 64, 6.5, 13)), m('Biceps', 'ellipse', e(100, 64, 6.5, 13)),
-    m('Forearms', 'ellipse', e(27, 91, 5, 13)), m('Forearms', 'ellipse', e(103, 91, 5, 13)), n('circle', 'cx="25" cy="108" r="4.5"'), n('circle', 'cx="105" cy="108" r="4.5"'),
-    n('rect', 'x="50" y="98" width="30" height="13" rx="6"'),
-    m('Quads', 'ellipse', e(54, 140, 10.5, 28)), m('Quads', 'ellipse', e(76, 140, 10.5, 28)),
-    n('ellipse', e(54, 192, 6.5, 19)), n('ellipse', e(76, 192, 6.5, 19)),
-    n('ellipse', e(55, 214, 8, 3.5)), n('ellipse', e(75, 214, 8, 3.5))
+    np(TORSO), np(HIPS),
+    m('Shoulders', 'path', `d="${DELT}"`), m('Shoulders', 'path', `d="${R(DELT)}"`),
+    m('Chest', 'path', `d="${PEC}"`), m('Chest', 'path', `d="${R(PEC)}"`),
+    m('Core', 'path', `d="${CORE}"`),
+    m('Biceps', 'path', `d="${ARM}"`), m('Biceps', 'path', `d="${R(ARM)}"`),
+    m('Forearms', 'path', `d="${FORE}"`), m('Forearms', 'path', `d="${R(FORE)}"`), n('circle', 'cx="25" cy="119" r="4.5"'), n('circle', 'cx="105" cy="119" r="4.5"'),
+    m('Quads', 'path', `d="${LEG}"`), m('Quads', 'path', `d="${R(LEG)}"`),
+    np(SHIN), np(R(SHIN)),
+    n('ellipse', e(55, 216, 8, 3.5)), n('ellipse', e(75, 216, 8, 3.5))
   ].join('');
-  const backPaint = musclePaint(stats['Back'], mode), backPts = '182,38 208,38 216,60 209,84 201,95 189,95 181,84 174,60';
+  const backPaint = musclePaint(view('Back'), mode), backPts = '182,38 208,38 216,60 209,84 201,95 189,95 181,84 174,60';
   const backShape = !backPaint
-    ? `<polygon points="${backPts}" fill="var(--line)" data-muscle="Back"${sel === 'Back' ? ' class="sel"' : ''}><title>${tip('Back')}</title></polygon>`
+    ? `<polygon points="${backPts}" fill="var(--line)" stroke="transparent" stroke-width="7" data-muscle="Back"${sel === 'Back' ? ' class="sel"' : ''}><title>${tip('Back')}</title></polygon>`
     : `<g opacity="${backPaint.opacity.toFixed(2)}" data-muscle="Back"${sel === 'Back' ? ' class="sel"' : ''}><polygon points="${backPts}" fill="${backPaint.fill}" stroke="${backPaint.fill}" stroke-width="4" stroke-linejoin="round"/><title>${tip('Back')}</title></g>`;
   const back = [
     n('circle', 'cx="195" cy="15" r="11"'), n('rect', 'x="190" y="25" width="10" height="9" rx="3"'),
-    n('rect', 'x="174" y="36" width="42" height="64" rx="15"'),
-    m('Rear Delts', 'ellipse', e(169, 42, 9, 9)), m('Rear Delts', 'ellipse', e(221, 42, 9, 9)),
+    np(BK(TORSO)), np(BK(HIPS)),
+    m('Rear Delts', 'path', `d="${BK(DELT)}"`), m('Rear Delts', 'path', `d="${BR(DELT)}"`),
     backShape,
-    m('Triceps', 'ellipse', e(160, 64, 6.5, 13)), m('Triceps', 'ellipse', e(230, 64, 6.5, 13)),
-    m('Forearms', 'ellipse', e(157, 91, 5, 13)), m('Forearms', 'ellipse', e(233, 91, 5, 13)), n('circle', 'cx="155" cy="108" r="4.5"'), n('circle', 'cx="235" cy="108" r="4.5"'),
+    m('Triceps', 'path', `d="${BK(ARM)}"`), m('Triceps', 'path', `d="${BR(ARM)}"`),
+    m('Forearms', 'path', `d="${BK(FORE)}"`), m('Forearms', 'path', `d="${BR(FORE)}"`), n('circle', 'cx="155" cy="119" r="4.5"'), n('circle', 'cx="235" cy="119" r="4.5"'),
     n('ellipse', e(185, 106, 10, 9)), n('ellipse', e(205, 106, 10, 9)),
-    m('Hamstrings', 'ellipse', e(184, 141, 10.5, 26)), m('Hamstrings', 'ellipse', e(206, 141, 10.5, 26)),
-    m('Calves', 'ellipse', e(184, 191, 7.5, 18)), m('Calves', 'ellipse', e(206, 191, 7.5, 18)),
-    n('ellipse', e(185, 214, 8, 3.5)), n('ellipse', e(205, 214, 8, 3.5))
+    m('Hamstrings', 'path', `d="${BK(LEG)}"`), m('Hamstrings', 'path', `d="${BR(LEG)}"`),
+    m('Calves', 'path', `d="${BK(SHIN)}"`), m('Calves', 'path', `d="${BR(SHIN)}"`),
+    n('ellipse', e(185, 216, 8, 3.5)), n('ellipse', e(205, 216, 8, 3.5))
   ].join('');
-  const svg = `<svg viewBox="0 0 260 232" width="100%" style="max-width:340px;display:block;margin:0 auto" role="img" aria-label="Muscle groups, ${mode === 'recovery' ? 'recovery status' : mode === 'effort' ? 'effort of recent workouts' : 'trained in the last 7 days'}, front and back">
+  const svg = `<svg viewBox="0 0 260 232" width="100%" style="max-width:270px;display:block;margin:0 auto" role="img" aria-label="Muscle groups, ${mode === 'recovery' ? 'recovery status' : mode === 'effort' ? 'effort of recent workouts' : mode === 'progress' ? 'strength progress over the last month' : rangeWord}, front and back">
     ${front}${back}
     <text x="65" y="229" text-anchor="middle" font-size="8" fill="var(--ink-soft)" letter-spacing="1">FRONT</text>
     <text x="195" y="229" text-anchor="middle" font-size="8" fill="var(--ink-soft)" letter-spacing="1">BACK</text>
   </svg>`;
-  // chips
+  // scoreboard: one bar per muscle (tap a bar or the figure for details)
   const rank = g => { const r = stats[g].recovery; return r.state === 'overlap' ? [0, -r.hoursLeft] : r.state === 'recovering' ? [1, -r.hoursLeft] : r.state === 'ready' ? [2, 0] : [3, 0]; };
-  const order = MUSCLE_MAP_GROUPS.slice().sort((a, b) => mode === 'effort' ? effortRank(stats[a]) - effortRank(stats[b]) : mode === 'recovery'
-    ? (rank(a)[0] - rank(b)[0]) || (rank(a)[1] - rank(b)[1])
-    : stats[b].sets - stats[a].sets);
+  const progRank = g => { const pr = stats[g].progress; return pr.pct != null ? -pr.pct : pr.trained ? 1000 : 2000; };
+  const order = MUSCLE_MAP_GROUPS.slice().sort((x, y) => mode === 'effort' ? effortRank(stats[x]) - effortRank(stats[y]) : mode === 'progress' ? progRank(x) - progRank(y) : mode === 'recovery'
+    ? (rank(x)[0] - rank(y)[0]) || (rank(x)[1] - rank(y)[1])
+    : view(y).sets - view(x).sets);
   const chips = order.map(g => {
-    const st = stats[g], p = musclePaint(st, mode), r = st.recovery;
-    const idle = mode === 'effort' ? !st.effort.sessions : mode === 'recovery' ? r.state === 'none' : st.sets === 0;
-    const suffix = mode === 'effort' ? (!st.effort.sessions ? '–' : st.effort.avg == null ? '?' : st.effort.avg.toFixed(1)) : mode === 'recovery'
-      ? (r.state === 'none' ? '–' : r.state === 'ready' ? '✓' : `${r.state === 'overlap' ? '⚠ ' : ''}${fmtHoursLeft(r.hoursLeft)}`)
+    const st = view(g), p = musclePaint(st, mode), r = st.recovery, pr = st.progress;
+    const idle = mode === 'effort' ? !st.effort.sessions : mode === 'progress' ? !pr.trained : mode === 'recovery' ? r.state === 'none' : st.sets === 0;
+    const suffix = mode === 'effort' ? (!st.effort.sessions ? '–' : st.effort.avg == null ? '?' : st.effort.avg.toFixed(1))
+      : mode === 'progress' ? (!pr.trained ? '–' : pr.pct == null ? 'new' : Math.round(pr.pct) === 0 ? '±0%' : `${pr.pct > 0 ? '+' : '−'}${Math.abs(Math.round(pr.pct))}%`)
+      : mode === 'recovery' ? (r.state === 'none' ? '–' : r.state === 'ready' ? (r.elapsedH >= 48 ? `✓ ${Math.floor(r.elapsedH / 24)}d` : '✓') : `${r.state === 'overlap' ? '⚠ ' : ''}${fmtHoursLeft(r.hoursLeft)}`)
       : `${st.sets}/${st.goal}`;
-    return `<span class="muscle-chip${idle ? ' zero' : ''}${sel === g ? ' selected' : ''}" data-musclechip="${g}"><span class="dot" style="${p ? `background:${p.fill};opacity:${p.opacity.toFixed(2)}` : 'background:var(--line)'}"></span>${g} <span class="n">${suffix}</span></span>`;
+    const pct = mode === 'effort' ? (st.effort.avg != null ? st.effort.avg / 5 * 100 : 0)
+      : mode === 'progress' ? (pr.pct != null ? Math.min(100, Math.max(0, pr.pct) * 10) : 0)
+      : mode === 'recovery' ? (r.state === 'none' ? 0 : r.state === 'ready' ? 100 : Math.min(1, r.elapsedH / r.recH) * 100)
+      : Math.min(1, st.sets / st.goal) * 100;
+    const dotStyle = p ? `background:${p.fill};opacity:${p.opacity.toFixed(2)}` : 'background:var(--line)';
+    const fillStyle = p ? `background:${p.fill};opacity:${Math.max(0.55, p.opacity).toFixed(2)}` : 'background:var(--line)';
+    return `<span class="muscle-chip${idle ? ' zero' : ''}${sel === g ? ' selected' : ''}" data-musclechip="${g}"><span class="mc-top"><span class="dot" style="${dotStyle}"></span><span class="mc-name">${g}</span> <span class="n">${suffix}</span></span><span class="mc-bar"><span class="mc-fill" style="width:${Math.round(pct)}%;${fillStyle}"></span></span></span>`;
   }).join('');
-  // notes
+  // headline: the whole card in one line
+  const nG = MUSCLE_MAP_GROUPS.length;
+  let headline = '';
+  if (mode === 'volume') {
+    const onGoal = MUSCLE_MAP_GROUPS.filter(g => view(g).sets >= view(g).goal).length;
+    const total = Math.round(MUSCLE_MAP_GROUPS.reduce((t, g) => t + view(g).sets, 0));
+    headline = `<b>${onGoal} of ${nG}</b> muscles on goal ${range === 'avg' ? '(4-week average)' : range === 'last' ? 'last week' : 'this week'} · <b>${total}</b> sets`;
+    if (range === 'this') {
+      if (typeof lastMuscleOnGoal === 'number' && lastMuscleOnGoal < nG && onGoal === nG) celebrateMuscleWeek();
+      lastMuscleOnGoal = onGoal;
+    }
+  } else if (mode === 'recovery') {
+    const cnt = st => MUSCLE_MAP_GROUPS.filter(g => stats[g].recovery.state === st).length;
+    headline = `<b>${cnt('recovering') + cnt('overlap')}</b> recovering · <b>${cnt('ready')}</b> ready · <b>${cnt('none')}</b> not trained yet`;
+  } else if (mode === 'effort') {
+    const cov = effortCoverage();
+    headline = cov.total ? `<b>${cov.rated} of ${cov.total}</b> recent workouts have an effort rating` : 'No strength sessions in the last 2 weeks';
+  } else {
+    const ps = MUSCLE_MAP_GROUPS.map(g => stats[g].progress).filter(q => q.pct != null);
+    headline = ps.length ? `<b>${ps.filter(q => q.pct >= 1).length}</b> muscles up · <b>${ps.filter(q => q.pct > -1 && q.pct < 1).length}</b> steady · <b>${ps.filter(q => q.pct <= -1).length}</b> down vs the 4 weeks before` : 'Needs lifts from two different months to compare';
+  }
+  // notes + explanations (the explanations live behind an ⓘ)
   const bal = muscleBalanceFlags();
   const balHtml = bal.flags.length ? bal.flags.map(f => `<div class="muscle-balance">⚖️ ${f}</div>`).join('')
     : bal.balanced ? '<div class="muscle-balance ok">⚖️ Push/pull and quads/hamstrings look balanced over the last 2 weeks.</div>' : '';
+  const info = html => `<details class="mm-info"><summary>ⓘ What do the colors mean?</summary>${html}</details>`;
   let note;
   if (mode === 'effort') {
     note = effortNoteHtml(stats);
+  } else if (mode === 'progress') {
+    const up = MUSCLE_MAP_GROUPS.filter(g => stats[g].progress.pct != null && stats[g].progress.pct >= 1).sort((x, y) => stats[y].progress.pct - stats[x].progress.pct);
+    note = (up.length ? `Biggest gain: <strong style="color:var(--ink)">${up[0]}</strong> (+${Math.round(stats[up[0]].progress.pct)}%)` : 'No muscle has gone up by 1% or more yet.')
+      + info('<div>green = lifts are heavier than the 4 weeks before · teal = steady · amber = lighter · gray = trained, nothing earlier to compare. Uses your best weighted working set per lift (warm-ups excluded), averaged across the lifts for that muscle.</div>');
   } else if (mode === 'recovery') {
     const over = MUSCLE_MAP_GROUPS.filter(g => stats[g].recovery.state === 'overlap');
-    const fresh = MUSCLE_MAP_GROUPS.filter(g => ['ready', 'none'].includes(stats[g].recovery.state));
+    const fresh = MUSCLE_MAP_GROUPS.filter(g => stats[g].recovery.state === 'ready');
+    const never = MUSCLE_MAP_GROUPS.filter(g => stats[g].recovery.state === 'none');
     note = (over.length ? `<div style="color:${MUSCLE_COLORS.red};font-weight:800;margin-bottom:4px">⚠ Hit again before recovered: ${over.join(', ')}</div>` : '')
-      + (fresh.length ? `Ready to train: <strong style="color:var(--ink)">${fresh.join(', ')}</strong>` : 'Everything is still recovering.')
-      + `<div style="margin-top:6px">green = ready · amber = recovering · red = trained again too soon. Recovery is a rough 2–3 day estimate: it grows with the sets you did and stretches or shrinks with how hard you rated that workout (1–5).</div>`;
+      + (fresh.length ? `Ready to train: <strong style="color:var(--ink)">${fresh.join(', ')}</strong>` : 'Nothing has finished recovering yet.')
+      + (never.length ? `<div style="margin-top:4px">Not trained yet: ${never.join(', ')}</div>` : '')
+      + info('<div>green = ready · amber = recovering · red = trained again too soon. Recovery is a rough 2–3 day estimate: it grows with the sets you did and stretches or shrinks with how hard you rated that workout (1–5). A number like "✓ 4d" is days since it was last trained.</div>');
   } else {
-    const missed = MUSCLE_MAP_GROUPS.filter(g => stats[g].sets === 0);
-    const heavy = MUSCLE_MAP_GROUPS.filter(g => ['heavy', 'high'].includes(stats[g].zone)).map(g => `${g} (${stats[g].sets})`);
-    note = (sessions7 === 0 ? 'No strength sessions in the last 7 days.'
-      : missed.length === 0 ? 'Every muscle group got work this week.'
-      : `Not hit yet: <strong style="color:var(--ink)">${missed.join(', ')}</strong>`)
+    const missed = MUSCLE_MAP_GROUPS.filter(g => view(g).sets === 0);
+    const heavy = MUSCLE_MAP_GROUPS.filter(g => ['heavy', 'high'].includes(view(g).zone)).map(g => `${g} (${view(g).sets})`);
+    note = ((range === 'this' && sessions7 === 0) ? 'No strength sessions in the last 7 days.'
+      : missed.length === 0 ? `Every muscle group got work${range === 'avg' ? ' on average' : range === 'last' ? ' last week' : ' this week'}.`
+      : `Not hit${range === 'this' ? ' yet' : ''}: <strong style="color:var(--ink)">${missed.join(', ')}</strong>`)
       + (heavy.length ? `<div style="color:${MUSCLE_COLORS.amber};font-weight:800;margin-top:4px">Heavy week — watch recovery: ${heavy.join(', ')}</div>` : '')
-      + `<div style="margin-top:6px">teal = building toward your weekly goal · amber = 1.5× goal · red = 2× or more. Tap any muscle for details or to change its goal.</div>`;
+      + info('<div>teal = building toward your weekly goal · amber = 1.5× goal · red = 2× or more. Tap any muscle for details or to change its goal.</div>');
   }
-  const modeRow = `<div class="chip-row" style="margin-bottom:10px;gap:6px"><div class="chip${mode === 'volume' ? ' on' : ''}" data-musclemode="volume">Volume</div><div class="chip${mode === 'recovery' ? ' on' : ''}" data-musclemode="recovery">Recovery</div><div class="chip${mode === 'effort' ? ' on' : ''}" data-musclemode="effort">Effort</div></div>`;
-  box.innerHTML = `${modeRow}${svg}<div class="muscle-chips">${chips}</div>${sel ? muscleDetailHtml(stats[sel], mode) : ''}${mode === 'volume' ? balHtml : ''}<div style="font-size:11px;color:var(--ink-soft);margin-top:8px">${note}</div>`;
+  const sug = (mode === 'volume' || mode === 'recovery') ? trainNextSuggestion(stats) : null;
+  const modeRow = `<div class="chip-row mm-modes"><div class="chip${mode === 'volume' ? ' on' : ''}" data-musclemode="volume">Volume</div><div class="chip${mode === 'recovery' ? ' on' : ''}" data-musclemode="recovery">Recovery</div><div class="chip${mode === 'effort' ? ' on' : ''}" data-musclemode="effort">Effort</div><div class="chip${mode === 'progress' ? ' on' : ''}" data-musclemode="progress">Progress</div></div>`;
+  const rangeRow = mode === 'volume' ? `<div class="chip-row mm-range"><div class="chip${range === 'this' ? ' on' : ''}" data-musclerange="this">This week</div><div class="chip${range === 'last' ? ' on' : ''}" data-musclerange="last">Last week</div><div class="chip${range === 'avg' ? ' on' : ''}" data-musclerange="avg">4-wk avg</div></div>` : '';
+  box.innerHTML = `${modeRow}${rangeRow}<div class="mm-headline" id="muscleHeadline">${headline}</div>${svg}<div class="muscle-chips">${chips}</div>${sel ? `<div class="muscle-sheet-bd" data-muscleclose="1"></div>${muscleDetailHtml(stats[sel], mode)}` : ''}${sug ? trainNextHtml(sug) : ''}${mode === 'volume' ? balHtml : ''}<div style="font-size:11px;color:var(--ink-soft);margin-top:8px">${note}</div>`;
   box.onclick = (ev) => {
     const t = ev.target.closest ? ev.target : null; if (!t) return;
     const modeBtn = t.closest('[data-musclemode]');
     if (modeBtn) { muscleMapMode = modeBtn.dataset.musclemode; try { localStorage.setItem('mounjaro-musclemap-mode', muscleMapMode); } catch (err) { /* ignore */ } renderMuscleMap(); return; }
+    const rangeBtn = t.closest('[data-musclerange]');
+    if (rangeBtn) { muscleMapRange = rangeBtn.dataset.musclerange; try { localStorage.setItem('mounjaro-musclemap-range', muscleMapRange); } catch (err) { /* ignore */ } renderMuscleMap(); return; }
+    if (t.closest('[data-trainday]')) {
+      if (lastTrainApply) { lastTrainApply(); try { renderWorkoutPlan(); } catch (err) { console.error(err); } showGoldToast('Today\'s workout is set', 2600); showView('exercise'); }
+      return;
+    }
     if (t.closest('[data-muscleclose]')) { muscleMapSelected = null; renderMuscleMap(); return; }
     const adj = t.closest('[data-goaladj]');
     if (adj && muscleMapSelected) {
@@ -13476,7 +13651,7 @@ function renderWorkoutPlan() {
   entries.forEach(e => (e.ex || []).forEach(x => { if (x.type === 'Strength' && x.planDay === heroKey && x.min > 0) heroMins.push(x.min); }));
   heroMins.sort((a, b) => a - b);
   const heroTyp = heroMins.length ? heroMins[Math.floor(heroMins.length / 2)] : null;
-  const todayWorkoutHtml = `<div class="today-workout" id="todayWorkout"><div class="tw-title">${escapeHtml(currentPlanDisplayName())}</div><div class="tw-meta">${plan.length} exercise${plan.length === 1 ? '' : 's'}${heroTyp ? ` · about ${heroTyp} min` : ''}</div><div class="tw-last">${heroLast ? `Last time: ${fmtDate(heroLast.date)} · ${heroLast.volume.toLocaleString()} lb` : 'First time on this day: this sets your baseline'}</div></div>`;
+  const todayWorkoutHtml = `<div class="today-workout" id="todayWorkout"><div class="tw-title">${escapeHtml(currentPlanDisplayName())}</div><div class="tw-meta">${plan.length} exercise${plan.length === 1 ? '' : 's'}${heroTyp ? ` · about ${heroTyp} min` : ''}</div><div class="tw-last">${heroLast ? `Last time: ${fmtDate(heroLast.date)} · ${heroLast.volume.toLocaleString()} lb` : 'First time on this day: this sets your baseline'}</div>${muscleLineHtml(plan)}</div>`;
   const anyOpenCard = visiblePlan.some(e => !collapsedExercises.has(e.name));
   const collapseAllHtml = (!isZoomed && !reorderingExercises && visiblePlan.length > 1)
     ? `<div class="collapse-all-row"><button type="button" class="btn btn-ghost btn-sm" id="collapseAllBtn">${anyOpenCard ? '⌃ Minimize all' : '⌄ Expand all'}</button></div>` : '';
