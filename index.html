@@ -982,6 +982,7 @@ body {
 .progress-seg { flex: 1; height: 5px; border-radius: 3px; background: var(--line); transition: background 0.25s ease; }
 .progress-seg.on { background: var(--seg-color, var(--teal)); }
 .exercise-action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
+.entry-popup-fullscreen #exerciseCardChevron { display: none; }
 .exercise-collapse-btn { background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 4px 2px; flex-shrink: 0; display: flex; touch-action: manipulation; }
 .workout-exercise-block > div:first-child { gap: 2px !important; }
 .workout-exercise-block > div:first-child > button { padding: 6px 3px !important; margin-left: 0 !important; }
@@ -2747,8 +2748,8 @@ body {
         </div>
         <div id="workoutHistoryList"></div>
       </div>
-      <div class="form-card">
-        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Exercise</span><button type="button" id="exerciseFullscreenCloseBtn" title="Minimize — timer keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px">✕</button></div>
+      <div class="form-card" id="exerciseActivityCard">
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Exercise</span><button type="button" id="exerciseFullscreenCloseBtn" title="Minimize — timer keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px">✕</button><span id="exerciseCardChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></div>
         <div id="workoutDescBlock" style="margin-bottom:12px">
           <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Describe your workout <span style="font-weight:500">(optional)</span></label>
           <div style="display:flex;gap:8px">
@@ -15125,6 +15126,12 @@ try {
     localStorage.setItem('mounjaro-workoutplan-default-migrated', 'true');
   }
 } catch (err) { console.error('workoutPlanCard default migration failed:', err); }
+try {
+  makeFoodCardCollapsible('exerciseActivityCard', 'exerciseCardChevron', 'mounjaro-exercisecard-expanded', true);
+  const exCardTitle = document.querySelector('#exerciseActivityCard .form-section-title');
+  // While the timer is running the card is full screen: tapping its title must not collapse it away.
+  if (exCardTitle) exCardTitle.addEventListener('click', e => { if (e.target.closest('button')) return; /* the close button must still work */ if (document.getElementById('exerciseActivityCard').classList.contains('entry-popup-fullscreen')) e.stopImmediatePropagation(); }, true);
+} catch (err) { console.error('exerciseActivityCard collapsible setup failed:', err); }
 try { makeFoodCardCollapsible('workoutPlanCard', 'workoutPlanChevron', 'mounjaro-workoutplan-expanded', false); } catch (err) { console.error('workoutPlanCard collapsible setup failed:', err); }
 try { makeFoodCardCollapsible('measurementsCard', 'measurementsChevron', 'mounjaro-measurements-expanded', false); } catch (err) { console.error('measurementsCard collapsible setup failed:', err); }
 
