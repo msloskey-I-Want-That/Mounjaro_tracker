@@ -983,6 +983,11 @@ body {
 .progress-seg.on { background: var(--seg-color, var(--teal)); }
 .exercise-action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
 .entry-popup-fullscreen #exerciseCardChevron { display: none; }
+.ex-date-row { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ex-date-label { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .05em; }
+.ex-date-chip { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1.5px solid var(--line); border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--card); cursor: pointer; touch-action: manipulation; }
+.ex-date-chip.not-today { border-color: var(--coral); color: var(--coral); }
+.ex-date-chip .ex-date-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; margin: 0; }
 .exercise-collapse-btn { background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 4px 2px; flex-shrink: 0; display: flex; touch-action: manipulation; }
 .workout-exercise-block > div:first-child { gap: 2px !important; }
 .workout-exercise-block > div:first-child > button { padding: 6px 3px !important; margin-left: 0 !important; }
@@ -2715,12 +2720,9 @@ body {
 
     <!-- Exercise -->
     <div class="view" id="view-exercise">
-      <div class="form-card">
-        <div class="form-section-title">Exercise Log</div>
-        <div class="field">
-          <label for="exDate">Date</label>
-          <input type="date" id="exDate">
-        </div>
+      <div id="exDateRow" class="ex-date-row">
+        <span class="ex-date-label">Logging for</span>
+        <label class="ex-date-chip" id="exDateChip" for="exDate"><span id="exDateChipText">Today</span><span aria-hidden="true">▾</span><input type="date" id="exDate" class="ex-date-input" aria-label="Date to log exercise for"></label>
       </div>
 
       <div class="form-card" id="workoutPlanCard">
@@ -6447,7 +6449,7 @@ function editEntry(date) {
   if (!e) return;
   document.getElementById('fDate').value       = e.date;
   document.getElementById('foodDate').value    = e.date;
-  document.getElementById('exDate').value      = e.date;
+  document.getElementById('exDate').value      = e.date; try { syncExDateChip(); } catch (err) { /* chip not built yet */ }
   document.getElementById('fGlucose').value    = e.glucose    || '';
   document.getElementById('fGlucose2hr').value = e.glucose2hr || '';
   if (document.getElementById('fGlucoseFull'))    document.getElementById('fGlucoseFull').value    = e.glucose    || '';
@@ -7435,7 +7437,7 @@ document.getElementById('settingsNavBtn').addEventListener('click', () => showVi
 function todayDefault() {
   document.getElementById('fDate').value = todayStr();
   document.getElementById('foodDate').value = todayStr();
-  document.getElementById('exDate').value = todayStr();
+  document.getElementById('exDate').value = todayStr(); try { syncExDateChip(); } catch (err) { /* chip not built yet */ }
   prefillLastDose();
 }
 
@@ -13590,7 +13592,18 @@ function renderExList() {
   renderWorkoutHistory();
   renderWorkoutPlan();
 }
+function syncExDateChip() {
+  const inp = document.getElementById('exDate'), txt = document.getElementById('exDateChipText'), chip = document.getElementById('exDateChip');
+  if (!inp || !txt || !chip) return;
+  const v = inp.value || todayStr(), today = todayStr();
+  txt.textContent = v === today ? 'Today' : v === lbAddDays(today, -1) ? 'Yesterday' : fmtDate(v);
+  chip.classList.toggle('not-today', v !== today);
+}
 document.getElementById('exDate').addEventListener('change', renderExList);
+document.getElementById('exDate').addEventListener('change', syncExDateChip);
+document.getElementById('exDate').addEventListener('input', syncExDateChip);
+document.getElementById('exDateChip').addEventListener('click', () => { try { document.getElementById('exDate').showPicker(); } catch (err) { /* older browsers open it from the overlaid input itself */ } });
+syncExDateChip();
 
 // ── ACTIVITY HISTORY ──
 // A Zepp-style rolling list of past workouts across every date, not just
@@ -13626,6 +13639,7 @@ function renderActivityHistory() {
     row.addEventListener('click', () => {
       const dateInput = document.getElementById('exDate');
       dateInput.value = row.dataset.activityDate;
+      syncExDateChip();
       renderExList();
       dateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
