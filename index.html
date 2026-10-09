@@ -929,15 +929,15 @@ body {
    the exercise's color so a finished set picks up that exercise's tint. */
 .set-row {
   --accent: #5CE6C0;
-  margin-bottom: 8px; padding: 8px 10px 10px;
+  margin-bottom: 6px; padding: 6px 10px 8px;
   border: 1.5px solid var(--line); border-radius: 14px;
   background: var(--input-bg);
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 .set-row.done { border-color: var(--accent); background: rgba(92,230,192,0.10); background: color-mix(in srgb, var(--accent) 13%, transparent); }
-.set-row-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; min-height: 24px; }
+.set-row-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; min-height: 22px; }
 .set-number-toggle {
-  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
   border: none; background: var(--line); color: var(--ink-soft);
   font-family:var(--font-num); font-size: 12px; font-weight: 700;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -950,7 +950,7 @@ body {
 .set-row-main { display: flex; align-items: center; gap: 8px; }
 .set-weight-group { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; }
 .set-step-btn {
-  width: 32px; height: 44px; flex-shrink: 0; border-radius: 12px;
+  width: 32px; height: 40px; flex-shrink: 0; border-radius: 12px;
   border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
   font-size: 20px; font-weight: 800; line-height: 1; cursor: pointer;
   touch-action: manipulation; transition: transform 0.08s;
@@ -963,7 +963,7 @@ body {
 .set-reps-field { flex: 0 0 52px; }
 .set-row.no-weight .set-reps-field { flex: 1 1 auto; } /* plank, knee raise…: no weight box, so the time/reps box takes the room */
 .set-field input {
-  width: 100%; height: 44px; padding: 0 4px 4px; box-sizing: border-box;
+  width: 100%; height: 40px; padding: 0 4px 4px; box-sizing: border-box;
   border: 1.5px solid var(--line); border-radius: 12px;
   background: var(--card); color: var(--ink);
   font-family:var(--font-num); font-size: 18px; font-weight: 700; text-align: center;
@@ -971,7 +971,7 @@ body {
 .set-field .unit { position: absolute; right: 7px; bottom: 3px; font-size: 8px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; pointer-events: none; }
 .set-row.done .set-field input { border-color: var(--accent); font-weight: 800; }
 .set-check-btn {
-  width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px;
+  width: 44px; height: 40px; flex-shrink: 0; border-radius: 12px;
   border: 1.5px solid var(--line); background: var(--card); color: var(--ink-soft);
   font-size: 19px; font-weight: 800; cursor: pointer; touch-action: manipulation;
 }
@@ -988,10 +988,16 @@ body {
 .ex-date-chip { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1.5px solid var(--line); border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--card); cursor: pointer; touch-action: manipulation; }
 .ex-date-chip.not-today { border-color: var(--coral); color: var(--coral); }
 .ex-date-chip .ex-date-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; margin: 0; }
+.today-workout { margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: var(--input-bg); border: 1.5px solid var(--line); }
+.tw-title { font-family: var(--font-num); font-size: 20px; font-weight: 800; color: var(--teal); text-transform: uppercase; letter-spacing: .04em; line-height: 1.15; }
+.tw-meta { font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 2px; }
+.tw-last { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.hist-pr { margin-left: 2px; }
 .exercise-collapse-btn { background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 4px 2px; flex-shrink: 0; display: flex; touch-action: manipulation; }
 .workout-exercise-block > div:first-child { gap: 2px !important; }
 .workout-exercise-block > div:first-child > button { padding: 6px 3px !important; margin-left: 0 !important; }
 .workout-exercise-block > div:first-child > .exercise-zoom-btn { padding-right: 0 !important; }
+@media (max-width: 350px) { .workout-exercise-block .exercise-zoom-btn > svg { display: none; } } /* very narrow phones: tapping the name still zooms; the arrow only hints at it and was colliding with the icons */
 .exercise-collapsed-summary { font-size: 12px; color: var(--ink-soft); margin: -2px 0 4px; }
 .collapse-all-row { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 .set-pr-badge { font-size: 10px; font-weight: 800; letter-spacing: .04em; color: #0d0d0f; background: linear-gradient(135deg,#FFB020,#FFD66B); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
@@ -2743,13 +2749,6 @@ body {
           <div class="prog-body" id="progressionResults"></div>
         </div>
       </div>
-      <div class="form-card" id="workoutHistoryCard">
-        <div class="form-section-title" id="workoutHistoryToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-          <span>Workout History</span>
-          <span id="workoutHistoryChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
-        </div>
-        <div id="workoutHistoryList"></div>
-      </div>
       <div class="form-card" id="exerciseActivityCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Exercise</span><button type="button" id="exerciseFullscreenCloseBtn" title="Minimize — timer keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px">✕</button><span id="exerciseCardChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></div>
         <div id="workoutDescBlock" style="margin-bottom:12px">
@@ -2803,6 +2802,13 @@ body {
         <div id="exList" style="margin-top:10px"></div>
       </div>
 
+      <div class="form-card" id="workoutHistoryCard">
+        <div class="form-section-title" id="workoutHistoryToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+          <span>Workout History</span>
+          <span id="workoutHistoryChevron" style="font-size:11px;color:var(--ink-soft)">▼</span>
+        </div>
+        <div id="workoutHistoryList"></div>
+      </div>
       <div class="form-card">
         <div class="form-section-title" id="activityHistoryToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
           <span>Activity History</span>
@@ -9351,10 +9357,11 @@ function buildWorkoutHistorySummaries() {
     Object.entries(combinedSets).forEach(([name, setArr]) => {
       const working = setArr.filter(isWeightedWorkingSet);
       const best = working.length ? working.reduce((b, s) => (s.weight > b.weight ? s : b), working[0]) : null;
-      exerciseRows.push({ name, setCount: setArr.length, bestWeight: best ? best.weight : null, bestReps: best ? best.reps : null });
+      const exRow = { name, setCount: setArr.length, bestWeight: best ? best.weight : null, bestReps: best ? best.reps : null, pr: false };
+      exerciseRows.push(exRow);
       if (best) {
         const priorBest = bestSoFar[name];
-        if (priorBest !== undefined && best.weight > priorBest) prCount++;
+        if (priorBest !== undefined && best.weight > priorBest) { prCount++; exRow.pr = true; }
         if (priorBest === undefined || best.weight > priorBest) bestSoFar[name] = best.weight;
       }
     });
@@ -9370,6 +9377,7 @@ function buildWorkoutHistorySummaries() {
   return summaries.reverse();
 }
 
+var workoutHistoryExpanded = false; // history shows the latest few until you ask for more
 function renderWorkoutHistory() {
   const box = document.getElementById('workoutHistoryList');
   if (!box) return;
@@ -9378,8 +9386,8 @@ function renderWorkoutHistory() {
     box.innerHTML = '<div style="text-align:center;padding:16px 4px;color:var(--ink-soft);font-size:12px">No workouts logged yet — finish one and it\'ll show up here.</div>';
     return;
   }
-  const LIMIT = 30;
-  const shown = summaries.slice(0, LIMIT);
+  const LIMIT = 30, RECENT = 4;
+  const shown = summaries.slice(0, workoutHistoryExpanded ? LIMIT : RECENT);
   let html = '';
   let currentMonth = null;
   shown.forEach(s => {
@@ -9401,15 +9409,20 @@ function renderWorkoutHistory() {
         <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;font-size:13px">
           ${s.exercises.map(ex => `
             <div style="color:var(--ink-soft)">${ex.setCount} × ${escapeHtml(ex.name)}</div>
-            <div style="font-family:var(--font-num);font-weight:700;text-align:right">${ex.bestWeight != null ? `${ex.bestWeight} lb × ${ex.bestReps}` : '—'}</div>
+            <div style="font-family:var(--font-num);font-weight:700;text-align:right">${ex.bestWeight != null ? `${ex.bestWeight} lb × ${ex.bestReps}${ex.pr ? ' <span class="hist-pr" title="Personal record that day">🏆</span>' : ''}` : '—'}</div>
           `).join('')}
         </div>
       </div>`;
   });
-  if (summaries.length > LIMIT) {
+  if (summaries.length > RECENT) {
+    html += `<button type="button" class="btn btn-ghost btn-sm" id="workoutHistoryMoreBtn" style="width:100%;margin-top:10px">${workoutHistoryExpanded ? 'Show fewer' : `Show ${Math.min(summaries.length, LIMIT) - RECENT} more`}</button>`;
+  }
+  if (workoutHistoryExpanded && summaries.length > LIMIT) {
     html += `<div style="text-align:center;font-size:12px;color:var(--ink-soft);margin-top:8px">Showing your ${LIMIT} most recent workouts</div>`;
   }
   box.innerHTML = html;
+  const moreBtn = document.getElementById('workoutHistoryMoreBtn');
+  if (moreBtn) moreBtn.addEventListener('click', () => { workoutHistoryExpanded = !workoutHistoryExpanded; renderWorkoutHistory(); });
 }
 
 // Most recent prior session's total volume for this SAME plan day (e.g.
@@ -10568,15 +10581,17 @@ function updatePRProximityHint(row) {
   // Strictly beating the best is "PR pace" — matching it is just a tie,
   // which used to count as pace too and made a pre-filled repeat of last
   // time's weight light up as a record on every single set.
+  // Only speak up when it means something: beating the best, or within 10 lb of it. Matching it exactly
+  // (what every pre-filled set does) or being far below it is just noise on every row.
   if (diff < 0) {
     hint.textContent = '🏆 PR pace';
     hint.className = 'pr-proximity-hint pr-pace';
-  } else if (diff === 0) {
-    hint.textContent = '= PR';
-    hint.className = 'pr-proximity-hint';
-  } else {
+  } else if (diff > 0 && diff <= 10) {
     hint.textContent = `${diff % 1 === 0 ? diff : diff.toFixed(1)} lb to PR`;
     hint.className = 'pr-proximity-hint';
+  } else {
+    hint.style.display = 'none';
+    return;
   }
   hint.style.display = '';
 }
@@ -12982,12 +12997,9 @@ function renderWorkoutVolumeSparkline() {
 
   const lastComplete = completeWeeks[completeWeeks.length - 1].volume;
   const priorComplete = completeWeeks.length > 1 ? completeWeeks[completeWeeks.length - 2].volume : null;
-  let trendText = '';
-  if (priorComplete && priorComplete > 0) {
-    const pctChange = Math.round(((lastComplete - priorComplete) / priorComplete) * 100);
-    if (pctChange > 5) trendText = ` (↑${pctChange}%)`;
-    else if (pctChange < -5) trendText = ` (↓${Math.abs(pctChange)}%)`;
-  }
+  // Compare like with like: this week so far next to the whole of last week (the old arrow compared two
+  // other, finished weeks and read as if it were about this one).
+  const trendText = lastComplete > 0 ? ` · last week ${Math.round(lastComplete).toLocaleString()}` : '';
 
   box.style.display = '';
   box.innerHTML = `
@@ -12995,7 +13007,7 @@ function renderWorkoutVolumeSparkline() {
       <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="flex-shrink:0">
         <polyline points="${points}" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
       </svg>
-      <span style="font-size:11px;color:var(--ink-soft);min-width:0">${Math.round(currentWeek.volume).toLocaleString()} lbs so far this week${trendText}</span>
+      <span style="font-size:11px;color:var(--ink-soft);min-width:0">${Math.round(currentWeek.volume).toLocaleString()} lb so far this week${trendText}</span>
     </div>`;
 }
 
@@ -13299,6 +13311,13 @@ function renderWorkoutPlan() {
       ${nextExercise ? `<div style="font-size:12px;color:var(--ink-soft);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Next: <strong style="color:var(--ink)">${escapeHtml(nextExercise.name)}</strong></div>` : ''}
     </div>` : '';
 
+  const heroKey = currentPlanKey();
+  const heroLast = lastSessionVolumeForPlanDay(heroKey);
+  const heroMins = [];
+  entries.forEach(e => (e.ex || []).forEach(x => { if (x.type === 'Strength' && x.planDay === heroKey && x.min > 0) heroMins.push(x.min); }));
+  heroMins.sort((a, b) => a - b);
+  const heroTyp = heroMins.length ? heroMins[Math.floor(heroMins.length / 2)] : null;
+  const todayWorkoutHtml = `<div class="today-workout" id="todayWorkout"><div class="tw-title">${escapeHtml(currentPlanDisplayName())}</div><div class="tw-meta">${plan.length} exercise${plan.length === 1 ? '' : 's'}${heroTyp ? ` · about ${heroTyp} min` : ''}</div><div class="tw-last">${heroLast ? `Last time: ${fmtDate(heroLast.date)} · ${heroLast.volume.toLocaleString()} lb` : 'First time on this day: this sets your baseline'}</div></div>`;
   const anyOpenCard = visiblePlan.some(e => !collapsedExercises.has(e.name));
   const collapseAllHtml = (!isZoomed && !reorderingExercises && visiblePlan.length > 1)
     ? `<div class="collapse-all-row"><button type="button" class="btn btn-ghost btn-sm" id="collapseAllBtn">${anyOpenCard ? '⌃ Minimize all' : '⌄ Expand all'}</button></div>` : '';
@@ -13445,7 +13464,7 @@ function renderWorkoutPlan() {
            })()}
          </div>
          <button type="button" class="btn btn-primary btn-sm" id="finishPlanBtn" style="margin-top:8px;width:100%;padding:12px;font-size:14px;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800;text-transform:uppercase;letter-spacing:0.02em">Finish Workout</button>`
-      : `<button type="button" class="btn btn-secondary btn-sm" id="startPlanBtn" style="margin-top:10px;width:100%">Start this workout</button>`
+      : `${todayWorkoutHtml}<button type="button" class="btn btn-primary" id="startPlanBtn" style="margin-top:8px;width:100%;padding:13px;font-size:15px;font-weight:800">Start this workout</button>`
     }
     </div><details class="plan-tip" id="planTip"${localStorage.getItem(PLAN_TIP_KEY) === '1' ? ' open' : ''}>
         <summary>ⓘ How this works</summary>
@@ -13648,7 +13667,7 @@ function renderActivityHistory() {
       <span style="text-align:right;font-family:var(--font-num);font-weight:700">
         <div class="lab-val">${x.min} min</div>
         ${x.dist ? `<div style="font-size:11px;color:var(--ink-soft)">${x.dist} mi${computePace(x.min, x.dist) ? ` · ${computePace(x.min, x.dist)} mph` : ''}</div>` : ''}
-        ${x.sets ? `<div style="font-size:11px;color:var(--ink-soft)">${Object.entries(x.sets).map(([name, s]) => `${name}: ${s.map(set => `${fmtSet(set, '×')}`).join('/')}`).join(' · ')}</div>` : ''}
+        ${x.type === 'Strength' ? `<div style="font-size:11px;color:var(--ink-soft)">${escapeHtml(x.planDay ? (String(x.planDay).startsWith('custom:') ? planDayLabel(x.planDay) : `${x.planDay} day`) : 'Lifting')}${x.sets ? ` · ${Object.keys(x.sets).length} exercises` : ''}</div>` : ''}
       </span>
     </div>`).join('');
   box.querySelectorAll('[data-activity-date]').forEach(row => {
