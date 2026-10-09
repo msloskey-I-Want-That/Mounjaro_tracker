@@ -1081,12 +1081,33 @@ body {
 .food-log-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: -2px 0 10px; }
 .food-log-action { background: none; border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 13px; color: var(--ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .food-strip-photo { flex-shrink: 0; border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; background: none; font-size: 15px; cursor: pointer; }
-.nut-water { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-soft); }
+.nut-water { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-soft); }
 .nut-water b { color: var(--teal); font-family: var(--font-num); font-weight: 800; margin-left: 4px; }
 .nut-water-btns { display: flex; gap: 6px; }
 .targets-note { display: flex; align-items: flex-start; gap: 8px; font-size: 11px; color: var(--ink-soft); margin-top: 4px; }
 .targets-note-x { background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 0 2px; font-size: 13px; flex-shrink: 0; }
 #favFoodsFilter { width: 100%; box-sizing: border-box; }
+.nut-pace { margin: -2px 0 12px; padding: 8px 10px; border-radius: 10px; background: var(--input-bg); font-size: 12px; color: var(--ink-soft); line-height: 1.45; }
+.nut-pace b { color: var(--ink); font-family: var(--font-num); font-weight: 800; }
+.wk-strip { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.wk-dots { display: flex; justify-content: space-between; gap: 6px; }
+.wk-day { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: var(--ink-soft); font-size: 10px; font-weight: 700; flex: 1; touch-action: manipulation; }
+.wk-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); box-sizing: border-box; }
+.wk-day.met .wk-dot { background: var(--teal); border-color: var(--teal); }
+.wk-day.part .wk-dot { background: linear-gradient(90deg, var(--teal) 50%, transparent 50%); border-color: var(--teal); }
+.wk-day.sel { color: var(--ink); }
+.wk-day.sel .wk-dot { box-shadow: 0 0 0 3px rgba(55,198,255,.35); }
+.wk-text { margin-top: 6px; font-size: 12px; color: var(--ink-soft); }
+.wk-text b { color: var(--ink); font-family: var(--font-num); font-weight: 800; }
+.nut-appetite { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-soft); }
+.app-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.app-chips { display: flex; gap: 6px; }
+.app-chip { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--line); background: none; color: var(--ink); font-family: var(--font-num); font-weight: 800; font-size: 14px; cursor: pointer; touch-action: manipulation; }
+.app-chip.on { background: var(--teal); border-color: var(--teal); color: #0a2e28; }
+.app-label { display: flex; flex-direction: column; line-height: 1.2; }
+.app-label small { font-size: 10px; margin-top: 2px; }
+.app-insight { margin-top: 6px; line-height: 1.45; }
+.app-insight b { color: var(--ink); font-family: var(--font-num); font-weight: 800; }
 #favFoods [data-pin-scale], #favFoods [data-fav-scale], #favFoods [data-pin-remove], #favFoods [data-fav-pin], #favFoods [data-recipe-remove], #favFoods [data-combo-remove] { font-size: 14px !important; opacity: .8 !important; padding: 4px 3px; }
 /* What fits? — one line per suggestion instead of two */
 .fits-text { display: flex !important; align-items: center; justify-content: space-between; gap: 10px; }
@@ -3384,6 +3405,14 @@ body {
               <option value="2">2 lb/wk</option>
             </select>
           </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Daily Protein Goal (g)</div>
+              <div class="settings-row-sub">Default 100 g. If your care team gave you a number, use that one.</div>
+            </div>
+            <input type="number" inputmode="numeric" id="setProteinGoal" placeholder="100" min="30" max="300"
+              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right;font-weight:700">
+          </div>
         </div>
       </div>
 
@@ -3722,6 +3751,7 @@ let userAge = 0;             // years — 0 means not yet set
 let userSex = 'male';
 let userActivityLevel = 'moderate';
 let userLossRate = 1;        // lbs/week
+let userProteinGoal = 100;   // grams/day — default 100; changeable in Settings
 let workoutPlanMode = 'split'; // 'split' (Day A/B alternating), 'fullbody' (one list every session), 'ppl' (Push/Pull/Legs, 3-day rotation), or 'custom' (My Routine)
 let customRoutines = [];      // My Routine: [{ id, name, days: [{ id, name, exercises: [{ name, sets }] }] }] — saved in the person's own settings
 let activeRoutineId = null;
@@ -5373,6 +5403,7 @@ function startListening() {
       if (s.sex)                    userSex        = s.sex;
       if (s.activityLevel)          userActivityLevel = s.activityLevel;
       if (s.lossRate)               userLossRate   = parseFloat(s.lossRate) || 1;
+      if (s.proteinGoal)            userProteinGoal = (parseInt(s.proteinGoal) >= 30 && parseInt(s.proteinGoal) <= 300) ? parseInt(s.proteinGoal) : 100;
       if (s.workoutPlanMode)        workoutPlanMode = s.workoutPlanMode;
       if (Array.isArray(s.customRoutines)) customRoutines = s.customRoutines;
       if (typeof s.activeRoutineId === 'string') activeRoutineId = s.activeRoutineId;
@@ -5446,6 +5477,7 @@ function syncSettingsInputs() {
   if (sexEl) sexEl.value = userSex;
   if (actEl) actEl.value = userActivityLevel;
   if (lossEl) lossEl.value = userLossRate;
+  const pgEl = document.getElementById('setProteinGoal'); if (pgEl && document.activeElement !== pgEl) pgEl.value = userProteinGoal;
   const wpmEl = document.getElementById('setWorkoutPlanMode');
   if (wpmEl) wpmEl.value = workoutPlanMode;
   const sg = document.getElementById('setStepGoal');
@@ -5753,9 +5785,9 @@ function updateStats() {
   if (todayEntry && todayEntry.protein) {
     const p = parseFloat(todayEntry.protein);
     pEl.textContent = p + ' g';
-    if (p >= 100) { pSub.textContent = 'target hit ✓'; pSub.className = 'sc-sub good'; }
-    else { pSub.textContent = (100 - p) + 'g to go — target: 100–120g'; pSub.className = 'sc-sub'; }
-    setStatBar('scProteinBar', p, 100, false);
+    if (p >= userProteinGoal) { pSub.textContent = 'target hit ✓'; pSub.className = 'sc-sub good'; }
+    else { pSub.textContent = (userProteinGoal - p) + 'g to go' + (userProteinGoal === 100 ? ' — target: 100–120g' : ` — goal: ${userProteinGoal}g`); pSub.className = 'sc-sub'; }
+    setStatBar('scProteinBar', p, userProteinGoal, false);
   } else {
     pEl.textContent = '—';
     pSub.textContent = 'target: 100–120g daily';
@@ -6433,7 +6465,7 @@ function renderHistory() {
     if (g2Val != null) metrics += `<span class="metric-pill ${g2Val < GLUCOSE_2HR_TARGET ? 'in-range' : 'out-range'}">2hr ${g2Val} mg/dL</span>`;
     if (wVal != null)  metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="12" y1="3" x2="12" y2="21"/><line x1="5" y1="7" x2="19" y2="7"/><path d="M5 7 2 13a3 3 0 0 0 6 0z"/><path d="M19 7l-3 6a3 3 0 0 0 6 0z"/></svg> ${wVal.toFixed(1)} lbs</span>`;
     if (e.dose)        metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="4" y1="20" x2="17" y2="7"/><line x1="6" y1="18" x2="9" y2="21"/><line x1="9" y1="15" x2="12" y2="18"/></svg> ${e.dose}mg</span>`;
-    if (e.protein)     metrics += `<span class="metric-pill ${parseFloat(e.protein) >= 100 ? 'in-range' : 'neutral'}"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/></svg> ${e.protein}g protein</span>`;
+    if (e.protein)     metrics += `<span class="metric-pill ${parseFloat(e.protein) >= userProteinGoal ? 'in-range' : 'neutral'}"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/></svg> ${e.protein}g protein</span>`;
     if (e.sys && e.dia) metrics += `<span class="metric-pill ${parseFloat(e.sys) < 130 && parseFloat(e.dia) < 80 ? 'in-range' : 'out-range'}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> ${e.sys}/${e.dia}</span>`;
     if (e.carbs)       metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="12" y1="22" x2="12" y2="8"/><circle cx="12" cy="5" r="3"/><path d="M9 12c-2 0-3 1-3 3M15 12c2 0 3 1 3 3M9 16c-2 0-3 1-3 3M15 16c2 0 3 1 3 3"/></svg> ${e.carbs}g carbs</span>`;
     if (e.calories)    metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 17a2.5 2.5 0 0 0 2.5-2.5c0-1.5-1.5-2-1.5-3.5 0-1 1-2 1-2s3 2 3 5.5A5.5 5.5 0 0 1 10.5 20a5.5 5.5 0 0 1-5.5-5.5c0-3 2-5 3-7 0 0 .5 2 .5 3.5z"/></svg> ${e.calories} cal</span>`;
@@ -6864,7 +6896,7 @@ function renderCharts() {
         labels: pEntries.map(e => fmtDate(e.date)),
         datasets: [
           { label:'Protein', data: pEntries.map(e => parseFloat(e.protein)),
-            backgroundColor: pEntries.map(e => parseFloat(e.protein) >= 100 ? 'rgba(55,198,255,0.75)' : 'rgba(92,230,192,0.5)'),
+            backgroundColor: pEntries.map(e => parseFloat(e.protein) >= userProteinGoal ? 'rgba(55,198,255,0.75)' : 'rgba(92,230,192,0.5)'),
             borderRadius: 4 },
           { label:'Min target', type:'line', data: pEntries.map(() => 100),
             borderColor:'rgba(92,230,192,0.6)', borderDash:[4,4], pointRadius:0, fill:false }
@@ -14339,7 +14371,7 @@ function renderWeeklySummary() {
     const g = avg(es, e => e.glucose);
     const p = avg(es, e => e.protein);
     const proteinDaysLogged = es.filter(e => e.protein != null && e.protein !== '').length;
-    const proteinDaysMet = es.filter(e => e.protein != null && e.protein !== '' && parseFloat(e.protein) >= 100).length;
+    const proteinDaysMet = es.filter(e => e.protein != null && e.protein !== '' && parseFloat(e.protein) >= userProteinGoal).length;
     const adherenceStr = proteinDaysLogged ? `${proteinDaysMet}/${proteinDaysLogged}` : '—';
     const cbav = avg(es, e => e.carbs);
     const wa = avg(es, e => e.water);
@@ -14363,7 +14395,7 @@ function renderWeeklySummary() {
     html += `<tr>
       <td>${w}</td><td>${range}</td>
       <td class="${g != null ? (g < GLUCOSE_TARGET ? 'good' : 'warn') : ''}">${g != null ? Math.round(g) : '—'}</td>
-      <td class="${p != null ? (p >= 100 ? 'good' : '') : ''}">${p != null ? Math.round(p) + 'g' : '—'}</td>
+      <td class="${p != null ? (p >= userProteinGoal ? 'good' : '') : ''}">${p != null ? Math.round(p) + 'g' : '—'}</td>
       <td class="${proteinDaysLogged && proteinDaysMet === proteinDaysLogged ? 'good' : ''}">${adherenceStr}</td>
       <td class="${cbav != null && cbav > 150 ? 'warn' : ''}">${cbav != null ? Math.round(cbav) + 'g' : '—'}</td>
       <td>${wa != null ? Math.round(wa) + 'oz' : '—'}</td>
@@ -16002,8 +16034,8 @@ function computeCalorieTargets() {
   const calorieTarget = Math.max(1200, Math.round(rawTarget)); // 1200 cal/day is a widely-used adult safety floor
   const flooredForSafety = rawTarget < 1200;
   const fatTarget = Math.round((calorieTarget * 0.30) / 9);
-  const carbTarget = Math.max(0, Math.round((calorieTarget - PROTEIN_GOAL_G * 4 - fatTarget * 9) / 4));
-  return { calorieTarget, proteinTarget: PROTEIN_GOAL_G, fatTarget, carbTarget, bmr: Math.round(bmr), tdee: Math.round(tdee), flooredForSafety };
+  const carbTarget = Math.max(0, Math.round((calorieTarget - userProteinGoal * 4 - fatTarget * 9) / 4));
+  return { calorieTarget, proteinTarget: userProteinGoal, fatTarget, carbTarget, bmr: Math.round(bmr), tdee: Math.round(tdee), flooredForSafety };
 }
 
 // Tracks the last value shown for each animated number, keyed by
@@ -16093,7 +16125,14 @@ function renderWhatFits() {
   const calLeft = targets.calorieTarget - (totals.calories || 0);
   if (proteinLeft <= 0 || calLeft <= 0) { card.style.display = 'none'; return; }
   const picks = whatFitsCandidates(proteinLeft, calLeft, 4);
-  if (!picks.length) { card.style.display = 'none'; return; }
+  if (!picks.length) {
+    if (!pinnedFavorites.length && !foodCombos.length && !topFrequentFoods(12).length) {
+      card.style.display = '';
+      if (leftEl) leftEl.textContent = `${proteinLeft}g protein · ${calLeft.toLocaleString()} cal left`;
+      list.innerHTML = '<div id="whatFitsEmpty" style="font-size:12px;color:var(--ink-soft);line-height:1.45">Suggestions appear here once you have a few favorites or foods you log often. Tap ☆ on a food in Add Food to start.</div>';
+    } else card.style.display = 'none';
+    return;
+  }
   card.style.display = '';
   if (leftEl) leftEl.textContent = `${proteinLeft}g protein · ${calLeft.toLocaleString()} cal left`;
   list.innerHTML = picks.map((c, i) => `
@@ -16112,12 +16151,108 @@ function renderWhatFits() {
   });
 }
 
+// ── GOAL MOMENT ── once a day, when a meal you just logged takes you past your protein goal.
+function showGoldToast(msg) {
+  const t = document.getElementById('prToast'); if (!t) return;
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(prToastTimer);
+  prToastTimer = setTimeout(() => { t.style.display = 'none'; }, 3200);
+}
+function celebrateProteinGoal(p) {
+  const key = 'mounjaro-protein-celebrated';
+  try { if (localStorage.getItem(key) === todayStr()) return; localStorage.setItem(key, todayStr()); } catch (err) { /* no storage: celebrate anyway */ }
+  const card = document.getElementById('nutritionCard');
+  if (card) { card.style.position = 'relative'; try { spawnConfetti(card); } catch (err) { /* decoration only */ } }
+  showGoldToast(`🎉 Protein goal hit: ${Math.round(p)} g`);
+}
+
+// ── PACE ── your own days, nothing else: how much protein you had logged by this time on recent days.
+// It goes by when each item was LOGGED, so a meal entered late shows up late. Descriptive only.
+function proteinPace(date) {
+  if (date !== todayStr()) return null;
+  const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+  const samples = [];
+  for (let i = 1; i <= 14; i++) {
+    const meals = mealsForDate(dateStrShift(date, -i));
+    if (!meals.length) continue;
+    const total = mealTotals(meals).protein;
+    if (!total || total < 20) continue;                         // a barely-logged day says nothing about pace
+    if (!meals.every(m => Number(m.ts) > 1e12)) continue;       // needs a real logged-at time on every item
+    let by = 0;
+    meals.forEach(m => { const t = new Date(Number(m.ts)); if (t.getHours() * 60 + t.getMinutes() <= nowMin) by += parseFloat(m.protein) || 0; });
+    samples.push(by);
+  }
+  if (samples.length < 5) return null;
+  const usual = Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
+  const mine = Math.round(mealTotals(mealsForDate(date)).protein || 0);
+  return { mine, usual, days: samples.length, time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) };
+}
+function paceHtmlFor(date, metGoal) {
+  if (metGoal) return '';
+  const pc = proteinPace(date);
+  if (!pc) return '';
+  const diff = pc.mine - pc.usual;
+  return `<div class="nut-pace" id="nutPace" title="Based on when you logged food on your last ${pc.days} days with protein logged">By ${pc.time}: <b>${pc.mine} g</b> logged · you usually have about <b>${pc.usual} g</b> by now (${diff === 0 ? 'right on it' : (diff > 0 ? '+' : '−') + Math.abs(diff) + ' g'}, last ${pc.days} days)</div>`;
+}
+
+// ── WEEK ── seven days ending on the day you are looking at.
+function dayProtein(d) {
+  const e = entries.find(x => x.date === d); if (!e) return null;
+  if (e.meals && e.meals.length) { const t = mealTotals(e.meals).protein; return t != null ? t : null; }
+  const v = parseFloat(e.protein); return isNaN(v) ? null : v;
+}
+function weekStripHtml(date) {
+  const days = []; for (let i = 6; i >= 0; i--) days.push(dateStrShift(date, -i));
+  const goal = userProteinGoal;
+  const vals = days.map(dayProtein);
+  const met = vals.filter(v => v != null && v >= goal).length;
+  const logged = vals.filter(v => v != null && v > 0);
+  const avg = logged.length ? Math.round(logged.reduce((a, b) => a + b, 0) / logged.length) : null;
+  // streak: consecutive goal days ending on this day (or the day before, if this day is still in progress)
+  let streak = 0, i = days.length - 1;
+  if (!(vals[i] != null && vals[i] >= goal) && date === todayStr()) i--;
+  for (; i >= 0 && vals[i] != null && vals[i] >= goal; i--) streak++;
+  const dots = days.map((d, k) => {
+    const v = vals[k], cls = v != null && v >= goal ? 'met' : (v != null && v > 0 ? 'part' : 'none');
+    const lbl = new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+    const aria = `${new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}: ${v != null ? Math.round(v) + ' g' + (v >= goal ? ', goal met' : '') : 'nothing logged'}`;
+    return `<button type="button" class="wk-day ${cls}${d === date ? ' sel' : ''}" data-wkdate="${d}" aria-label="${aria}"><span class="wk-dot"></span><span>${lbl.charAt(0)}</span></button>`;
+  }).join('');
+  return `<div class="wk-strip" id="wkStrip"><div class="wk-dots">${dots}</div><div class="wk-text"><b>${met} of 7</b> days at your protein goal${avg != null ? ` · avg <b>${avg} g</b>` : ''}${streak >= 2 ? ` · 🔥 <b>${streak}-day</b> streak` : ''}</div></div>`;
+}
+
+// ── APPETITE ── one tap a day (1 = very low, 5 = strong), set against the days since your last dose.
+function lastInjectionOnOrBefore(date) {
+  let best = null;
+  entries.forEach(e => { if (e.injection && e.date <= date && (!best || e.date > best)) best = e.date; });
+  return best;
+}
+function appetiteInsight() {
+  const rows = entries.filter(e => e.appetite != null && e.appetite !== '').map(e => ({ v: Number(e.appetite), since: (() => { const inj = lastInjectionOnOrBefore(e.date); return inj ? Math.round((new Date(e.date + 'T00:00:00') - new Date(inj + 'T00:00:00')) / 864e5) : null; })() })).filter(r => r.since != null && r.since <= 13);
+  const near = rows.filter(r => r.since <= 2), far = rows.filter(r => r.since > 2);
+  if (rows.length < 6 || near.length < 2 || far.length < 2) return '';
+  const avg = a => (a.reduce((t, r) => t + r.v, 0) / a.length).toFixed(1);
+  return `<div class="app-insight" id="appInsight">Appetite averages <b>${avg(near)}</b> in the first 3 days after your dose and <b>${avg(far)}</b> on other days (${rows.length} days logged).</div>`;
+}
+function appetiteHtmlFor(date) {
+  const e = entries.find(x => x.date === date); const cur = e && e.appetite != null && e.appetite !== '' ? Number(e.appetite) : null;
+  const chips = [1, 2, 3, 4, 5].map(n => `<button type="button" class="app-chip${cur === n ? ' on' : ''}" data-appetite="${n}" aria-pressed="${cur === n}" aria-label="Appetite ${n} of 5">${n}</button>`).join('');
+  return `<div class="nut-appetite" id="nutAppetite"><div class="app-row"><span class="app-label"><span>🍽️ Appetite</span><small>1 very low · 5 strong</small></span><span class="app-chips">${chips}</span></div>${appetiteInsight()}</div>`;
+}
+async function setAppetite(date, v) {
+  upsertLocalEntry(date, e => { e.appetite = v; });
+  renderProteinSummary();
+  try { await setDoc(doc(db, 'trackers', syncId, 'entries', date), { date, appetite: v }, { merge: true }); }
+  catch (err) { console.error(err); alert('Couldn\'t save — check your connection and try again.'); }
+}
+
 function waterOzFor(date) { const e = entries.find(x => x.date === date); return e && e.water ? Math.round(parseFloat(e.water)) : 0; }
 function targetsNoteDismissed() { try { return localStorage.getItem('mounjaro-targets-note-dismissed') === '1'; } catch (err) { return false; } }
 function renderProteinSummary() {
   const box = document.getElementById('proteinSummaryBody');
   if (!box) return;
   const date = document.getElementById('foodDate').value;
+  const prevProtein = _lastMacroDisplayValues[`${date}:protein`]; // what was showing a moment ago (undefined on the first paint)
   const totals = mealTotals(mealsForDate(date));
   const targets = computeCalorieTargets();
   const hasProfile = userHeightIn > 0 && userAge > 0;
@@ -16143,16 +16278,25 @@ function renderProteinSummary() {
         <div class="nut-hero-cal"><b>${calLeft >= 0 ? fmtN(calLeft) : '+' + fmtN(calLeft)}</b> cal ${calLeft >= 0 ? 'left' : 'over'}</div>
       </div>
     </div>
+    ${paceHtmlFor(date, proteinMet)}
     ${macroBarRow('Calories', totals.calories || 0, targets.calorieTarget, 'var(--ink)', `${date}:calories`)}
     ${macroBarRow('Carbs', totals.carbs || 0, targets.carbTarget, 'var(--coral)', `${date}:carbs`)}
     ${macroBarRow('Fat', totals.fat || 0, targets.fatTarget, 'var(--sage)', `${date}:fat`)}
+    ${weekStripHtml(date)}
     <div class="nut-water"><span>💧 Water<b id="nutWaterVal">${waterOzFor(date)} / 64 oz</b></span><span class="nut-water-btns"><button type="button" class="btn btn-secondary btn-sm" data-water-quick="8">+8</button><button type="button" class="btn btn-secondary btn-sm" data-water-quick="16">+16</button></span></div>
+    ${appetiteHtmlFor(date)}
     ${!hasProfile && !targetsNoteDismissed() ? `<div class="targets-note"><span>Using estimated calorie/carb/fat targets — add your height and age in Settings to personalize them.</span><button type="button" class="targets-note-x" id="targetsNoteX" aria-label="Dismiss this note">✕</button></div>` : ''}
     ${targets.flooredForSafety ? `<div style="font-size:11px;color:var(--coral);margin-top:4px">Your calculated deficit target was under 1,200 cal — raised to 1,200 as a safety floor.</div>` : ''}
   `;
   const nx = document.getElementById('targetsNoteX');
   if (nx) nx.addEventListener('click', () => { try { localStorage.setItem('mounjaro-targets-note-dismissed', '1'); } catch (err) { /* ignore */ } nx.closest('.targets-note').remove(); });
   box.querySelectorAll('[data-water-quick]').forEach(b => b.addEventListener('click', () => adjustWater(Number(b.dataset.waterQuick))));
+  box.querySelectorAll('[data-wkdate]').forEach(b => b.addEventListener('click', () => { const el = document.getElementById('foodDate'); el.value = b.dataset.wkdate; el.dispatchEvent(new Event('change')); }));
+  box.querySelectorAll('[data-appetite]').forEach(b => b.addEventListener('click', () => {
+    const v = Number(b.dataset.appetite), e = entries.find(x => x.date === date);
+    setAppetite(date, e && Number(e.appetite) === v ? null : v); // tapping the chosen number again clears it
+  }));
+  if (date === todayStr() && prevProtein !== undefined && prevProtein < pTarget && pVal >= pTarget) celebrateProteinGoal(pVal);
   updateFoodStrip(pVal, pTarget, calLeft);
   box.querySelectorAll('.macro-logged-value').forEach(span => {
     const key = span.dataset.macroKey;
@@ -16790,7 +16934,7 @@ function renderTodayCard() {
   if (!card) return;
   const today = todayStr();
   const t = entries.find(e => e.date === today) || {};
-  const WORKOUT_GOAL = 4, PROTEIN_GOAL = 100, WATER_GOAL = 64;
+  const WORKOUT_GOAL = 4, PROTEIN_GOAL = userProteinGoal, WATER_GOAL = 64;
   const protein = t.protein ? parseFloat(t.protein) || 0 : 0;
   const water = t.water ? parseFloat(t.water) || 0 : 0;
   const lifted = (t.ex || []).some(x => x.type === 'Strength');
@@ -17208,6 +17352,7 @@ document.getElementById('exportJsonBtn').addEventListener('click', () => {
       sex: userSex,
       activityLevel: userActivityLevel,
       lossRate: userLossRate,
+      proteinGoal: userProteinGoal,
       workoutPlanMode,
       stepGoal: stepGoalOverride,
       theme: themeOverride,
@@ -17328,6 +17473,8 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async () =>
   payload.sex = document.getElementById('setSex').value;
   payload.activityLevel = document.getElementById('setActivityLevel').value;
   payload.lossRate = parseFloat(document.getElementById('setLossRate').value) || 1;
+  const pgVal = parseInt(document.getElementById('setProteinGoal').value);
+  if (pgVal >= 30 && pgVal <= 300) payload.proteinGoal = pgVal; // anything outside a sane range is ignored, the old goal stays
   payload.workoutPlanMode = document.getElementById('setWorkoutPlanMode').value;
   const sgVal = parseInt(document.getElementById('setStepGoal').value) || 0;
   payload.stepGoal = sgVal;
