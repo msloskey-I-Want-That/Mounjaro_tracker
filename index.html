@@ -982,6 +982,18 @@ body {
 .progress-seg { flex: 1; height: 5px; border-radius: 3px; background: var(--line); transition: background 0.25s ease; }
 .progress-seg.on { background: var(--seg-color, var(--teal)); }
 .exercise-action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
+.exercise-collapse-btn { background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 4px 2px; flex-shrink: 0; display: flex; touch-action: manipulation; }
+.workout-exercise-block > div:first-child { gap: 2px !important; }
+.workout-exercise-block > div:first-child > button { padding: 6px 3px !important; margin-left: 0 !important; }
+.workout-exercise-block > div:first-child > .exercise-zoom-btn { padding-right: 0 !important; }
+.exercise-collapsed-summary { font-size: 12px; color: var(--ink-soft); margin: -2px 0 4px; }
+.collapse-all-row { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.set-pr-badge { font-size: 10px; font-weight: 800; letter-spacing: .04em; color: #0d0d0f; background: linear-gradient(135deg,#FFB020,#FFD66B); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.set-row.set-pr { border-color: #FFB020; }
+.set-row.set-pr-flash { animation: set-pr-flash 1.4s ease-out; }
+@keyframes set-pr-flash { 0% { box-shadow: 0 0 0 0 rgba(255,176,32,.0); background: rgba(255,176,32,.35); } 30% { box-shadow: 0 0 0 6px rgba(255,176,32,.45); } 100% { box-shadow: 0 0 0 0 rgba(255,176,32,0); } }
+.pr-toast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 14px); transform: translateX(-50%); z-index: 900; background: linear-gradient(135deg,#FFB020,#FFD66B); color: #0d0d0f; font-weight: 800; font-size: 14px; padding: 10px 16px; border-radius: 999px; box-shadow: 0 6px 24px rgba(0,0,0,.35); max-width: calc(100% - 32px); text-align: center; }
+.progress-lines { margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--input-bg); font-size: 12.5px; line-height: 1.5; color: var(--ink); display: flex; flex-direction: column; gap: 4px; }
 .exercise-sets-target { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 350px) {
   .set-row { padding: 8px 8px 9px; }
@@ -1339,7 +1351,7 @@ body {
 </div>
 
 <!-- ── UNDO TOAST ── -->
-<div id="undoToast" style="display:none;position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 16px;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:500;max-width:90vw">
+<div id="prToast" class="pr-toast" role="status" style="display:none"></div><div id="undoToast" style="display:none;position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 16px;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:500;max-width:90vw">
   <span id="undoToastMsg" style="font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
   <button class="btn btn-secondary btn-sm" id="undoToastBtn" style="white-space:nowrap">Undo</button>
 </div>
@@ -9451,18 +9463,34 @@ async function saveEffortRatingForTodaysSession(rating) {
   await writeEx(date, updated);
 }
 
-function showWorkoutSummary(sets, minutes, totalWeight, prs) {
+function showWorkoutSummary(sets, minutes, totalWeight, prs, ctx) {
   const modal = document.getElementById('workoutSummaryModal');
   const backdrop = document.getElementById('workoutSummaryBackdrop');
   if (!modal || !backdrop || !sets) return;
   const exerciseCount = Object.keys(sets).length;
   const setCount = Object.values(sets).reduce((n, arr) => n + arr.length, 0);
+  const prBanner = prs.length ? `<div id="summaryPrBanner" style="margin-top:8px;font-size:15px;font-weight:800">🏆 ${prs.length} new PR${prs.length === 1 ? '' : 's'}!</div>` : '';
+  let ctxHtml = '';
+  if (ctx) {
+    const rows = [];
+    if (ctx.last && ctx.last.volume > 0 && totalWeight > 0) {
+      const pct = Math.round((totalWeight - ctx.last.volume) / ctx.last.volume * 100);
+      const word = pct > 0 ? `+${pct}%` : pct < 0 ? `−${Math.abs(pct)}%` : 'same as';
+      rows.push(`<div id="summaryVsLast"><strong style="color:${pct > 0 ? 'var(--teal)' : 'var(--ink)'}">${escapeHtml(ctx.label || 'Workout')}: ${word}${pct === 0 ? '' : ' volume'}</strong> vs last time <span style="color:var(--ink-soft)">(${ctx.last.volume.toLocaleString()} lb on ${fmtDate(ctx.last.date)})</span></div>`);
+    } else if (ctx.label && !ctx.last) {
+      rows.push(`<div id="summaryVsLast">First ${escapeHtml(ctx.label)} day on record: this is your baseline.</div>`);
+    }
+    if (ctx.weekCount) rows.push(`<div id="summaryWeek" style="color:var(--ink-soft)">Workout ${ctx.weekCount} of ${ctx.weekGoal} this week</div>`);
+    if (rows.length) ctxHtml = `<div style="margin-bottom:14px;padding:10px 12px;border-radius:12px;background:var(--input-bg);font-size:13px;line-height:1.5">${rows.join('')}</div>`;
+  }
   modal.innerHTML = `
     <div style="background:linear-gradient(135deg, var(--teal) 0%, var(--teal-mid) 100%);color:white;padding:18px 20px">
       <div style="font-weight:800;font-size:17px">💪 Workout Complete!</div>
       <div style="font-size:12px;opacity:0.9;margin-top:2px">${minutes ? minutes + ' min · ' : ''}${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'} · ${setCount} set${setCount === 1 ? '' : 's'}</div>
+      ${prBanner}
     </div>
     <div style="padding:18px 20px">
+      ${ctxHtml}
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:${prs.length ? '16px' : '4px'}">
         <span style="font-size:12px;color:var(--ink-soft)">Total weight lifted</span>
         <span style="font-family:var(--font-num);font-size:20px;font-weight:800;color:var(--ink)">${totalWeight.toLocaleString()} lbs</span>
@@ -10173,6 +10201,8 @@ let feelingCheckStep = 'initial';
 // cleared explicitly whenever the underlying exercise list could change
 // out from under it (starting/finishing a workout, switching days).
 let zoomedExercise = null;
+let collapsedExercises = new Set(); // exercise cards the person has minimized (this session only)
+let lastPRSetKey = null;             // 'Exercise:idx' of a set that just earned a PR badge, for the one-time flash
 
 // Based on the most recently *logged* PPL day (tagged on the entry itself
 // when it was saved — see logExercise), not a blind session-count modulo.
@@ -10524,6 +10554,7 @@ function updatePRProximityHint(row) {
   if (!row) return;
   const hint = row.querySelector('.pr-proximity-hint');
   if (!hint) return; // warm-up sets have no PR chip
+  if (row.querySelector('.set-pr-badge')) { hint.style.display = 'none'; return; } // already celebrated as a PR
   const exerciseName = row.dataset.exercise;
   const weightInput = row.querySelector('.set-weight-input');
   const weight = parseFloat(weightInput ? weightInput.value : '');
@@ -11224,17 +11255,126 @@ function workoutAccentColor(index) {
 // click handler so later re-renders (rest timer, other sets) don't replay it.
 let lastCheckedSetKey = null;
 
+// ── LIVE PR MOMENT ── a set that beats your own earlier best gets a badge the moment it is checked.
+// Same definition as detectSessionPRs: only weighted working sets, only against your own history,
+// and nothing to beat the first time you ever log an exercise.
+function sessionPRBestFor(exName) {
+  return Math.max(0, ...(workoutSessionState[exName] || []).filter(s => s.done && s.prBadge).map(s => parseFloat(s.weight) || 0));
+}
+function checkLiveSetPR(exName, idx) {
+  const s = (workoutSessionState[exName] || [])[idx];
+  if (!s || s.warmup || exerciseMode(exName) !== 'weighted') return false;
+  const weight = parseFloat(s.weight), reps = parseInt(s.reps, 10);
+  if (!(weight > 0) || !(reps > 0)) return false;
+  const prior = bestWeightForExercise(exName);
+  if (prior === null || weight <= prior) return false;
+  const already = sessionPRBestFor(exName);
+  if (weight <= already) return false;
+  s.prBadge = true; s.prPrev = Math.max(prior, already);
+  return true;
+}
+let prToastTimer = null;
+function celebrateLivePR(exName, idx) {
+  const s = (workoutSessionState[exName] || [])[idx];
+  if (!s) return;
+  try { if (navigator.vibrate) navigator.vibrate([40, 60, 40, 60, 140]); } catch (err) { /* not supported on iPhone */ }
+  const t = document.getElementById('prToast');
+  if (!t) return;
+  t.textContent = `🏆 New PR: ${exName} ${s.weight} lb (was ${s.prPrev})`;
+  t.style.display = 'block';
+  clearTimeout(prToastTimer);
+  prToastTimer = setTimeout(() => { t.style.display = 'none'; }, 3200);
+}
+
+// ── WORKOUT SUMMARY CONTEXT ── how this session compares with the last time you did the same day.
+// Must be built BEFORE the session is saved, or it would be compared against itself.
+function buildSummaryContext() {
+  let label = null, last = null;
+  try { label = currentPlanDisplayName(); last = lastSessionVolumeForPlanDay(currentPlanKey()); } catch (err) { console.error(err); }
+  const today = todayStr(), wk = lbWeekStart(today);
+  const days = new Set(entries.filter(e => e.date >= wk && e.date <= today && (e.ex || []).some(x => x.type === 'Strength')).map(e => e.date));
+  days.add(today);
+  return { label, last, weekCount: days.size, weekGoal: 4 };
+}
+
+// ── PROGRESS LINES ── short, honest sentences about your own history. Nothing is shown unless it is true.
+function progressLines() {
+  const lines = [];
+  try {
+    const key = currentPlanKey(), label = currentPlanDisplayName();
+    const sess = [];
+    entries.forEach(e => (e.ex || []).forEach(x => { if (x.type === 'Strength' && x.sets && x.planDay === key) sess.push({ date: e.date, volume: totalSessionWeight(x.sets) }); }));
+    sess.sort((a, b) => a.date.localeCompare(b.date));
+    if (sess.length >= 3) {
+      const last = sess[sess.length - 1];
+      if (last.volume > 0) {
+        const bigger = sess.slice(0, -1).filter(x => x.volume >= last.volume).pop();
+        if (!bigger) lines.push(`Your last ${label} day was your biggest yet: ${last.volume.toLocaleString()} lb`);
+        else {
+          const wks = Math.round((lbParse(last.date) - lbParse(bigger.date)) / 604800000);
+          if (wks >= 2) lines.push(`Your last ${label} day was your best in ${wks} weeks`);
+        }
+      }
+    }
+    const per = {};
+    entries.slice().sort((a, b) => a.date.localeCompare(b.date)).forEach(e => (e.ex || []).forEach(x => {
+      if (x.type !== 'Strength' || !x.sets) return;
+      Object.entries(x.sets).forEach(([n, arr]) => {
+        const w = arr.filter(isWeightedWorkingSet); if (!w.length) return;
+        (per[n] = per[n] || []).push({ date: e.date, best: Math.max(...w.map(q => q.weight)) });
+      });
+    }));
+    const cutoff = lbAddDays(todayStr(), -30);
+    let top = null;
+    Object.entries(per).forEach(([n, arr]) => {
+      if (arr.length < 3) return;
+      const first = arr[0], lastDate = arr[arr.length - 1].date;
+      if (lastDate < cutoff || lbAddDays(first.date, 14) > lastDate) return;
+      const gain = Math.max(...arr.map(a => a.best)) - first.best;
+      if (gain < 5) return;
+      const pct = gain / first.best;
+      if (!top || pct > top.pct) top = { n, gain, since: first.date, pct };
+    });
+    if (top) lines.push(`${top.n} is up ${Math.round(top.gain * 10) / 10} lb since ${fmtDate(top.since)}`);
+  } catch (err) { console.error('progress lines failed:', err); }
+  return lines.slice(0, 2);
+}
+function progressLinesHtml() {
+  if (workoutStartedAt) return '';
+  const lines = progressLines();
+  if (!lines.length) return '';
+  return `<div class="progress-lines" id="progressLines">${lines.map(l => `<div>📈 ${escapeHtml(l)}</div>`).join('')}</div>`;
+}
+
+function wireCollapseControls() {
+  document.querySelectorAll('.exercise-collapse-btn').forEach(btn => btn.addEventListener('click', ev => {
+    ev.stopPropagation();
+    const n = btn.dataset.exercise;
+    if (collapsedExercises.has(n)) collapsedExercises.delete(n); else collapsedExercises.add(n);
+    renderWorkoutPlan();
+  }));
+  const all = document.getElementById('collapseAllBtn');
+  if (all) all.addEventListener('click', () => {
+    const names = [...document.querySelectorAll('.workout-exercise-block')].map(b => b.dataset.exercise);
+    if (names.some(n => !collapsedExercises.has(n))) names.forEach(n => collapsedExercises.add(n)); else collapsedExercises.clear();
+    renderWorkoutPlan();
+  });
+}
+
 function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
   const mode = exerciseMode(exerciseName), hasWeight = mode === 'weighted' || mode === 'timedLoaded', isTimed = mode === 'timed' || mode === 'timedLoaded';
   const prevText = prevData ? `last ${fmtPrevSet(prevData)}${prevData.warmup ? ' (W)' : ''}` : 'no history yet';
   const numberDisplay = setData.warmup ? 'W' : (idx + 1);
   const justDone = setData.done && lastCheckedSetKey === `${exerciseName}:${idx}`;
+  const isPR = !!(setData.done && setData.prBadge);
+  const flash = isPR && lastPRSetKey === `${exerciseName}:${idx}`;
   return `
-    <div class="set-row${setData.done ? ' done' : ''}${hasWeight ? '' : ' no-weight'}" data-exercise="${exerciseName}" data-set-idx="${idx}" style="--accent:${accent || '#5CE6C0'}">
+    <div class="set-row${setData.done ? ' done' : ''}${hasWeight ? '' : ' no-weight'}${isPR ? ' set-pr' : ''}${flash ? ' set-pr-flash' : ''}" data-exercise="${exerciseName}" data-set-idx="${idx}" style="--accent:${accent || '#5CE6C0'}">
       <div class="set-row-top">
         <button type="button" class="set-number-toggle${setData.warmup ? ' warmup' : ''}" title="Tap to mark as a warm-up set">${numberDisplay}</button>
         <span class="set-prev">${prevText}</span>
         ${setData.warmup ? '' : '<span class="pr-proximity-hint" style="display:none"></span>'}
+        ${isPR ? '<span class="set-pr-badge">🏆 NEW PR</span>' : ''}
         <button type="button" class="set-remove-btn" data-exercise="${exerciseName}" data-set-idx="${idx}" aria-label="Remove this set">✕</button>
       </div>
       <div class="set-row-main">
@@ -11468,10 +11608,13 @@ function wireWorkoutPlanEvents() {
     const idx = Number(row.dataset.setIdx);
     btn.addEventListener('click', () => {
       const wasDone = workoutSessionState[exName][idx].done;
+      let gotLivePR = false;
       workoutSessionState[exName][idx].done = !wasDone;
       if (!wasDone) {
         lastCheckedSetKey = `${exName}:${idx}`;
         workoutSessionState[exName][idx].checkedAt = Date.now();
+        gotLivePR = checkLiveSetPR(exName, idx);
+        if (gotLivePR) lastPRSetKey = `${exName}:${idx}`;
         // Superset pairs share one rest period across both exercises —
         // rest only actually starts once BOTH sides of this round are
         // done, not after the first half. A missing partner set at this
@@ -11493,9 +11636,12 @@ function wireWorkoutPlanEvents() {
         }
       } else {
         delete workoutSessionState[exName][idx].checkedAt;
+        delete workoutSessionState[exName][idx].prBadge; delete workoutSessionState[exName][idx].prPrev;
       }
       renderWorkoutPlan();
       lastCheckedSetKey = null;
+      if (gotLivePR) { celebrateLivePR(exName, idx); }
+      lastPRSetKey = null;
     });
   });
   // Big +/- steppers beside the weight field — easier than tapping into a
@@ -13134,10 +13280,15 @@ function renderWorkoutPlan() {
       ${nextExercise ? `<div style="font-size:12px;color:var(--ink-soft);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Next: <strong style="color:var(--ink)">${escapeHtml(nextExercise.name)}</strong></div>` : ''}
     </div>` : '';
 
+  const anyOpenCard = visiblePlan.some(e => !collapsedExercises.has(e.name));
+  const collapseAllHtml = (!isZoomed && !reorderingExercises && visiblePlan.length > 1)
+    ? `<div class="collapse-all-row"><button type="button" class="btn btn-ghost btn-sm" id="collapseAllBtn">${anyOpenCard ? '⌃ Minimize all' : '⌄ Expand all'}</button></div>` : '';
   box.innerHTML = `
     ${workoutNudgeHtml()}
+    ${isZoomed ? '' : progressLinesHtml()}
     ${headerHtml}
     ${backToListHtml}
+    ${collapseAllHtml}
     <div id="exerciseListContainer">
     ${visiblePlan.map((ex, exIndex) => {
       const setCount = parseSetCount(ex.sets);
@@ -13203,6 +13354,10 @@ function renderWorkoutPlan() {
       const setsTargetText = `${String(ex.sets).replace(/\s*×\s*/g, '×')}${!vSelected && vLast && vcfg && vcfg.options[vLast] ? ` · last: ${vcfg.options[vLast].label}` : ''}`;
       const variationCaption = vSelected && vcfg && vcfg.options[vSelected]
         ? `<div class="variation-caption">${vcfg.icon} ${vcfg.options[vSelected].label} <span style="opacity:0.75">· ${vcfg.options[vSelected].targets}</span></div>` : '';
+      const isCollapsed = !isZoomed && collapsedExercises.has(ex.name);
+      const topDone = setState.filter(q => q.done && !q.warmup && parseFloat(q.weight) > 0).sort((a, b) => parseFloat(b.weight) - parseFloat(a.weight))[0];
+      const collapsedSummary = isCollapsed ? `<div class="exercise-collapsed-summary">${doneCount}/${setState.length} sets${topDone ? ` · top ${topDone.weight} × ${topDone.reps}` : ''}${allDone ? ' ✓' : ''}</div>` : '';
+      const collapseBtn = isZoomed ? '' : `<button type="button" class="exercise-collapse-btn" data-exercise="${ex.name}" aria-expanded="${!isCollapsed}" aria-label="${isCollapsed ? 'Expand' : 'Minimize'} ${ex.name}" title="${isCollapsed ? 'Expand' : 'Minimize'}"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${isCollapsed ? '<polyline points="6 9 12 15 18 9"/>' : '<polyline points="18 15 12 9 6 15"/>'}</svg></button>`;
       const segHtml = `<div class="progress-segs${setState.length > 7 ? ' many' : ''}" role="img" aria-label="${doneCount} of ${setState.length} sets done" title="${doneCount}/${setState.length} sets done" style="--seg-color:${cardColor}">${setState.map(s => `<span class="progress-seg${s.done ? ' on' : ''}"></span>`).join('')}</div>`;
       return `
       <div class="workout-exercise-block${allDone ? ' workout-exercise-done' : ''}" data-exercise="${ex.name}" style="margin-bottom:18px;padding:16px 16px 12px;border:2px solid ${cardColor};border-radius:16px;background:${allDone ? 'var(--success-tint)' : 'transparent'};box-shadow:${allDone ? '0 0 22px -4px var(--sage)' : 'none'};transition:box-shadow 0.3s ease">
@@ -13213,9 +13368,12 @@ function renderWorkoutPlan() {
           </div>
           ${exerciseGuide(ex.name) ? `<button type="button" class="exercise-info-btn" data-exercise="${ex.name}" title="How to do this" aria-label="How to do ${ex.name}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:4px;flex-shrink:0;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>` : ''}
           <button type="button" class="exercise-history-btn" data-exercise="${ex.name}" title="View history for ${ex.name}" aria-label="View history for ${ex.name}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:4px;flex-shrink:0;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></button>
+          ${collapseBtn}
           <button type="button" class="remove-exercise-btn" data-exercise="${ex.name}" title="Remove from today's list" aria-label="Remove ${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:17px;line-height:1;cursor:pointer;padding:4px;margin-left:2px;flex-shrink:0">✕</button>
         </div>
         ${segHtml}
+        ${collapsedSummary}
+        <div class="exercise-body"${isCollapsed ? ' style="display:none"' : ''}>
         <div class="exercise-action-row">
           <span class="exercise-sets-target">${setsTargetText}</span>
           ${variationControl}${supersetControl}${swapControl}${noteControl}
@@ -13231,6 +13389,7 @@ function renderWorkoutPlan() {
           ${setState.map((s, i) => renderSetRowHtml(ex.name, i, s, prevSets && prevSets[i], accent)).join('')}
         </div>
         <button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${ex.name}" style="width:100%;margin-top:2px;border-style:dashed;font-size:12px;padding:9px">+ Add set</button>
+        </div>
       </div>`;
     }).join('')}
     </div>
@@ -13278,7 +13437,7 @@ function renderWorkoutPlan() {
   const planTip = document.getElementById('planTip');
   if (planTip) planTip.addEventListener('toggle', () => { try { localStorage.setItem(PLAN_TIP_KEY, planTip.open ? '1' : '0'); } catch (err) { /* storage unavailable */ } });
 
-  const sfBlock = document.getElementById('workoutStartFinishBlock'); if (sfBlock && box.firstChild !== sfBlock) box.insertBefore(sfBlock, box.firstChild); wireWorkoutPlanEvents();
+  const sfBlock = document.getElementById('workoutStartFinishBlock'); if (sfBlock && box.firstChild !== sfBlock) box.insertBefore(sfBlock, box.firstChild); wireWorkoutPlanEvents(); wireCollapseControls();
   syncRestTimerPresentation();
   updateWorkoutElapsedDisplay(); // avoids a flash back to 0:00 until the next interval tick, since this element is rebuilt fresh on every render
 
@@ -13288,7 +13447,7 @@ function renderWorkoutPlan() {
       setExType('Strength');
       workoutStartedAt = Date.now(); setWorkoutFullscreen(true);
       startWorkoutTimer();
-      zoomedExercise = null; reorderingExercises = false; // fresh start, always begin on the full list
+      zoomedExercise = null; reorderingExercises = false; collapsedExercises.clear(); // fresh start, always begin on the full list
       renderWorkoutPlan();
       const firstSetInput = document.querySelector('.set-weight-input');
       if (firstSetInput) {
@@ -13312,7 +13471,7 @@ function renderWorkoutPlan() {
         const minInput = document.getElementById('exMin');
         if (minInput) { minInput.value = minutes; lastAutoFilledMin = minutes; }
       }
-      workoutStartedAt = null; setWorkoutFullscreen(false);
+      workoutStartedAt = null; setWorkoutFullscreen(false); collapsedExercises.clear();
       if (window.__checkPendingServiceWorkerReload) window.__checkPendingServiceWorkerReload();
       stopWorkoutTimer();
       renderWorkoutPlan();
@@ -13324,8 +13483,9 @@ function renderWorkoutPlan() {
         // against itself instead of against prior history.
         const totalWeight = totalSessionWeight(sessionSets);
         const prs = detectSessionPRs(sessionSets);
+        const summaryCtx = buildSummaryContext(); // before the click: the click saves today's session
         addBtn.click();
-        showWorkoutSummary(sessionSets, minutes, totalWeight, prs);
+        showWorkoutSummary(sessionSets, minutes, totalWeight, prs, summaryCtx);
       } else if (addBtn) {
         addBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
