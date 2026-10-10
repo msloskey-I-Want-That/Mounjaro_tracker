@@ -3952,7 +3952,7 @@ const HEALTH_FIELDS = ['steps', 'restHR', 'sleepHrs', 'healthMin', 'sleepScore',
 var healthIgnored = [];
 // ── HEALTH INBOX ── the Shortcut sends ONE request with everything it read to meta/healthInbox. The app does the careful part:
 // it checks each number, skips blanks (so a missing reading never erases a good one), picks the right day, and files it.
-var unsubInbox = null, healthInboxIgnored = [];
+var unsubInbox = null, healthInboxIgnored = [], healthInboxOutcome = null;
 // Shortcuts writes dates in whatever format you pick: ISO ("2026-10-10T11:05:00-04:00"), or the long default
 // ("Oct 10, 2026 at 11:05 AM", with a narrow no-break space before AM/PM). All of them are understood.
 function parseShortcutDate(str) {
@@ -3963,6 +3963,15 @@ function parseShortcutDate(str) {
 }
 function localDateFromIso(iso) { const d = new Date(iso); return isNaN(d) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 function healthInboxKey() { return 'mounjaro-inbox-applied-' + (syncId || ''); }
+function inspectHealthInbox(d) {
+  const raw = f => (d && d[f] != null && typeof d[f] === 'object' && 'stringValue' in d[f]) ? d[f].stringValue : (d ? d[f] : undefined);
+  let qp = null; const q = raw('q');
+  if (typeof q === 'string' && q.trim()) { const i = q.indexOf('?'); try { qp = new URLSearchParams(i >= 0 ? q.slice(i + 1) : q); } catch (err) { qp = null; } }
+  const val = f => { const v = raw(f); if (v != null && String(v).trim() !== '') return String(v); return qp ? (qp.get(f === 'healthSyncedAt' ? 't' : f) || '') : ''; };
+  const numbers = HEALTH_FIELDS.filter(f => val(f).trim() !== ''), blanks = HEALTH_FIELDS.filter(f => val(f).trim() === '' && (raw(f) != null || (qp && qp.has(f))));
+  const tRaw = val('healthSyncedAt'), stamp = parseShortcutDate(tRaw);
+  return { numbers, blanks, tRaw, stamp, hasQ: !!qp };
+}
 async function processHealthInbox(d) {
   if (!d || !syncId) return;
   const raw = f => (d[f] != null && typeof d[f] === 'object' && 'stringValue' in d[f]) ? d[f].stringValue : d[f];
@@ -3983,15 +3992,17 @@ async function processHealthInbox(d) {
   if (stamp) payload.healthSyncedAt = stamp;
   const sig = JSON.stringify(payload);
   let last = null; try { last = localStorage.getItem(healthInboxKey()); } catch (err) { /* ignore */ }
-  if (last === sig) { renderHealthSyncStatus(); return; }                                      // already filed on this phone
+  if (last === sig) { healthInboxOutcome = { at: Date.now(), text: 'this is the message already filed on this phone, so nothing new was written' }; renderHealthSyncStatus(); return; }
   const existing = entries.find(e => e.date === date);
-  if (stamp && existing && existing.healthSyncedAt && Date.parse(existing.healthSyncedAt) >= stampMs) { try { localStorage.setItem(healthInboxKey(), sig); } catch (err) { /* ignore */ } renderHealthSyncStatus(); return; } // another device already did
-  if (Object.keys(payload).length <= (stamp ? 2 : 1)) { renderHealthSyncStatus(); return; }     // nothing usable to file
+  if (stamp && existing && existing.healthSyncedAt && Date.parse(existing.healthSyncedAt) >= stampMs) { healthInboxOutcome = { at: Date.now(), text: `a sync from ${healthSyncWhen(Date.parse(existing.healthSyncedAt))} or later was already saved for ${date}, so this one was left alone` }; try { localStorage.setItem(healthInboxKey(), sig); } catch (err) { /* ignore */ } renderHealthSyncStatus(); return; } // another device already did
+  if (Object.keys(payload).length <= (stamp ? 2 : 1)) { healthInboxOutcome = { at: Date.now(), text: 'the message had no usable numbers' }; renderHealthSyncStatus(); return; }     // nothing usable to file
   try {
     await setDoc(doc(db, 'trackers', syncId, 'entries', date), payload, { merge: true });
     try { localStorage.setItem(healthInboxKey(), sig); } catch (err) { /* ignore */ }
     lastSyncDiagnostic.appliedAt = new Date().toISOString(); lastSyncDiagnostic.appliedValues = { ...payload };
-  } catch (err) { console.error('Health inbox filing failed:', err); lastSyncDiagnostic.applyError = err.message || String(err); }
+    const nums = Object.keys(payload).filter(k => HEALTH_FIELDS.includes(k)).length;
+    healthInboxOutcome = { at: Date.now(), text: `filed ${nums} number${nums === 1 ? '' : 's'} under ${date}${stamp ? '' : ' (no readable sync time came with it, so "last synced" could not update)'}` };
+  } catch (err) { console.error('Health inbox filing failed:', err); lastSyncDiagnostic.applyError = err.message || String(err); healthInboxOutcome = { at: Date.now(), text: `could not file it: ${err.message || err}` }; }
   renderHealthSyncStatus();
 }
 function entriesFromDocs(docs) {
@@ -10130,9 +10141,23 @@ async function testHealthSync() {
   if (urlProvidedSyncId) {
     lines.push({ ok: true, label: 'Sync ID in URL', detail: `this page load received &sync=${urlProvidedSyncId} and saved it — if this doesn't match your real Sync ID above, the Shortcut has the wrong value in it` });
   } else {
-    lines.push({ ok: null, label: 'Sync ID in URL', detail: 'this page load did not include a &sync= parameter — normal for opening the app directly, but if this Shortcut is supposed to include one, check that step' });
+    lines.push({ ok: null, label: 'Sync ID in URL', detail: 'not used by the silent sync (only by the old Open URL link).' });
   }
 
+  if (syncId) {
+    try {
+      const inbox = await getDoc(doc(db, 'trackers', syncId, 'meta', 'healthInbox'));
+      if (inbox.exists()) {
+        const i = inspectHealthInbox(inbox.data());
+        lines.push({ ok: i.numbers.length ? true : false, label: 'Last message from your Shortcut', detail: i.numbers.length ? `numbers sent: ${i.numbers.join(', ')}${i.blanks.length ? ` · left blank: ${i.blanks.join(', ')}` : ''}` : 'it arrived, but none of the numbers had a value' });
+        lines.push(i.stamp ? { ok: true, label: 'Its sync time', detail: `sent as "${escapeHtml(i.tRaw)}" and read as ${healthSyncWhen(Date.parse(i.stamp))}` }
+          : { ok: false, label: 'Its sync time', detail: i.tRaw ? `sent as "${escapeHtml(i.tRaw)}", which the app cannot read. In the Shortcut, tap the Current Date bubble after t= and set Date Format to ISO 8601.` : 'none was sent, so "last synced" cannot update. The Shortcut text needs &t= followed by the Current Date.' });
+        lines.push({ ok: healthInboxOutcome ? true : null, label: 'What this phone did with it', detail: healthInboxOutcome ? `${healthInboxOutcome.text} (at ${new Date(healthInboxOutcome.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })})` : 'nothing yet since the app opened. It files a message when the app is open; close and reopen the app, then check again.' });
+      } else {
+        lines.push({ ok: null, label: 'Last message from your Shortcut', detail: 'nothing has arrived in the inbox yet' });
+      }
+    } catch (err) { lines.push({ ok: false, label: 'Inbox read', detail: err.message }); }
+  }
   if (lastSyncDiagnostic.urlHadSyncParams) {
     lines.push({ ok: true, label: 'This page load', detail: `received sync params: ${JSON.stringify(lastSyncDiagnostic.capturedValues)}` });
     if (lastSyncDiagnostic.rejectedValues) {
@@ -10146,7 +10171,7 @@ async function testHealthSync() {
       lines.push({ ok: false, label: 'Firestore write', detail: 'never attempted — syncId was not ready yet when the params arrived' });
     }
   } else {
-    lines.push({ ok: false, label: 'This page load', detail: `received NO sync params in the URL (query string was "${lastSyncDiagnostic.rawQueryString}"). This means the Shortcut's "Open URL" step likely just brought an already-open tab to the front instead of actually reloading with fresh data — closing any existing tab/window of this app before running the Shortcut usually fixes it.` });
+    lines.push({ ok: null, label: 'This page load', detail: 'opened without a Shortcut link. That is normal now that the Shortcut sends silently. It only matters if you still use the old Open URL way.' });
   }
 
   if (syncId) {
