@@ -784,7 +784,25 @@ body {
   width: 4px; height: 12px; border-radius: 2px;
   background: var(--teal);
 }
-.chart-wrap { height: 220px; position: relative; }
+.chart-wrap { height: 190px; position: relative; }
+.chart-rangebar { margin-bottom: 12px; }
+#chartRangeRow { flex-wrap: nowrap; gap: 6px; }
+#chartRangeRow .chip { flex: 1 1 auto; justify-content: center; text-align: center; padding: 6px 6px; font-size: 12px; white-space: nowrap; }
+.chart-hint { font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
+.cs-head { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; border-top: 1px solid var(--line); padding: 14px 2px 8px; color: var(--ink); font: inherit; cursor: pointer; text-align: left; }
+.cs-name { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; flex-shrink: 0; }
+.cs-sum { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.cs-chev { font-size: 11px; color: var(--ink-soft); width: 12px; flex-shrink: 0; }
+.cs-head[hidden] { display: none; }
+.chart-card.cs-skip { display: none; }
+.cs-emptyrow { display: flex; justify-content: center; margin: 6px 0 16px; }
+.chart-sum { font-size: 13px; color: var(--ink); margin: -4px 0 8px; line-height: 1.45; font-weight: 600; }
+.chart-sum b { font-family: var(--font-num); font-weight: 800; }
+.chart-sum .dim { color: var(--ink-soft); font-weight: 600; }
+.cmp-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.cmp-row select { flex: 1; min-width: 0; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--input-bg); color: var(--ink); font-family: var(--font-num); font-size: 12px; font-weight: 700; }
+.cmp-row span { font-size: 12px; color: var(--ink-soft); }
+.cmp-note { font-size: 12px; color: var(--ink-soft); margin-top: 8px; line-height: 1.5; }
 .chart-legend {
   font-size: 11px; color: var(--ink-soft); margin-top: 8px;
   display: flex; gap: 12px; flex-wrap: wrap;
@@ -3019,6 +3037,18 @@ body {
       <div id="chartsLoadError" style="display:none;padding:14px;margin-bottom:14px;border:1.5px solid var(--coral);border-radius:12px;color:var(--coral);font-size:13px">
         Chart library failed to load — check your connection and reopen the app. If this keeps happening, tell Claude the exact error from the browser console.
       </div>
+      <div class="chart-rangebar" id="chartRangeBar">
+        <div class="chip-row" id="chartRangeRow">
+          <div class="chip" data-crange="4w">4 weeks</div><div class="chip" data-crange="12w">12 weeks</div><div class="chip" data-crange="6m">6 months</div><div class="chip" data-crange="all">All</div>
+        </div>
+        <div class="chart-hint" id="chartRangeHint"></div>
+      </div>
+      <div class="chart-card" id="compareCard">
+        <div class="chart-title">Compare two metrics</div>
+        <div class="cmp-row"><select id="cmpA" aria-label="First metric"></select><span>vs</span><select id="cmpB" aria-label="Second metric"></select></div>
+        <div class="chart-wrap" id="cmpWrap"><canvas id="compareChart"></canvas></div>
+        <div class="cmp-note" id="cmpNote"></div>
+      </div>
       <div class="chart-card">
         <div class="chart-title">Dose Escalation Timeline</div>
         <div id="doseTimelineBody"></div>
@@ -3064,7 +3094,7 @@ body {
         <div class="chart-wrap"><canvas id="proteinChart"></canvas></div>
         <div class="chart-legend">
           <span><span class="legend-dot" style="background:var(--teal)"></span>Protein (g)</span>
-          <span><span class="legend-dot" style="background:var(--sage)"></span>100g minimum target</span>
+          <span><span class="legend-dot" style="background:var(--sage)"></span><span id="proteinLegend">100g minimum target</span></span>
         </div>
       </div>
       <div class="chart-card">
@@ -3169,6 +3199,7 @@ body {
         <div style="overflow-x:auto">
           <table class="wk-table" id="wkTable"></table>
         </div>
+        <button type="button" class="bsec-more" id="wkMoreBtn" style="display:none"></button>
       </div>
       <div class="chart-card">
         <div class="chart-title">Blood Pressure</div>
@@ -5976,7 +6007,7 @@ function renderAll() {
   updateMilestone();
   renderMilestones();
   renderHistory();
-  renderCharts();
+  if (document.getElementById('view-charts').classList.contains('active')) renderCharts();   // drawn when you open the tab, and kept fresh while you are on it
   renderMealList();
   renderFavorites();
   renderWater();
@@ -7454,6 +7485,236 @@ Only include a symptom if it (or a clear synonym) is actually mentioned. Only in
   }
 });
 
+// ── CHARTS TAB ── range, sections, lazy drawing, a summary line on every card, tap a point to open that day, compare two metrics
+var chartRange = '12w';
+try { const r = localStorage.getItem('mounjaro-chart-range'); if (r === '4w' || r === '6m' || r === 'all') chartRange = r; } catch (err) { /* ignore */ }
+var chartSecOpen = {}, showEmptyCharts = false, chartMode = 'draw', chartProbe = {}, chartLabelDates = {}, compareChart = null, chartSectionsReady = false;
+try { chartSecOpen = JSON.parse(localStorage.getItem('mounjaro-chart-sections') || '{}') || {}; showEmptyCharts = localStorage.getItem('mounjaro-chart-showempty') === 'true'; } catch (err) { chartSecOpen = {}; }
+const CHART_SECTIONS = [
+  { name: 'Compare', ids: ['#compareCard'], open: false },
+  { name: 'Treatment', titles: ['Dose Escalation Timeline', 'Dose Change Comparison', 'Side Effects Near Dose Changes'], open: true },
+  { name: 'Body', ids: ['weightChart', 'measurementsChart', 'glucoseChart', 'bpChart'], open: true },
+  { name: 'Nutrition', ids: ['proteinChart', 'waterChart', 'carbsChart', 'caloriesChart', 'fatChart'], open: false },
+  { name: 'Activity', ids: ['stepsChart', 'exChart', 'activeCalChart', 'distanceChart', 'paceChart', 'inclineChart', 'volumeChart', 'weightProgressChart'], open: false },
+  { name: 'Recovery', ids: ['hrChart', 'hrvChart', 'sleepChart', 'sleepScoreChart'], open: false },
+  { name: 'Labs', ids: ['a1cChart', 'ldlChart', 'egfrChart', 'altChart'], open: false },
+  { name: 'Weekly summary', titles: ['Weekly Summary'], open: false }
+];
+const CHART_META = {
+  weightChart: { label: 'Weight', unit: ' lb', dec: 1 }, glucoseChart: { label: 'Fasting', unit: ' mg/dL', dec: 0 }, measurementsChart: { label: 'Waist', unit: ' in', dec: 1 },
+  bpChart: { label: 'BP', special: 'bp' },
+  proteinChart: { label: 'Protein', unit: ' g', daily: true, goal: () => userProteinGoal }, waterChart: { label: 'Water', unit: ' oz', daily: true, goal: () => 64 },
+  carbsChart: { label: 'Carbs', unit: ' g', daily: true }, caloriesChart: { label: 'Calories', unit: ' cal', daily: true }, fatChart: { label: 'Fat', unit: ' g', daily: true },
+  stepsChart: { label: 'Steps', unit: '', daily: true, goal: () => currentStepGoal() }, exChart: { label: 'Exercise', unit: ' min', daily: true }, activeCalChart: { label: 'Active', unit: ' cal', daily: true },
+  distanceChart: { label: 'Distance', unit: ' mi', dec: 1, daily: true }, paceChart: { label: 'Pace', unit: ' mph', dec: 1 }, inclineChart: { label: 'Incline', unit: '%', dec: 1 },
+  volumeChart: { label: 'Volume', unit: ' lb', daily: true }, weightProgressChart: { label: 'Best set', unit: ' lb' },
+  hrChart: { label: 'Resting HR', unit: ' bpm', dec: 0 }, hrvChart: { label: 'HRV', unit: ' ms', dec: 0 }, sleepChart: { label: 'Sleep', unit: ' h', dec: 1, daily: true }, sleepScoreChart: { label: 'Sleep score', unit: '', dec: 0 },
+  a1cChart: { label: 'A1C', unit: '%', dec: 1 }, ldlChart: { label: 'LDL', unit: '', dec: 0 }, egfrChart: { label: 'eGFR', unit: '', dec: 0 }, altChart: { label: 'ALT', unit: '', dec: 0 }
+};
+function chartRangeEntries(list) {
+  list = list || entries;
+  if (chartRange === 'all') return list;
+  const cut = lbAddDays(todayStr(), -(chartRange === '4w' ? 28 : chartRange === '6m' ? 183 : 84));
+  return list.filter(e => e.date >= cut);
+}
+function chartRangeWords() { return chartRange === '4w' ? 'the last 4 weeks' : chartRange === '6m' ? 'the last 6 months' : chartRange === 'all' ? 'all time' : 'the last 12 weeks'; }
+function chartStub(cfg) { return { destroy() {}, update() {}, resize() {}, data: cfg.data, options: cfg.options, __stub: true }; }
+function chartTapToHistory(els, chart) {
+  if (!els || !els.length) return;
+  const label = chart && chart.data && chart.data.labels ? chart.data.labels[els[0].index] : null, d = chartLabelDates[label];
+  if (!d) return;
+  showView('history'); setTimeout(() => focusHistoryDate(d), 0);
+}
+// Every chart goes through here: first to just collect its data, then to draw it only if its card is on screen.
+function ChartGate(ctx, cfg) {
+  const canvas = ctx && ctx.canvas ? ctx.canvas : null, id = canvas ? canvas.id : '';
+  if (chartMode === 'probe') { chartProbe[id] = cfg.data; return chartStub(cfg); }
+  const card = canvas && canvas.closest ? canvas.closest('.chart-card') : null;
+  if (card && card.classList.contains('cs-skip')) return chartStub(cfg);
+  cfg.options = cfg.options || {};
+  if (!cfg.options.onClick) cfg.options.onClick = (evt, els, chart) => chartTapToHistory(els, chart);
+  if (!cfg.options.interaction) cfg.options.interaction = { mode: 'nearest', axis: 'x', intersect: false };   // a fingertip does not have to land on the dot
+  const inst = new window.Chart(ctx, cfg);
+  if (id === 'weightProgressChart' && chartMode === 'draw') { chartProbe[id] = cfg.data; try { setChartSummary(id); } catch (err) { /* ignore */ } }
+  return inst;
+}
+function chartSeries(id) {
+  const d = chartProbe[id]; if (!d || !d.datasets) return null;
+  const ds = d.datasets.find(x => x.data && x.data.some(v => v != null && !isNaN(v))); if (!ds) return null;
+  const vals = [], labels = [], idx = [];
+  ds.data.forEach((v, i) => { if (v != null && !isNaN(v)) { vals.push(+v); labels.push(d.labels ? d.labels[i] : ''); idx.push(i); } });
+  return { vals, labels, idx, d, ds };
+}
+function chartFmt(v, dec) { const k = dec != null ? dec : (Math.abs(v) >= 1000 ? 0 : (Number.isInteger(v) ? 0 : 1)); return (k === 0 ? Math.round(v) : Math.round(v * 10) / 10).toLocaleString(undefined, { maximumFractionDigits: k }); }
+function chartSummaryHtml(id) {
+  const ser = chartSeries(id); if (!ser) return '';
+  const m = CHART_META[id] || {}, v = ser.vals, n = v.length, last = v[n - 1], avg = v.reduce((x, y) => x + y, 0) / n, u = m.unit || '';
+  if (m.special === 'bp') {
+    const dia = ser.d.datasets[1] && ser.d.datasets[1].data ? ser.d.datasets[1].data[ser.idx[n - 1]] : null, sysAvg = Math.round(avg);
+    return `<b>${Math.round(last)}${dia != null ? '/' + Math.round(dia) : ''}</b> <span class="dim">latest · avg systolic ${sysAvg}</span>`;
+  }
+  if (m.daily) {
+    let t = `<b>${chartFmt(avg, m.dec)}${u}</b> <span class="dim">avg per day</span>`;
+    if (m.goal) { const g = m.goal(), met = v.filter(x => x >= g).length; t += ` <span class="dim">· goal met ${met} of ${n} days</span>`; }
+    return t;
+  }
+  let t = `<b>${chartFmt(last, m.dec)}${u}</b> <span class="dim">latest</span>`;
+  if (n > 1) { const dlt = Math.round((last - v[0]) * 10) / 10; t += ` <span class="dim">·</span> <b>${dlt === 0 ? 'no change' : (dlt < 0 ? '−' : '+') + chartFmt(Math.abs(dlt), m.dec === 0 ? 0 : 1)}</b> <span class="dim">over ${chartRange === 'all' ? 'the whole history' : chartRangeWords().replace('the ', '')}</span>`; }
+  return t + ` <span class="dim">· avg ${chartFmt(avg, m.dec)}</span>`;
+}
+function setChartSummary(id) {
+  const el = document.getElementById('sum-' + id); if (!el) return;
+  el.innerHTML = chartSummaryHtml(id);
+}
+function chartCardFor(sec, key) {
+  if (key === '#compareCard') return document.getElementById('compareCard');
+  return document.getElementById(key) ? document.getElementById(key).closest('.chart-card') : null;
+}
+function setupChartSections() {
+  if (chartSectionsReady) return;
+  const view = document.getElementById('view-charts'); if (!view) return;
+  const byTitle = {}; view.querySelectorAll('.chart-card .chart-title').forEach(t => { byTitle[t.textContent.trim()] = t.closest('.chart-card'); });
+  CHART_SECTIONS.forEach(sec => {
+    sec.cards = [];
+    (sec.ids || []).forEach(k => { const c = chartCardFor(sec, k); if (c) sec.cards.push({ card: c, id: k.charAt(0) === '#' ? null : k }); });
+    (sec.titles || []).forEach(t => { const c = byTitle[t]; if (c) sec.cards.push({ card: c, id: null }); });
+    const head = document.createElement('button');
+    head.type = 'button'; head.className = 'cs-head'; head.dataset.sec = sec.name;
+    head.innerHTML = '<span class="cs-name">' + sec.name + '</span><span class="cs-sum"></span><span class="cs-chev"></span>';
+    view.appendChild(head); sec.head = head;
+    sec.cards.forEach(x => {
+      x.card.dataset.csec = sec.name; view.appendChild(x.card);
+      if (x.id) { const title = x.card.querySelector('.chart-title'); if (title && !x.card.querySelector('.chart-sum')) { const d = document.createElement('div'); d.className = 'chart-sum'; d.id = 'sum-' + x.id; title.insertAdjacentElement('afterend', d); } }
+    });
+  });
+  const row = document.createElement('div'); row.className = 'cs-emptyrow'; row.id = 'csEmptyRow'; view.appendChild(row);
+  chartSectionsReady = true;
+}
+function chartSecIsOpen(sec) { return sec.name in chartSecOpen ? !!chartSecOpen[sec.name] : sec.open; }
+function latestTextFor(id) { const ser = chartSeries(id); if (!ser) return null; const m = CHART_META[id] || {}; if (m.special === 'bp') return `BP ${Math.round(ser.vals[ser.vals.length - 1])}`; return `${m.label || ''} ${chartFmt(ser.vals[ser.vals.length - 1], m.dec)}${m.unit || ''}`.trim(); }
+function applyChartSections() {
+  if (!chartSectionsReady) return;
+  let emptyN = 0;
+  CHART_SECTIONS.forEach(sec => {
+    const open = chartSecIsOpen(sec); let withData = 0;
+    sec.cards.forEach(x => {
+      const empty = !!x.id && !chartSeries(x.id);
+      x.card.classList.toggle('cs-empty', empty);
+      if (empty) emptyN++; else withData++;
+      x.card.classList.toggle('cs-skip', !open || (empty && !showEmptyCharts));
+      if (x.id) { if (empty) { const el = document.getElementById('sum-' + x.id); if (el) el.innerHTML = ''; } else setChartSummary(x.id); }
+    });
+    const nothing = sec.cards.length && sec.cards.every(x => x.id) && withData === 0 && !showEmptyCharts;
+    sec.head.hidden = !!nothing;
+    sec.head.setAttribute('aria-expanded', String(open));
+    sec.head.querySelector('.cs-chev').textContent = open ? '▼' : '▶';
+    let sum = '';
+    if (!open) {
+      if (sec.name === 'Compare') sum = 'pick any two metrics';
+      else if (sec.name === 'Weekly summary') { try { sum = `week ${weekIndex(todayStr())}`; } catch (err) { sum = ''; } }
+      else if (sec.name === 'Treatment') { const d = [...entries].reverse().find(e => e.dose); sum = d ? `${d.dose} mg` : ''; }
+      else sum = sec.cards.filter(x => x.id).map(x => latestTextFor(x.id)).filter(Boolean).slice(0, 3).join(' · ');
+    }
+    sec.head.querySelector('.cs-sum').textContent = sum;
+  });
+  const row = document.querySelector('#view-charts .cs-emptyrow');
+  if (row) row.innerHTML = emptyN ? `<button type="button" class="sc-empty-btn" data-cs-empty="1">${showEmptyCharts ? 'Hide' : `${emptyN} chart${emptyN === 1 ? ' has' : 's have'} no data yet · Show`}</button>` : '';
+}
+// ── COMPARE two metrics ──
+const CMP_METRICS = [
+  { k: 'weight', label: 'Weight (lb)', get: e => numOrNull(e.weight) }, { k: 'protein', label: 'Protein (g)', get: e => dayProteinFromEntry(e) },
+  { k: 'water', label: 'Water (oz)', get: e => numOrNull(e.water) }, { k: 'calories', label: 'Calories', get: e => numOrNull(e.calories) },
+  { k: 'carbs', label: 'Carbs (g)', get: e => numOrNull(e.carbs) }, { k: 'fat', label: 'Fat (g)', get: e => numOrNull(e.fat) },
+  { k: 'steps', label: 'Steps', get: e => numOrNull(e.steps) }, { k: 'activeCal', label: 'Active energy (cal)', get: e => numOrNull(e.activeCal) },
+  { k: 'exercise', label: 'Exercise (min)', get: e => { const m = effExMin(e); return m > 0 ? m : null; } },
+  { k: 'glucose', label: 'Fasting glucose', get: e => numOrNull(e.glucose) }, { k: 'sys', label: 'Systolic BP', get: e => numOrNull(e.sys) },
+  { k: 'restHR', label: 'Resting HR', get: e => numOrNull(e.restHR) }, { k: 'hrv', label: 'HRV', get: e => numOrNull(e.hrv) },
+  { k: 'sleepHrs', label: 'Sleep (h)', get: e => numOrNull(e.sleepHrs) }, { k: 'sleepScore', label: 'Sleep score', get: e => numOrNull(e.sleepScore) },
+  { k: 'appetite', label: 'Appetite (1–5)', get: e => numOrNull(e.appetite) }
+];
+function numOrNull(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
+function plainMetric(m) { const x = m.label.replace(/\s*\(.*?\)\s*$/, ''); return /^[A-Z]{2,}/.test(x) ? x : x.charAt(0).toLowerCase() + x.slice(1); }
+function compareSentence(a0, b0, xs, ys) {
+  const a = { label: plainMetric(a0) }, b = { label: plainMetric(b0) };
+  if (xs.length < 10) return `Only ${xs.length} day${xs.length === 1 ? '' : 's'} in ${chartRangeWords()} have both ${a.label} and ${b.label}. Log a few more days to compare.`;
+  const r = pearsonCorrelation(xs, ys), ar = Math.abs(r);
+  const strength = ar < 0.2 ? null : ar < 0.4 ? 'a weak tendency' : ar < 0.6 ? 'a moderate tendency' : 'a strong tendency';
+  const rr = (Math.round(r * 100) / 100).toFixed(2).replace('-', '−');
+  if (!strength) return `No clear pattern between ${a.label} and ${b.label} over ${chartRangeWords()} (r = ${rr}, ${xs.length} days).`;
+  return `Over ${chartRangeWords()}, days with higher ${a.label} showed ${strength} ${r > 0 ? 'toward higher' : 'toward lower'} ${b.label} (r = ${rr}, ${xs.length} days). This is a pattern in your own data, not proof that one causes the other.`;
+}
+function renderCompare() {
+  const card = document.getElementById('compareCard'); if (!card || card.classList.contains('cs-skip')) return;
+  const rng = chartRangeEntries(), selA = document.getElementById('cmpA'), selB = document.getElementById('cmpB'), note = document.getElementById('cmpNote'), wrap = document.getElementById('cmpWrap');
+  const avail = CMP_METRICS.filter(m => rng.filter(e => m.get(e) != null).length >= 5);
+  if (compareChart) { compareChart.destroy(); compareChart = null; }
+  if (avail.length < 2) { selA.innerHTML = selB.innerHTML = ''; wrap.style.display = 'none'; note.textContent = 'Log a few more days of at least two things (weight, protein, steps…) and you can compare them here.'; return; }
+  wrap.style.display = '';
+  let saved = {}; try { saved = JSON.parse(localStorage.getItem('mounjaro-compare') || '{}') || {}; } catch (err) { saved = {}; }
+  const keep = (sel, want, fallback) => { const k = avail.some(m => m.k === (sel.value || want)) ? (sel.value || want) : fallback; return k; };
+  const optHtml = avail.map(m => `<option value="${m.k}">${m.label}</option>`).join('');
+  const prevA = selA.value || saved.a, prevB = selB.value || saved.b;
+  selA.innerHTML = optHtml; selB.innerHTML = optHtml;
+  const aKey = avail.some(m => m.k === prevA) ? prevA : avail[0].k;
+  const bKey = avail.some(m => m.k === prevB) && prevB !== aKey ? prevB : (avail.find(m => m.k !== aKey) || avail[1]).k;
+  selA.value = aKey; selB.value = bKey;
+  try { localStorage.setItem('mounjaro-compare', JSON.stringify({ a: aKey, b: bKey })); } catch (err) { /* ignore */ }
+  const A = avail.find(m => m.k === aKey), B = avail.find(m => m.k === bKey);
+  const dates = rng.filter(e => A.get(e) != null || B.get(e) != null).map(e => e.date).sort();
+  const byDate = {}; rng.forEach(e => { byDate[e.date] = e; });
+  const xs = [], ys = [];
+  dates.forEach(d => { const x = A.get(byDate[d]), y = B.get(byDate[d]); if (x != null && y != null) { xs.push(x); ys.push(y); } });
+  const cs = getComputedStyle(document.documentElement), cv = n => cs.getPropertyValue(n).trim();
+  const tick = { font: { family: CHART_FONT_NUM, weight: '700', size: 10 }, color: cv('--ink-soft') };
+  const ctx = document.getElementById('compareChart').getContext('2d');
+  compareChart = new ChartGate(ctx, {
+    type: 'line',
+    data: { labels: dates.map(fmtDate), datasets: [
+      { label: A.label, data: dates.map(d => A.get(byDate[d])), borderColor: cv('--teal'), backgroundColor: cv('--teal'), pointRadius: 2.5, tension: 0.25, spanGaps: true, yAxisID: 'y' },
+      { label: B.label, data: dates.map(d => B.get(byDate[d])), borderColor: cv('--coral'), backgroundColor: cv('--coral'), pointRadius: 2.5, tension: 0.25, spanGaps: true, yAxisID: 'y1' } ] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: cv('--ink-soft'), boxWidth: 10, font: { size: 10, weight: '700' } } } },
+      scales: { y: { position: 'left', grid: { color: cv('--divider') }, ticks: tick }, y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: tick }, x: { grid: { display: false }, ticks: { ...tick, maxRotation: 0 } } } }
+  });
+  note.textContent = compareSentence(A, B, xs, ys);
+}
+function renderChartRangeBar() {
+  document.querySelectorAll('#chartRangeRow [data-crange]').forEach(c => c.classList.toggle('on', c.dataset.crange === chartRange));
+  const h = document.getElementById('chartRangeHint'); if (h) h.textContent = `Showing ${chartRangeWords()} · tap any point to open that day in History`;
+}
+function renderCharts() {
+  renderDoseTimeline(); // plain HTML, not Chart.js — render it even if the chart library fails to load
+  renderDoseComparison();
+  renderSideEffectCorrelation();
+  const errBox = document.getElementById('chartsLoadError');
+  if (typeof Chart === 'undefined') {
+    if (errBox) errBox.style.display = 'block';
+    return;
+  }
+  if (errBox) errBox.style.display = 'none';
+  setupChartSections(); renderChartRangeBar();
+  const pl = document.getElementById('proteinLegend'); if (pl) pl.textContent = `${userProteinGoal}g goal`;
+  const rng = chartRangeEntries();
+  chartLabelDates = {}; rng.forEach(e => { chartLabelDates[fmtDate(e.date)] = e.date; });
+  chartProbe = {}; chartMode = 'probe';
+  try { renderChartsCore(rng, ChartGate); } finally { chartMode = 'draw'; }   // pass 1: collect the data, draw nothing
+  applyChartSections();                                                        // empty charts and folded sections are set aside
+  renderChartsCore(rng, ChartGate);                                            // pass 2: draw only what is on screen
+  renderCompare();
+}
+(function wireChartsTab() {
+  const view = document.getElementById('view-charts'); if (!view) return;
+  view.addEventListener('click', ev => {
+    const t = ev.target.closest ? ev.target : null; if (!t) return;
+    const rng = t.closest('[data-crange]');
+    if (rng) { chartRange = rng.dataset.crange; try { localStorage.setItem('mounjaro-chart-range', chartRange); } catch (err) { /* ignore */ } renderCharts(); return; }
+    const head = t.closest('.cs-head');
+    if (head) { const sec = CHART_SECTIONS.find(x => x.name === head.dataset.sec); chartSecOpen[sec.name] = !chartSecIsOpen(sec); try { localStorage.setItem('mounjaro-chart-sections', JSON.stringify(chartSecOpen)); } catch (err) { /* ignore */ } renderCharts(); return; }
+    if (t.closest('[data-cs-empty]')) { showEmptyCharts = !showEmptyCharts; try { localStorage.setItem('mounjaro-chart-showempty', String(showEmptyCharts)); } catch (err) { /* ignore */ } renderCharts(); return; }
+    if (t.closest('#wkMoreBtn')) { wkShowAll = !wkShowAll; renderWeeklySummary(); }
+  });
+  ['cmpA', 'cmpB'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('change', () => { try { localStorage.setItem('mounjaro-compare', JSON.stringify({ a: document.getElementById('cmpA').value, b: document.getElementById('cmpB').value })); } catch (err) { /* ignore */ } renderCompare(); }); });
+})();
+
 // ── CHARTS ──
 // Standalone (not nested in renderCharts) so the exercise picker's
 // onchange can redraw just this one chart without re-running everything
@@ -7470,7 +7731,7 @@ function renderWeightProgressChart(exerciseName) {
   const cTick = cv('--ink-soft');
   const dates = [];
   const values = [];
-  [...entries].sort((a, b) => a.date.localeCompare(b.date)).forEach(e => {
+  [...chartRangeEntries(entries)].sort((a, b) => a.date.localeCompare(b.date)).forEach(e => {
     if (!e.ex) return;
     e.ex.forEach(x => {
       if (x.type === 'Strength' && x.sets && x.sets[exerciseName] && x.sets[exerciseName].length) {
@@ -7482,7 +7743,7 @@ function renderWeightProgressChart(exerciseName) {
       }
     });
   });
-  weightProgressChart = new Chart(ctx, {
+  weightProgressChart = new ChartGate(ctx, {
     type: 'line',
     data: {
       labels: dates,
@@ -7504,16 +7765,9 @@ function renderWeightProgressChart(exerciseName) {
   });
 }
 
-function renderCharts() {
-  renderDoseTimeline(); // plain HTML, not Chart.js — render it even if the chart library fails to load
-  renderDoseComparison();
-  renderSideEffectCorrelation();
-  const errBox = document.getElementById('chartsLoadError');
-  if (typeof Chart === 'undefined') {
-    if (errBox) errBox.style.display = 'block';
-    return;
-  }
-  if (errBox) errBox.style.display = 'none';
+// The drawing code. `entries` is the slice of history inside the chosen range and `Chart` is the gate below,
+// so the same code can first just collect data (to find empty charts and make summaries) and then draw only what is on screen.
+function renderChartsCore(entries, Chart) {
 
   const gEntries  = entries.filter(e => e.glucose != null && e.glucose !== '');
   const g2Entries = entries.filter(e => e.glucose2hr != null && e.glucose2hr !== '');
@@ -7681,7 +7935,7 @@ function renderCharts() {
           { label:'Protein', data: pEntries.map(e => parseFloat(e.protein)),
             backgroundColor: pEntries.map(e => parseFloat(e.protein) >= userProteinGoal ? 'rgba(55,198,255,0.75)' : 'rgba(92,230,192,0.5)'),
             borderRadius: 4 },
-          { label:'Min target', type:'line', data: pEntries.map(() => 100),
+          { label:'Goal', type:'line', data: pEntries.map(() => userProteinGoal),
             borderColor:'rgba(92,230,192,0.6)', borderDash:[4,4], pointRadius:0, fill:false }
         ]
       },
@@ -15256,6 +15510,7 @@ function weekIndex(dateStr) {
   return diff < 0 ? -1 : Math.floor(diff / 7) + 1;
 }
 
+var wkShowAll = false;
 function renderWeeklySummary() {
   const table = document.getElementById('wkTable');
   if (!table) return;
@@ -15275,7 +15530,7 @@ function renderWeeklySummary() {
     return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
   };
   let html = '<tr><th>Wk</th><th>Dates</th><th>Avg Fast</th><th>Avg Protein</th><th>≥' + userProteinGoal + 'g Days</th><th>Avg Carbs</th><th>Avg Water</th><th>Avg Steps</th><th>Active Min</th><th>Weight Δ</th><th>Side Effects</th></tr>';
-  wkNums.forEach(w => {
+  (wkShowAll ? wkNums : wkNums.slice(-8)).forEach(w => {
     const es = weeks[w].sort((a,b) => a.date.localeCompare(b.date));
     const start = new Date(TREATMENT_START); start.setDate(start.getDate() + (w-1)*7);
     const end = new Date(start); end.setDate(end.getDate() + 6);
@@ -15318,6 +15573,7 @@ function renderWeeklySummary() {
     </tr>`;
   });
   table.innerHTML = html;
+  const wkBtn = document.getElementById('wkMoreBtn'); if (wkBtn) { wkBtn.style.display = wkNums.length > 8 ? '' : 'none'; wkBtn.textContent = wkShowAll ? 'Show fewer' : `Show all ${wkNums.length} weeks`; }
 }
 
 // ── ROLLING TREND HELPERS ──
