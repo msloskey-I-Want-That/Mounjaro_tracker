@@ -1189,6 +1189,35 @@ body {
 .mm-info { margin-top: 10px; font-size: 11px; color: var(--ink-soft); }
 .mm-info summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
 .mm-info div { margin-top: 4px; line-height: 1.5; }
+.mm-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; }
+.mm-chev { font-size: 11px; color: var(--ink-soft); flex-shrink: 0; }
+.mm-summary { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+.mm-summary b { color: var(--ink); font-family: var(--font-num); font-weight: 800; }
+.hist-highlights { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.hist-hl { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); font-size: 12px; font-weight: 700; color: var(--ink); }
+.hist-hl small { color: var(--ink-soft); font-weight: 600; }
+.hist-tools { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 10px 0 8px; flex-wrap: wrap; }
+.hist-filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin: 0 0 12px; -webkit-overflow-scrolling: touch; }
+.hist-filters .chip { flex-shrink: 0; font-size: 12px; padding: 6px 11px; white-space: nowrap; }
+.hist-filters .chip small { opacity: .7; margin-left: 3px; }
+.hist-week { margin-bottom: 14px; }
+.hist-week-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: none; border: none; padding: 6px 2px 2px; color: var(--ink); font: inherit; cursor: pointer; text-align: left; }
+.hw-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.hw-count { font-size: 11px; color: var(--ink-soft); margin-left: auto; font-weight: 600; }
+.hw-chev { font-size: 11px; color: var(--ink-soft); }
+.hw-sum { font-size: 12px; color: var(--ink-soft); padding: 0 2px 8px; line-height: 1.45; }
+.hist-card { cursor: pointer; position: relative; }
+.entry-more { background: none; border: none; color: var(--ink-soft); font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 8px; border-radius: 8px; }
+.entry-menu { position: absolute; right: 12px; top: 38px; z-index: 20; display: flex; flex-direction: column; min-width: 130px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: 0 8px 24px rgba(0,0,0,.35); overflow: hidden; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.entry-menu[hidden] { display: none; }
+.entry-menu button { background: none; border: none; text-align: left; padding: 11px 14px; font: inherit; font-size: 13px; font-weight: 700; color: var(--ink); cursor: pointer; }
+.entry-menu .entry-del { color: var(--coral); }
+.hist-more-btn { background: none; border: 1.5px dashed var(--line); border-radius: 999px; padding: 3px 10px; color: var(--ink-soft); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.hist-lifts { font-size: 12px; margin: 8px 0 2px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 10px; }
+.hist-lifts .n { font-family: var(--font-num); font-weight: 700; text-align: right; }
+.hist-note-1 { font-size: 12px; color: var(--ink-soft); margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-card.hl-flash { animation: hist-flash 1.6s ease-out; }
+@keyframes hist-flash { 0% { box-shadow: 0 0 0 0 rgba(55,198,255,.0); } 25% { box-shadow: 0 0 0 5px rgba(55,198,255,.5); } 100% { box-shadow: 0 0 0 0 rgba(55,198,255,0); } }
 .muscle-sheet-bd { position: fixed; inset: 0; z-index: 479; background: rgba(0,0,0,0.5); }
 .tw-muscles { font-size: 12px; color: var(--ink-soft); margin-top: 4px; line-height: 1.5; }
 .tw-muscles .tm-ok { color: var(--teal); font-weight: 800; }
@@ -2889,22 +2918,27 @@ body {
         <div class="chart-title">Consistency</div>
         <div id="consistencyHeatmap" style="overflow-x:auto;padding-bottom:4px"></div>
         <div style="display:flex;align-items:center;gap:5px;margin-top:6px;font-size:10px;color:var(--ink-soft)">
-          <span>Less</span>
+          <span>Less logged</span>
           <span style="width:12px;height:12px;border-radius:3px;background:var(--line);display:inline-block"></span>
           <span style="width:12px;height:12px;border-radius:3px;background:var(--teal);opacity:0.35;display:inline-block"></span>
           <span style="width:12px;height:12px;border-radius:3px;background:var(--teal);opacity:0.65;display:inline-block"></span>
           <span style="width:12px;height:12px;border-radius:3px;background:var(--teal);opacity:1;display:inline-block"></span>
-          <span>More</span>
+          <span>More logged</span>
+          <span style="margin-left:auto">tap a day to open it</span>
         </div>
       </div>
       <div class="chart-card" id="muscleMapCard">
-        <div class="chart-title" id="muscleMapTitle">Muscles trained · last 7 days</div>
-        <div id="muscleMap"></div>
+        <div class="mm-header" id="muscleMapHeader" role="button" tabindex="0" aria-expanded="false"><div class="chart-title" id="muscleMapTitle" style="margin-bottom:0">Muscles trained · last 7 days</div><span class="mm-chev" id="muscleMapChevron">▶</span></div>
+        <div class="mm-summary" id="muscleMapSummary"></div>
+        <div id="muscleMap" style="display:none;margin-top:10px"></div>
       </div>
+      <div class="hist-highlights" id="historyHighlights"></div>
+      <div class="hist-tools"><span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft)">Your log</span><button type="button" class="btn btn-ghost btn-sm" id="historyDoctorBtn">📄 Doctor summary</button></div>
       <div class="history-search">
         <span style="color:var(--ink-soft)"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
         <input type="text" id="historySearch" placeholder="Search notes…">
       </div>
+      <div class="hist-filters" id="historyFilters"></div>
       <div id="historyList"></div>
     </div>
 
@@ -5525,9 +5559,12 @@ function hideLoading() {
 
 // ── SAVE / DELETE ──
 async function deleteEntry(date) {
-  if (!confirm(`Delete entry for ${fmtDateFull(date)}?`)) return;
+  const saved = entries.find(e => e.date === date);
+  if (!saved) return;
+  const copy = JSON.parse(JSON.stringify(saved)); // kept so Undo can put the whole day back exactly as it was
   const ref = doc(db, 'trackers', syncId, 'entries', date);
   await deleteDoc(ref);
+  showUndoToast(`Deleted ${fmtDateFull(date)}`, async () => { await setDoc(ref, copy); });
 }
 
 // ── RENDER ALL ──
@@ -6063,6 +6100,23 @@ try { const r = localStorage.getItem('mounjaro-musclemap-range'); if (r === 'las
 var lastMuscleOnGoal;           // how many muscles were on goal at the previous paint (to catch the moment they all are)
 var lastTrainApply = null;      // what the "Set today's workout" button should do
 let muscleMapSelected = null;
+let muscleMapOpen = false;      // the card starts folded to its one-line summary
+try { muscleMapOpen = localStorage.getItem('mounjaro-musclemap-open') === 'true'; } catch (err) { /* storage unavailable */ }
+function applyMuscleMapOpen() {
+  const body = document.getElementById('muscleMap'), sum = document.getElementById('muscleMapSummary'), chev = document.getElementById('muscleMapChevron'), head = document.getElementById('muscleMapHeader');
+  if (!body || !head) return;
+  body.style.display = muscleMapOpen ? '' : 'none';
+  if (sum) sum.style.display = muscleMapOpen ? 'none' : '';
+  if (chev) chev.textContent = muscleMapOpen ? '▼' : '▶';
+  head.setAttribute('aria-expanded', String(muscleMapOpen));
+}
+(function wireMuscleMapHeader() {
+  const head = document.getElementById('muscleMapHeader'); if (!head) return;
+  const toggle = () => { muscleMapOpen = !muscleMapOpen; try { localStorage.setItem('mounjaro-musclemap-open', String(muscleMapOpen)); } catch (err) { /* ignore */ } applyMuscleMapOpen(); };
+  head.addEventListener('click', toggle);
+  head.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+  applyMuscleMapOpen();
+})();
 function muscleGoalFor(g) { const v = Number(muscleGoals[g]); return v >= 1 ? v : MUSCLE_GOAL_DEFAULTS[g]; }
 async function saveMuscleGoals() {
   if (!syncId) return;
@@ -6534,6 +6588,7 @@ function renderMuscleMap() {
   const sug = (mode === 'volume' || mode === 'recovery') ? trainNextSuggestion(stats) : null;
   const modeRow = `<div class="chip-row mm-modes"><div class="chip${mode === 'volume' ? ' on' : ''}" data-musclemode="volume">Volume</div><div class="chip${mode === 'recovery' ? ' on' : ''}" data-musclemode="recovery">Recovery</div><div class="chip${mode === 'effort' ? ' on' : ''}" data-musclemode="effort">Effort</div><div class="chip${mode === 'progress' ? ' on' : ''}" data-musclemode="progress">Progress</div></div>`;
   const rangeRow = mode === 'volume' ? `<div class="chip-row mm-range"><div class="chip${range === 'this' ? ' on' : ''}" data-musclerange="this">This week</div><div class="chip${range === 'last' ? ' on' : ''}" data-musclerange="last">Last week</div><div class="chip${range === 'avg' ? ' on' : ''}" data-musclerange="avg">4-wk avg</div></div>` : '';
+  const mmSum = document.getElementById('muscleMapSummary'); if (mmSum) mmSum.innerHTML = headline;
   box.innerHTML = `${modeRow}${rangeRow}<div class="mm-headline" id="muscleHeadline">${headline}</div>${svg}<div class="muscle-chips">${chips}</div>${sel ? `<div class="muscle-sheet-bd" data-muscleclose="1"></div>${muscleDetailHtml(stats[sel], mode)}` : ''}${sug ? trainNextHtml(sug) : ''}${mode === 'volume' ? balHtml : ''}<div style="font-size:11px;color:var(--ink-soft);margin-top:8px">${note}</div>`;
   box.onclick = (ev) => {
     const t = ev.target.closest ? ev.target : null; if (!t) return;
@@ -6607,87 +6662,225 @@ function renderConsistencyHeatmap() {
     const opacity = paused ? 0.6 : (c.level === 0 ? 1 : Math.min(1, 0.25 + c.level * 0.2));
     const stroke = c.isToday ? 'var(--coral)' : 'none';
     const strokeWidth = c.isToday ? '2' : '0';
-    return `<rect data-date="${c.dateStr}" x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="3" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="${strokeWidth}" style="cursor:pointer"/>`;
+    return `<rect data-date="${c.dateStr}" x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="3" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="${strokeWidth}" style="cursor:pointer"><title>${historyShortDate(c.dateStr)} · ${paused ? 'rest day' : c.level ? c.level + ' thing' + (c.level === 1 ? '' : 's') + ' logged' : 'nothing logged'}</title></rect>`;
   }).join('');
 
   box.innerHTML = `<svg width="${gridWidth}" height="${gridHeight}" viewBox="0 0 ${gridWidth} ${gridHeight}">${monthLabelsHtml}${cellsHtml}</svg>`;
 
   box.querySelectorAll('rect[data-date]').forEach(rect => {
-    rect.addEventListener('click', () => {
-      document.getElementById('foodDate').value = rect.dataset.date;
-      showView('food');
-    });
+    rect.addEventListener('click', () => focusHistoryDate(rect.dataset.date));
   });
 }
 
+// ── HISTORY ── your log grouped by week, compact cards that open on tap, filters, highlights.
+var historyFilters = new Set();   // 'injection' | 'sideeffects' | 'workouts' | 'notes'  (all must match)
+var historyWeekState = {};        // week start -> true/false once you have opened or closed it yourself
+var historyOpenCards = new Set(); // dates whose card is open
+var historyWeeksShown = 8;
+const HISTORY_FILTERS = [
+  { k: 'injection', label: '💉 Injection days', fn: e => !!e.injection },
+  { k: 'sideeffects', label: '🤢 Side effects', fn: e => !!(e.tags && e.tags.length) },
+  { k: 'workouts', label: '🏋️ Workouts', fn: e => !!((e.ex && e.ex.length) || e.healthMin) },
+  { k: 'notes', label: '📝 Notes', fn: e => !!(e.notes && e.notes.trim()) }
+];
+function historyShortDate(d) {
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...(dt.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) });
+}
+function historyPills(e) {
+  const pills = [];
+  const addPill = (k, h) => { pills.push({ k, h }); };
+    const gVal = e.glucose ? parseFloat(e.glucose) : null;
+    const g2Val = e.glucose2hr ? parseFloat(e.glucose2hr) : null;
+    const wVal  = e.weight  ? parseFloat(e.weight)  : null;
+    if (gVal != null) addPill('glucose', gVal < 70
+      ? `<span class="metric-pill out-range">⚠ LOW ${gVal} mg/dL</span>`
+      : `<span class="metric-pill ${gVal < GLUCOSE_TARGET ? 'in-range' : 'out-range'}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M12 2s7 8 7 13a7 7 0 0 1-14 0c0-5 7-13 7-13z"/></svg> ${gVal} mg/dL</span>`);
+    if (g2Val != null) addPill('glucose2hr', `<span class="metric-pill ${g2Val < GLUCOSE_2HR_TARGET ? 'in-range' : 'out-range'}">2hr ${g2Val} mg/dL</span>`);
+    if (wVal != null) addPill('weight', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="12" y1="3" x2="12" y2="21"/><line x1="5" y1="7" x2="19" y2="7"/><path d="M5 7 2 13a3 3 0 0 0 6 0z"/><path d="M19 7l-3 6a3 3 0 0 0 6 0z"/></svg> ${wVal.toFixed(1)} lbs</span>`);
+    if (e.dose) addPill('dose', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="4" y1="20" x2="17" y2="7"/><line x1="6" y1="18" x2="9" y2="21"/><line x1="9" y1="15" x2="12" y2="18"/></svg> ${e.dose}mg</span>`);
+    if (e.protein) addPill('protein', `<span class="metric-pill ${parseFloat(e.protein) >= userProteinGoal ? 'in-range' : 'neutral'}"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/></svg> ${e.protein}g protein</span>`);
+    if (e.sys && e.dia) addPill('bp', `<span class="metric-pill ${parseFloat(e.sys) < 130 && parseFloat(e.dia) < 80 ? 'in-range' : 'out-range'}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> ${e.sys}/${e.dia}</span>`);
+    if (e.carbs) addPill('carbs', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="12" y1="22" x2="12" y2="8"/><circle cx="12" cy="5" r="3"/><path d="M9 12c-2 0-3 1-3 3M15 12c2 0 3 1 3 3M9 16c-2 0-3 1-3 3M15 16c2 0 3 1 3 3"/></svg> ${e.carbs}g carbs</span>`);
+    if (e.calories) addPill('calories', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 17a2.5 2.5 0 0 0 2.5-2.5c0-1.5-1.5-2-1.5-3.5 0-1 1-2 1-2s3 2 3 5.5A5.5 5.5 0 0 1 10.5 20a5.5 5.5 0 0 1-5.5-5.5c0-3 2-5 3-7 0 0 .5 2 .5 3.5z"/></svg> ${e.calories} cal</span>`);
+    if ((e.ex && e.ex.length) || e.healthMin) addPill('exercise', `<span class="metric-pill in-range"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> ${effExMin(e)} min</span>`);
+    if (e.steps) addPill('steps', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><ellipse cx="8" cy="7" rx="2.5" ry="3.5"/><ellipse cx="16" cy="15" rx="2.5" ry="3.5"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="6" r="1"/></svg> ${parseInt(e.steps).toLocaleString()}</span>`);
+    if (e.restHR) addPill('restHR', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> ${Math.round(parseFloat(e.restHR))} bpm</span>`);
+    if (e.sleepHrs) addPill('sleep', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg> ${parseFloat(e.sleepHrs).toFixed(1)}h</span>`);
+    if (e.sleepScore) addPill('sleepScore', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" style="vertical-align:-1px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg> Sleep score ${Math.round(parseFloat(e.sleepScore))}</span>`);
+    if (e.activeCal) addPill('activeCal', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><polygon points="13 2 3 14 11 14 9 22 21 10 13 10 13 2"/></svg> ${Math.round(parseFloat(e.activeCal)).toLocaleString()} cal burned</span>`);
+    if (e.distanceMi) addPill('distance', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="6" y1="22" x2="10" y2="2"/><line x1="18" y1="22" x2="14" y2="2"/><line x1="12" y1="6" x2="11.5" y2="9"/><line x1="11" y1="12" x2="10.5" y2="15"/><line x1="10" y1="18" x2="9.5" y2="21"/></svg> ${parseFloat(e.distanceMi).toFixed(1)} mi</span>`);
+    if (e.hrv) addPill('hrv', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M1 12c1.5-4 3-4 4.5 0s3 4 4.5 0 3-4 4.5 0 3 4 4.5 0"/></svg> HRV ${Math.round(parseFloat(e.hrv))}ms</span>`);
+    if (e.water) addPill('water', `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M12 2s7 8 7 13a7 7 0 0 1-14 0c0-5 7-13 7-13z"/></svg> ${e.water} oz</span>`);
+  const tagHtml = e.tags && e.tags.length ? e.tags.map(t => `<span class="tag-pill">${t}</span>`).join('') : '';
+  return { pills, tagHtml };
+}
+function historyHighlights() {
+  const out = [], today = todayStr(), cut = lbAddDays(today, -30);
+  const wts = entries.filter(e => e.weight).map(e => ({ d: e.date, w: parseFloat(e.weight) })).filter(x => !isNaN(x.w)).sort((a, b) => a.d.localeCompare(b.d));
+  if (wts.length >= 2) {
+    const last = wts[wts.length - 1], prevMin = Math.min(...wts.slice(0, -1).map(x => x.w));
+    if (last.d >= cut && last.w < prevMin) out.push({ ico: '⚖️', t: `New low weight: ${last.w} lb`, sub: fmtDate(last.d) });
+  }
+  let prs = 0; try { buildWorkoutHistorySummaries().forEach(sm => { if (sm.date >= cut) prs += sm.prCount; }); } catch (err) { /* ignore */ }
+  if (prs) out.push({ ico: '🏆', t: `${prs} PR${prs === 1 ? '' : 's'} this month` });
+  let streak = 0; try { streak = currentLoggingStreak(); } catch (err) { /* ignore */ }
+  if (streak >= 3) out.push({ ico: '🔥', t: `${streak}-day logging streak` });
+  if (wts.length >= 2) {
+    const inWin = wts.filter(x => x.d >= cut), base = wts.filter(x => x.d < cut).pop() || inWin[0], last = wts[wts.length - 1];
+    if (base && last.d >= cut && base.d !== last.d) { const d = Math.round((last.w - base.w) * 10) / 10; if (d !== 0) out.push({ ico: d < 0 ? '📉' : '📈', t: `${d < 0 ? '−' : '+'}${Math.abs(d)} lb`, sub: 'in 30 days' }); }
+  }
+  let pd = 0; for (let i = 0; i < 7; i++) { const v = dayProteinForHistory(lbAddDays(today, -i)); if (v != null && v >= userProteinGoal) pd++; }
+  if (pd) out.push({ ico: '🥩', t: `${pd} of 7 days at protein goal` });
+  const wo = entries.filter(e => e.date >= cut && (e.ex || []).some(x => x.type === 'Strength')).length;
+  if (wo) out.push({ ico: '🏋️', t: `${wo} workout${wo === 1 ? '' : 's'}`, sub: 'in 30 days' });
+  return out.slice(0, 3);
+}
+function dayProteinForHistory(d) {
+  const e = entries.find(x => x.date === d); if (!e) return null;
+  if (e.meals && e.meals.length) { const t = mealTotals(e.meals).protein; return t != null ? t : null; }
+  const v = parseFloat(e.protein); return isNaN(v) ? null : v;
+}
+function historyWeekSummary(wk) {
+  const all = entries.filter(e => lbWeekStart(e.date) === wk).sort((a, b) => a.date.localeCompare(b.date));
+  const parts = [];
+  const wts = all.filter(e => e.weight);
+  if (wts.length) {
+    const lastW = parseFloat(wts[wts.length - 1].weight), prev = entries.filter(e => e.weight && e.date < wk).sort((a, b) => b.date.localeCompare(a.date))[0];
+    let t = `${lastW} lb`;
+    if (prev) { const d = Math.round((lastW - parseFloat(prev.weight)) * 10) / 10; t += d === 0 ? ' (same)' : ` (${d < 0 ? '−' : '+'}${Math.abs(d)})`; }
+    parts.push(t);
+  }
+  const prot = all.map(e => parseFloat(e.protein)).filter(v => v > 0);
+  if (prot.length) parts.push(`avg ${Math.round(prot.reduce((x, y) => x + y, 0) / prot.length)} g protein`);
+  const wo = all.filter(e => (e.ex || []).some(x => x.type === 'Strength')).length;
+  if (wo) parts.push(`${wo} workout${wo === 1 ? '' : 's'}`);
+  const inj = all.find(e => e.injection);
+  if (inj) parts.push(`💉 ${inj.dose ? inj.dose + ' mg' : 'dose'}`);
+  const app = all.map(e => Number(e.appetite)).filter(v => v > 0);
+  if (app.length) parts.push(`appetite ${(app.reduce((x, y) => x + y, 0) / app.length).toFixed(1)}`);
+  return parts.join(' · ');
+}
+function historySummariesByDate() { const o = {}; try { buildWorkoutHistorySummaries().forEach(sm => { o[sm.date] = sm; }); } catch (err) { /* ignore */ } return o; }
+function historyCardHtml(e, sumBy) {
+    const badge = e.injection ? `<span class="entry-badge injection"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="4" y1="20" x2="17" y2="7"/><line x1="6" y1="18" x2="9" y2="21"/><line x1="9" y1="15" x2="12" y2="18"/></svg> Injection${e.site ? ' · ' + e.site : ''}</span>` : (e.dose ? `<span class="entry-badge">${e.dose}mg</span>` : '');
+  const { pills, tagHtml } = historyPills(e);
+  const sm = sumBy[e.date];
+  let workout = '';
+  if (sm) workout = `<span class="metric-pill in-range">🏋️ ${escapeHtml(sm.label)} · ${sm.duration}m${sm.prCount ? ` · 🏆${sm.prCount}` : ''}</span>`;
+  else if (e.ex && e.ex.length) { const mins = e.ex.reduce((t, x) => t + (x.min || 0), 0); workout = `<span class="metric-pill in-range">${escapeHtml(e.ex.map(x => x.type).filter((v, i, a) => a.indexOf(v) === i).join(' + '))}${mins ? ` · ${mins}m` : ''}</span>`; }
+  const byKey = {}; pills.forEach(q => { byKey[q.k] = q.h; });
+  const order = ['weight', 'dose', 'glucose', 'protein', 'workout', 'calories'];
+  const present = order.filter(k => k === 'workout' ? !!workout : !!byKey[k]);
+  const compactKeys = present.slice(0, 4);
+  const htmlFor = k => k === 'workout' ? workout : byKey[k];
+  const rest = pills.filter(q => !compactKeys.includes(q.k) && q.k !== 'exercise').map(q => q.h);
+  if (workout && !compactKeys.includes('workout')) rest.unshift(workout);
+  const open = historyOpenCards.has(e.date);
+  let metrics = compactKeys.map(htmlFor).join('') + tagHtml;
+  if (open) metrics += rest.join('');
+  else if (rest.length) metrics += `<button type="button" class="hist-more-btn" aria-label="Show ${rest.length} more details">+${rest.length} more</button>`;
+  let details = '';
+  if (open) {
+    const lifts = sm && sm.exercises && sm.exercises.length ? `<div class="hist-lifts">${sm.exercises.map(x => `<div style="color:var(--ink-soft)">${x.setCount} × ${escapeHtml(x.name)}</div><div class="n">${x.bestWeight != null ? `${x.bestWeight} lb × ${x.bestReps}${x.pr ? ' 🏆' : ''}` : '—'}</div>`).join('')}</div>` : '';
+    details = `${lifts}
+      ${e.meals && e.meals.length ? `<div class="entry-notes">${MEAL_ORDER.filter(mt => e.meals.some(m => (m.mt||'Other') === mt)).map(mt => `<strong>${mt}:</strong> ` + e.meals.filter(m => (m.mt||'Other') === mt).map(m => m.desc + (m.protein ? ` (${m.protein}g)` : '')).join(' · ')).join('<br>')}</div>` : (e.food ? `<div class="entry-notes"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 2v6a2 2 0 0 0 4 0V2"/><line x1="9" y1="8" x2="9" y2="22"/><path d="M17 2c-2 2-2 6 0 8v12"/></svg> ${e.food}</div>` : '')}
+      ${e.notes ? `<div class="entry-notes">${escapeHtml(e.notes)}</div>` : ''}
+      <div style="margin-top:8px"><button type="button" class="hist-more-btn hist-less-btn">Show less</button></div>`;
+  } else if (e.notes) {
+    details = `<div class="hist-note-1">📝 ${escapeHtml(e.notes)}</div>`;
+  }
+  return `<div class="entry-card hist-card${open ? ' open' : ''}" data-date="${e.date}">
+      <div class="entry-card-header">
+        <div class="entry-date">${historyShortDate(e.date)}</div>
+        <div style="display:flex;align-items:center;gap:4px">
+          ${badge}
+          <button type="button" class="entry-more" aria-label="More actions for ${historyShortDate(e.date)}" aria-haspopup="menu">⋯</button>
+        </div>
+      </div>
+      <div class="entry-menu" role="menu" hidden>
+        <button type="button" class="entry-edit" role="menuitem" data-date="${e.date}">✎ Edit entry</button>
+        <button type="button" class="entry-del" role="menuitem" data-date="${e.date}">✕ Delete entry</button>
+      </div>
+      ${metrics ? `<div class="entry-metrics">${metrics}</div>` : ''}
+      ${details}
+    </div>`;
+}
+function wireHistoryCard(card) {
+  const date = card.dataset.date;
+  const toggle = () => { if (historyOpenCards.has(date)) historyOpenCards.delete(date); else historyOpenCards.add(date); rerenderHistoryCard(date); };
+  card.addEventListener('click', ev => { if (ev.target.closest('.entry-more, .entry-menu')) return; if (ev.target.closest('button') && !ev.target.closest('.hist-more-btn')) return; toggle(); });
+  const menu = card.querySelector('.entry-menu');
+  card.querySelector('.entry-more').addEventListener('click', ev => { ev.stopPropagation(); const was = menu.hidden; document.querySelectorAll('#historyList .entry-menu').forEach(m => { m.hidden = true; }); menu.hidden = !was; });
+  card.querySelector('.entry-edit').addEventListener('click', ev => { ev.stopPropagation(); editEntry(date); });
+  card.querySelector('.entry-del').addEventListener('click', ev => { ev.stopPropagation(); menu.hidden = true; deleteEntry(date); });
+}
+function rerenderHistoryCard(date) {
+  const el = document.querySelector(`#historyList .entry-card[data-date="${date}"]`), e = entries.find(x => x.date === date);
+  if (!el || !e) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = historyCardHtml(e, historySummariesByDate());
+  const nu = tmp.firstElementChild; el.replaceWith(nu); wireHistoryCard(nu);
+}
+document.addEventListener('click', ev => { if (!ev.target.closest || !ev.target.closest('.entry-menu, .entry-more')) document.querySelectorAll('#historyList .entry-menu').forEach(m => { m.hidden = true; }); });
+// jump to one day from the heatmap: open its week and card, scroll to it, flash it
+function focusHistoryDate(date) {
+  if (!entries.some(e => e.date === date)) { showGoldToast(`Nothing logged on ${historyShortDate(date)}`, 2400); return; }
+  historyFilters.clear(); const si = document.getElementById('historySearch'); if (si) si.value = '';
+  const wk = lbWeekStart(date); historyWeekState[wk] = true; historyOpenCards.add(date);
+  const weeks = [...new Set(entries.map(e => lbWeekStart(e.date)))].sort().reverse(); historyWeeksShown = Math.max(historyWeeksShown, weeks.indexOf(wk) + 1);
+  renderHistory();
+  const card = document.querySelector(`#historyList .entry-card[data-date="${date}"]`);
+  if (card) { if (card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('hl-flash'); }
+}
 function renderHistory() {
   renderConsistencyHeatmap();
   try { renderMuscleMap(); } catch (err) { console.error('Muscle map failed:', err); }
   const search = (document.getElementById('historySearch')?.value || '').toLowerCase();
-  const list   = document.getElementById('historyList');
-  const sorted = [...entries].sort((a,b) => b.date.localeCompare(a.date));
-  const filtered = search ? sorted.filter(e =>
-    (e.notes||'').toLowerCase().includes(search) ||
-    (e.food||'').toLowerCase().includes(search) ||
-    (e.meals||[]).some(m => (m.desc||'').toLowerCase().includes(search)) ||
-    (e.tags||[]).some(t => t.toLowerCase().includes(search))
-  ) : sorted;
-
+  const list = document.getElementById('historyList');
+  const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
+  // highlights + filter chips
+  const hl = document.getElementById('historyHighlights');
+  if (hl) hl.innerHTML = historyHighlights().map(h => `<span class="hist-hl">${h.ico} ${escapeHtml(h.t)}${h.sub ? ` <small>${escapeHtml(h.sub)}</small>` : ''}</span>`).join('');
+  const fb = document.getElementById('historyFilters');
+  if (fb) {
+    fb.innerHTML = HISTORY_FILTERS.map(f => `<div class="chip${historyFilters.has(f.k) ? ' on' : ''}" data-histfilter="${f.k}" role="button" tabindex="0">${f.label}<small>${sorted.filter(f.fn).length}</small></div>`).join('');
+    fb.querySelectorAll('[data-histfilter]').forEach(c => {
+      const flip = () => { const k = c.dataset.histfilter; if (historyFilters.has(k)) historyFilters.delete(k); else historyFilters.add(k); renderHistory(); };
+      c.addEventListener('click', flip); c.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); flip(); } });
+    });
+  }
+  const fns = HISTORY_FILTERS.filter(f => historyFilters.has(f.k)).map(f => f.fn);
+  const filtered = sorted.filter(e => fns.every(fn => fn(e)) && (!search ||
+    (e.notes || '').toLowerCase().includes(search) || (e.food || '').toLowerCase().includes(search) ||
+    (e.meals || []).some(m => (m.desc || '').toLowerCase().includes(search)) || (e.tags || []).some(t => t.toLowerCase().includes(search))));
+  const narrowing = !!search || historyFilters.size > 0;
   if (!filtered.length) {
-    list.innerHTML = `<div class="empty-state"><div class="icon">📋</div>${search ? 'No entries match your search.' : 'No entries yet. Log your first reading in the Log tab.'}</div>`;
+    list.innerHTML = `<div class="empty-state"><div class="icon">📋</div>${narrowing ? 'No entries match your search or filters.' : 'No entries yet. Log your first reading in the Log tab.'}</div>`;
     return;
   }
-
-  list.innerHTML = filtered.map(e => {
-    const gVal = e.glucose ? parseFloat(e.glucose) : null;
-    const g2Val = e.glucose2hr ? parseFloat(e.glucose2hr) : null;
-    const wVal  = e.weight  ? parseFloat(e.weight)  : null;
-
-    let metrics = '';
-    if (gVal != null)  metrics += gVal < 70
-      ? `<span class="metric-pill out-range">⚠ LOW ${gVal} mg/dL</span>`
-      : `<span class="metric-pill ${gVal < GLUCOSE_TARGET ? 'in-range' : 'out-range'}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M12 2s7 8 7 13a7 7 0 0 1-14 0c0-5 7-13 7-13z"/></svg> ${gVal} mg/dL</span>`;
-    if (g2Val != null) metrics += `<span class="metric-pill ${g2Val < GLUCOSE_2HR_TARGET ? 'in-range' : 'out-range'}">2hr ${g2Val} mg/dL</span>`;
-    if (wVal != null)  metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="12" y1="3" x2="12" y2="21"/><line x1="5" y1="7" x2="19" y2="7"/><path d="M5 7 2 13a3 3 0 0 0 6 0z"/><path d="M19 7l-3 6a3 3 0 0 0 6 0z"/></svg> ${wVal.toFixed(1)} lbs</span>`;
-    if (e.dose)        metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="4" y1="20" x2="17" y2="7"/><line x1="6" y1="18" x2="9" y2="21"/><line x1="9" y1="15" x2="12" y2="18"/></svg> ${e.dose}mg</span>`;
-    if (e.protein)     metrics += `<span class="metric-pill ${parseFloat(e.protein) >= userProteinGoal ? 'in-range' : 'neutral'}"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/></svg> ${e.protein}g protein</span>`;
-    if (e.sys && e.dia) metrics += `<span class="metric-pill ${parseFloat(e.sys) < 130 && parseFloat(e.dia) < 80 ? 'in-range' : 'out-range'}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> ${e.sys}/${e.dia}</span>`;
-    if (e.carbs)       metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="12" y1="22" x2="12" y2="8"/><circle cx="12" cy="5" r="3"/><path d="M9 12c-2 0-3 1-3 3M15 12c2 0 3 1 3 3M9 16c-2 0-3 1-3 3M15 16c2 0 3 1 3 3"/></svg> ${e.carbs}g carbs</span>`;
-    if (e.calories)    metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 17a2.5 2.5 0 0 0 2.5-2.5c0-1.5-1.5-2-1.5-3.5 0-1 1-2 1-2s3 2 3 5.5A5.5 5.5 0 0 1 10.5 20a5.5 5.5 0 0 1-5.5-5.5c0-3 2-5 3-7 0 0 .5 2 .5 3.5z"/></svg> ${e.calories} cal</span>`;
-    if ((e.ex && e.ex.length) || e.healthMin) metrics += `<span class="metric-pill in-range"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> ${effExMin(e)} min</span>`;
-    if (e.steps) metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><ellipse cx="8" cy="7" rx="2.5" ry="3.5"/><ellipse cx="16" cy="15" rx="2.5" ry="3.5"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="6" r="1"/></svg> ${parseInt(e.steps).toLocaleString()}</span>`;
-    if (e.restHR) metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> ${Math.round(parseFloat(e.restHR))} bpm</span>`;
-    if (e.sleepHrs) metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg> ${parseFloat(e.sleepHrs).toFixed(1)}h</span>`;
-    if (e.sleepScore) metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" style="vertical-align:-1px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg> Sleep score ${Math.round(parseFloat(e.sleepScore))}</span>`;
-    if (e.activeCal) metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><polygon points="13 2 3 14 11 14 9 22 21 10 13 10 13 2"/></svg> ${Math.round(parseFloat(e.activeCal)).toLocaleString()} cal burned</span>`;
-    if (e.distanceMi) metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="6" y1="22" x2="10" y2="2"/><line x1="18" y1="22" x2="14" y2="2"/><line x1="12" y1="6" x2="11.5" y2="9"/><line x1="11" y1="12" x2="10.5" y2="15"/><line x1="10" y1="18" x2="9.5" y2="21"/></svg> ${parseFloat(e.distanceMi).toFixed(1)} mi</span>`;
-    if (e.hrv) metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M1 12c1.5-4 3-4 4.5 0s3 4 4.5 0 3-4 4.5 0 3 4 4.5 0"/></svg> HRV ${Math.round(parseFloat(e.hrv))}ms</span>`;
-    if (e.water)       metrics += `<span class="metric-pill neutral"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M12 2s7 8 7 13a7 7 0 0 1-14 0c0-5 7-13 7-13z"/></svg> ${e.water} oz</span>`;
-    if (e.tags && e.tags.length) metrics += e.tags.map(t => `<span class="tag-pill">${t}</span>`).join('');
-
-    const badge = e.injection ? `<span class="entry-badge injection"><svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="4" y1="20" x2="17" y2="7"/><line x1="6" y1="18" x2="9" y2="21"/><line x1="9" y1="15" x2="12" y2="18"/></svg> Injection${e.site ? ' · ' + e.site : ''}</span>` : (e.dose ? `<span class="entry-badge">${e.dose}mg</span>` : '');
-
-    return `<div class="entry-card">
-      <div class="entry-card-header">
-        <div class="entry-date">${fmtDateFull(e.date)}</div>
-        <div style="display:flex;align-items:center;gap:6px">
-          ${badge}
-          <button class="entry-edit" data-date="${e.date}" title="Edit entry" aria-label="Edit entry for ${e.date}">✎</button>
-          <button class="entry-del" data-date="${e.date}" aria-label="Delete entry for ${e.date}">✕</button>
-        </div>
-      </div>
-      ${metrics ? `<div class="entry-metrics">${metrics}</div>` : ''}
-      ${e.meals && e.meals.length ? `<div class="entry-notes">${MEAL_ORDER.filter(mt => e.meals.some(m => (m.mt||'Other') === mt)).map(mt => `<strong>${mt}:</strong> ` + e.meals.filter(m => (m.mt||'Other') === mt).map(m => m.desc + (m.protein ? ` (${m.protein}g)` : '')).join(' · ')).join('<br>')}</div>` : (e.food ? `<div class="entry-notes"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 2v6a2 2 0 0 0 4 0V2"/><line x1="9" y1="8" x2="9" y2="22"/><path d="M17 2c-2 2-2 6 0 8v12"/></svg> ${e.food}</div>` : '')}
-      ${e.notes ? `<div class="entry-notes">${e.notes}</div>` : ''}
+  const groups = [], byWeek = new Map();
+  filtered.forEach(e => { const wk = lbWeekStart(e.date); if (!byWeek.has(wk)) { const g = { wk, items: [] }; byWeek.set(wk, g); groups.push(g); } byWeek.get(wk).items.push(e); });
+  const shown = narrowing ? groups : groups.slice(0, historyWeeksShown);
+  const sumBy = historySummariesByDate(), thisWk = lbWeekStart(todayStr()), lastWk = lbWeekStart(lbAddDays(todayStr(), -7));
+  let html = shown.map((g, gi) => {
+    const isOpen = narrowing ? true : (g.wk in historyWeekState ? historyWeekState[g.wk] : gi < 2);
+    const title = g.wk === thisWk ? 'This week' : g.wk === lastWk ? 'Last week' : `Week of ${fmtDate(g.wk)}`;
+    const sum = historyWeekSummary(g.wk);
+    return `<div class="hist-week" data-week="${g.wk}">
+      <button type="button" class="hist-week-head" data-weektoggle="${g.wk}" aria-expanded="${isOpen}"><span class="hw-title">${title}</span><span class="hw-count">${g.items.length} ${narrowing ? 'match' + (g.items.length === 1 ? '' : 'es') : (g.items.length === 1 ? 'entry' : 'entries')}</span><span class="hw-chev">${isOpen ? '▾' : '▸'}</span></button>
+      ${sum ? `<div class="hw-sum">${sum}</div>` : ''}
+      ${isOpen ? g.items.map(e => historyCardHtml(e, sumBy)).join('') : ''}
     </div>`;
   }).join('');
-
-  list.querySelectorAll('.entry-del').forEach(btn => {
-    btn.addEventListener('click', () => deleteEntry(btn.dataset.date));
-  });
-  list.querySelectorAll('.entry-edit').forEach(btn => {
-    btn.addEventListener('click', () => editEntry(btn.dataset.date));
-  });
+  if (!narrowing && groups.length > shown.length) html += `<button type="button" class="btn btn-ghost btn-sm" id="historyMoreWeeks" style="width:100%;margin-top:4px">Show ${Math.min(8, groups.length - shown.length)} older week${groups.length - shown.length === 1 ? '' : 's'} (${groups.length - shown.length} more)</button>`;
+  list.innerHTML = html;
+  list.querySelectorAll('.entry-card').forEach(wireHistoryCard);
+  list.querySelectorAll('[data-weektoggle]').forEach(b => b.addEventListener('click', () => {
+    const wk = b.dataset.weektoggle, wasOpen = b.getAttribute('aria-expanded') === 'true';
+    historyWeekState[wk] = !wasOpen; renderHistory();
+  }));
+  const more = list.querySelector('#historyMoreWeeks');
+  if (more) more.addEventListener('click', () => { historyWeeksShown += 8; renderHistory(); });
 }
 
 // ── EDIT ENTRY ──
@@ -16626,6 +16819,7 @@ function updateFoodStripVisibility() {
 }
 document.getElementById('app-main').addEventListener('scroll', updateFoodStripVisibility, { passive: true });
 document.getElementById('foodStripPhoto').addEventListener('click', () => startPhotoLog());
+document.getElementById('historyDoctorBtn').addEventListener('click', () => showDoctorSummary());
 document.getElementById('foodStripAdd').addEventListener('click', () => {
   ensureAddFoodOpenOnQuickTab();
   const desc = document.getElementById('mDesc');
