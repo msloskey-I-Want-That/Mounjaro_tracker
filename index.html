@@ -336,6 +336,19 @@ body {
 #view-dashboard.editing-home .form-card.home-extra-card { border-color: var(--teal); }
 #view-dashboard.editing-home .form-card.home-extra-card .hide-card-btn { display: flex; }
 #view-dashboard.editing-home .form-card.home-extra-card .today-head { padding-left: 26px; }
+.sc-section { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; border-top: 1px solid var(--line); padding: 12px 2px 6px; color: var(--ink); font: inherit; cursor: pointer; text-align: left; }
+.sc-section:first-child { border-top: none; padding-top: 0; }
+.sc-sec-name { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; flex-shrink: 0; }
+.sc-sec-sum { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.sc-sec-chev { font-size: 11px; color: var(--ink-soft); width: 12px; flex-shrink: 0; }
+.sc-auto-hidden { display: none !important; }
+.sc-empty-row { grid-column: 1 / -1; display: flex; justify-content: center; }
+.sc-empty-btn { background: none; border: 1.5px dashed var(--line); border-radius: 999px; padding: 6px 14px; color: var(--ink-soft); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.stat-card[data-go] { cursor: pointer; }
+.stat-grid.editing .sc-section, .stat-grid.editing .sc-empty-row { display: none; }
+.today-sub { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 12px 0 2px; padding-top: 10px; border-top: 1px solid var(--line); }
+.wrap-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.tw-note { font-size: 12px; color: var(--ink-soft); margin-top: 6px; line-height: 1.45; }
 .today-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:2px; }
 .today-title { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); }
 .today-date { font-size:11px; color:var(--ink-soft); white-space:nowrap; }
@@ -1648,15 +1661,14 @@ body {
         <div class="today-head"><span class="today-title">Today</span><span class="today-date" id="todayDate"></span></div>
         <div class="today-headline" id="todayHeadline">—</div>
         <div class="today-chips" id="todayChips"></div>
-        <div class="today-week" id="todayWeek"></div>
+        <div id="todayWrapUp" style="display:none"></div>
+        <div id="dueTodayCard" style="display:none">
+          <div class="today-sub">Coming up</div>
+          <div id="dueTodayList"></div>
+        </div>
       </div>
 
       <div class="inj-banner" id="injBanner"></div>
-
-      <div class="form-card" id="dueTodayCard" style="margin-bottom:14px;display:none">
-        <div class="form-section-title">What's Due Today</div>
-        <div id="dueTodayList"></div>
-      </div>
 
       <div class="form-card" id="ringsCard" style="margin-bottom:14px;border-radius:20px;box-shadow:var(--shadow-hero)">
         <div style="display:flex;align-items:center;gap:16px">
@@ -2007,11 +2019,12 @@ body {
           <div id="msBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--teal-mid),var(--teal));border-radius:5px;transition:width 0.5s"></div>
         </div>
         <div style="font-size:11px;color:var(--ink-soft);margin-top:6px" id="msSub">—</div>
+        <button type="button" class="link-btn" id="msAllBtn" style="margin-top:4px">All milestones &amp; badges →</button>
       </div>
 
       <div class="timeline-card home-extra-card" data-card-key="milestoneRoadmap">
-        <div class="timeline-title">Milestone Roadmap</div>
-        <div id="msRoadmap"></div>
+        <div class="timeline-title" id="msRoadmapHead" role="button" tabindex="0" aria-expanded="false" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0">Milestone Roadmap <span id="msRoadmapChev" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
+        <div id="msRoadmap" style="display:none;margin-top:10px"></div>
       </div>
 
       <button class="btn btn-primary" id="quickLogBtn" style="margin-bottom:16px">+ Log Today's Reading</button>
@@ -4066,6 +4079,73 @@ CARD_CATALOG.milestoneProgress = { icon: '<svg width="1em" height="1em" viewBox=
 CARD_CATALOG.todaySummary = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>', label: 'Today' };
 CARD_CATALOG.milestoneRoadmap = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>', label: 'Milestone Roadmap' };
 
+// ── HOME SECTIONS ── the stat cards grouped under headers that open and close; cards with no data fold into one row.
+const STAT_GROUP = { day: 'Treatment', loggingStreak: 'Treatment', dose: 'Treatment', meds: 'Treatment', labs: 'Treatment',
+  weight: 'Body', change: 'Body', glucose: 'Body', glucose2hr: 'Body', bp: 'Body',
+  protein: 'Nutrition', water: 'Nutrition', carbs: 'Nutrition', calories: 'Nutrition', fat: 'Nutrition',
+  steps: 'Activity', exercise: 'Activity', workoutVolume: 'Activity', planDay: 'Activity', activeCal: 'Activity', distance: 'Activity', pace: 'Activity', incline: 'Activity',
+  sleep: 'Recovery', hrv: 'Recovery', hr: 'Recovery' };
+const STAT_SHORT = { day: 'Day', loggingStreak: 'Streak', dose: 'Dose', meds: 'Meds', labs: 'Labs', weight: 'Weight', change: 'Lost', glucose: 'Fasting', glucose2hr: 'Post-meal', bp: 'BP',
+  protein: 'Protein', water: 'Water', carbs: 'Carbs', calories: 'Cal', fat: 'Fat', steps: 'Steps', exercise: 'Exercise', workoutVolume: 'Volume', planDay: 'Plan', activeCal: 'Active', distance: 'Distance', pace: 'Pace', incline: 'Incline', sleep: 'Sleep', hrv: 'HRV', hr: 'Rest HR' };
+const STAT_DEST = { weight: ['charts'], change: ['charts'], glucose: ['charts'], glucose2hr: ['charts'], bp: ['log', 'daily'], protein: ['food'], water: ['food'], carbs: ['food'], calories: ['food'], fat: ['food'],
+  steps: ['charts'], exercise: ['exercise'], workoutVolume: ['exercise'], planDay: ['exercise'], activeCal: ['charts'], distance: ['charts'], pace: ['exercise'], incline: ['exercise'],
+  sleep: ['charts'], hrv: ['charts'], hr: ['charts'], dose: ['log', 'meds'], meds: ['log', 'meds'], labs: ['log', 'results'], day: ['badges'], loggingStreak: ['history'] };
+var homeGroupState = {};       // group -> true (open) / false (closed), once you have chosen
+var showEmptyStatCards = false;
+try { homeGroupState = JSON.parse(localStorage.getItem('mounjaro-home-groups') || '{}') || {}; showEmptyStatCards = localStorage.getItem('mounjaro-home-showempty') === 'true'; } catch (err) { homeGroupState = {}; }
+function homeGroupIsOpen(g) { return g in homeGroupState ? !!homeGroupState[g] : !(g === 'Nutrition' || g === 'Activity'); } // Nutrition and Activity are already in the rings and the Today card
+function applyStatSections() {
+  const grid = document.getElementById('statGrid'); if (!grid) return;
+  grid.querySelectorAll('.sc-section, .sc-empty-row').forEach(n => n.remove());
+  if (!dashboardOrder.length && !grid.dataset.grouped) {         // no layout of your own yet: put the cards in group order once
+    const ORDER = ['Treatment', 'Body', 'Nutrition', 'Activity', 'Recovery'], gi = c => { const i = ORDER.indexOf(STAT_GROUP[c.dataset.cardKey]); return i < 0 ? 99 : i; };
+    [...grid.querySelectorAll('.stat-card')].map((c, i) => ({ c, i })).sort((a, b) => (gi(a.c) - gi(b.c)) || (a.i - b.i)).forEach(x => grid.appendChild(x.c));
+    grid.dataset.grouped = '1';
+  }
+  const cards = [...grid.querySelectorAll('.stat-card')];
+  cards.forEach(c => c.classList.remove('sc-auto-hidden'));
+  if (grid.classList.contains('editing')) return;               // customizing: show everything, headers off
+  const live = cards.filter(c => !hiddenCards.includes(c.dataset.cardKey));
+  const isEmpty = c => { const v = c.querySelector('.sc-value'); const t = v ? v.textContent.trim() : ''; return t === '' || t === '—'; };
+  const groupOf = c => STAT_GROUP[c.dataset.cardKey] || 'More';
+  const emptyN = { n: 0 };
+  live.forEach(c => { if (isEmpty(c)) emptyN.n++; });
+  // runs of consecutive cards from the same group; each run gets one header, and only if it has something to show
+  const runs = [];
+  live.forEach(c => { const g = groupOf(c), last = runs[runs.length - 1]; if (last && last.g === g) last.cards.push(c); else runs.push({ g, cards: [c] }); });
+  runs.forEach(run => {
+    const open = homeGroupIsOpen(run.g), filled = run.cards.filter(c => !isEmpty(c));
+    run.cards.forEach(c => { if (!open || (isEmpty(c) && !showEmptyStatCards)) c.classList.add('sc-auto-hidden'); });
+    if (filled.length || showEmptyStatCards) {
+      const sum = filled.slice(0, 4).map(x => `${STAT_SHORT[x.dataset.cardKey] || ''} ${x.querySelector('.sc-value').textContent.trim()}`).join(' · ');
+      const h = document.createElement('button');
+      h.type = 'button'; h.className = 'sc-section'; h.dataset.group = run.g; h.setAttribute('aria-expanded', String(open));
+      h.innerHTML = `<span class="sc-sec-name">${run.g}</span><span class="sc-sec-sum">${open ? '' : escapeHtml(sum)}</span><span class="sc-sec-chev">${open ? '▼' : '▶'}</span>`;
+      run.cards[0].parentNode.insertBefore(h, run.cards[0]);
+    }
+  });
+  if (emptyN.n) {
+    const row = document.createElement('div'); row.className = 'sc-empty-row';
+    row.innerHTML = `<button type="button" class="sc-empty-btn" data-empty-toggle="1">${showEmptyStatCards ? 'Hide' : `${emptyN.n} card${emptyN.n === 1 ? ' has' : 's have'} no data yet · Show`}</button>`;
+    grid.appendChild(row);
+  }
+}
+(function wireStatGrid() {
+  const grid = document.getElementById('statGrid'); if (!grid) return;
+  grid.addEventListener('click', ev => {
+    const t = ev.target.closest ? ev.target : null; if (!t) return;
+    const head = t.closest('.sc-section');
+    if (head) { const g = head.dataset.group; homeGroupState[g] = !homeGroupIsOpen(g); try { localStorage.setItem('mounjaro-home-groups', JSON.stringify(homeGroupState)); } catch (err) { /* ignore */ } applyStatSections(); return; }
+    if (t.closest('[data-empty-toggle]')) { showEmptyStatCards = !showEmptyStatCards; try { localStorage.setItem('mounjaro-home-showempty', String(showEmptyStatCards)); } catch (err) { /* ignore */ } applyStatSections(); return; }
+    if (grid.classList.contains('editing') || t.closest('button, a, input, select, .drag-handle, .hide-card-btn')) return;
+    const card = t.closest('.stat-card'); if (!card) return;
+    const dest = STAT_DEST[card.dataset.cardKey]; if (!dest) return;
+    showView(dest[0]);
+    if (dest[0] === 'log' && dest[1]) { const chip = document.querySelector(`#logSubtabRow [data-logsub="${dest[1]}"]`); if (chip) chip.click(); }
+    window.scrollTo(0, 0);
+  });
+  grid.querySelectorAll('.stat-card').forEach(c => { if (STAT_DEST[c.dataset.cardKey]) c.dataset.go = '1'; });
+})();
 function applyDashboardOrder(order) {
   const grid = document.getElementById('statGrid');
   if (!grid || !Array.isArray(order) || !order.length) return;
@@ -4082,6 +4162,7 @@ function applyCardVisibility() {
   document.querySelectorAll('#statGrid .stat-card, .home-extra-card').forEach(card => {
     card.style.display = hiddenCards.includes(card.dataset.cardKey) ? 'none' : '';
   });
+  try { applyStatSections(); } catch (err) { console.error(err); }
 }
 
 async function saveDashboardVisibility() {
@@ -4146,6 +4227,7 @@ function initDashboardSortable() {
   if (!grid || typeof Sortable === 'undefined' || dashSortable) return;
   dashSortable = Sortable.create(grid, {
     handle: '.drag-handle',
+    draggable: '.stat-card',
     animation: 150,
     disabled: true,
     onEnd: async () => {
@@ -4174,6 +4256,7 @@ document.getElementById('customizeDashBtn').addEventListener('click', () => {
     : '<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg> Customize Layout';
   if (editing) { renderAddCardMenu(); menu.style.display = 'block'; }
   else { menu.style.display = 'none'; }
+  try { applyStatSections(); } catch (err) { console.error(err); }
 });
 
 let stepGoalOverride   = 0;          // 0 = auto-ramp by treatment phase
@@ -6291,7 +6374,8 @@ function updateStats() {
     const patternsBody = document.getElementById('patternsBody');
     if (recapCard && recapBody && patternsSection && patternsBody) {
       const wChange = weightChangeOverDays(7);
-      const workouts = workoutsInLastDays(7);
+      const workouts = weekLiftDays();
+      let chDone = 0, chTotal = 0; try { const ch = weeklyChallenges(lbWeekStart(todayStr())); chTotal = ch.length; chDone = ch.filter(c => c.done).length; } catch (err) { /* ignore */ }
       const streak = currentLoggingStreak();
       const hasRecapData = wChange !== null || workouts > 0 || streak > 0;
       if (hasRecapData) {
@@ -6304,12 +6388,16 @@ function updateStats() {
           </div>
           <div>
             <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:#37C6FF">${workouts}</div>
-            <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Workout${workouts === 1 ? '' : 's'}</div>
+            <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Lift${workouts === 1 ? '' : 's'} this week</div>
           </div>
           <div>
             <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:#FFB020">${streak}</div>
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Day Streak</div>
           </div>
+          ${chTotal ? `<div data-recap-go="badges" role="button" tabindex="0" style="cursor:pointer">
+            <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:#5CE6C0">${chDone}/${chTotal}</div>
+            <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Challenges ›</div>
+          </div>` : ''}
         `;
         recapBody.style.display = 'flex';
       } else {
@@ -6329,6 +6417,7 @@ function updateStats() {
     }
   } catch (err) { console.error('Weekly recap / Patterns computation failed:', err); }
 
+  try { applyStatSections(); } catch (err) { console.error('Home sections failed:', err); }
   try { renderAchievementCelebrations(badgeCatsForHints); } catch (err) { console.error('Achievement celebration failed:', err); }
 }
 
@@ -14153,7 +14242,7 @@ function renderWorkoutPlan() {
   entries.forEach(e => (e.ex || []).forEach(x => { if (x.type === 'Strength' && x.planDay === heroKey && x.min > 0) heroMins.push(x.min); }));
   heroMins.sort((a, b) => a - b);
   const heroTyp = heroMins.length ? heroMins[Math.floor(heroMins.length / 2)] : null;
-  const todayWorkoutHtml = `<div class="today-workout" id="todayWorkout"><div class="tw-title">${escapeHtml(currentPlanDisplayName())}</div><div class="tw-meta">${plan.length} exercise${plan.length === 1 ? '' : 's'}${heroTyp ? ` · about ${heroTyp} min` : ''}</div><div class="tw-last">${heroLast ? `Last time: ${fmtDate(heroLast.date)} · ${heroLast.volume.toLocaleString()} lb` : 'First time on this day: this sets your baseline'}</div>${muscleLineHtml(plan)}</div>`;
+  const todayWorkoutHtml = `<div class="today-workout" id="todayWorkout"><div class="tw-title">${escapeHtml(currentPlanDisplayName())}</div><div class="tw-meta">${plan.length} exercise${plan.length === 1 ? '' : 's'}${heroTyp ? ` · about ${heroTyp} min` : ''}</div><div class="tw-last">${heroLast ? `Last time: ${fmtDate(heroLast.date)} · ${heroLast.volume.toLocaleString()} lb` : 'First time on this day: this sets your baseline'}</div>${muscleLineHtml(plan)}${deloadNoteHtml()}</div>`;
   const anyOpenCard = visiblePlan.some(e => !collapsedExercises.has(e.name));
   const collapseAllHtml = (!isZoomed && !reorderingExercises && visiblePlan.length > 1)
     ? `<div class="collapse-all-row"><button type="button" class="btn btn-ghost btn-sm" id="collapseAllBtn">${anyOpenCard ? '⌃ Minimize all' : '⌄ Expand all'}</button></div>` : '';
@@ -15046,6 +15135,16 @@ function labNearDate(dateStr) {
   return near.length ? near[0].a1c : null;
 }
 
+(function wireHomeMilestones() {
+  const all = document.getElementById('msAllBtn'); if (all) all.addEventListener('click', () => { showView('badges'); window.scrollTo(0, 0); });
+  const head = document.getElementById('msRoadmapHead'), body = document.getElementById('msRoadmap'), chev = document.getElementById('msRoadmapChev'); if (!head || !body) return;
+  const apply = open => { body.style.display = open ? '' : 'none'; if (chev) chev.textContent = open ? '▼' : '▶'; head.setAttribute('aria-expanded', String(open)); };
+  let open = false; try { open = localStorage.getItem('mounjaro-roadmap-open') === 'true'; } catch (err) { /* ignore */ }
+  apply(open);
+  const toggle = () => { open = !open; try { localStorage.setItem('mounjaro-roadmap-open', String(open)); } catch (err) { /* ignore */ } apply(open); };
+  head.addEventListener('click', toggle);
+  head.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+})();
 function renderMilestones() {
   const box = document.getElementById('msRoadmap');
   if (!box) return;
@@ -17706,6 +17805,18 @@ function todayDoseStatus() {
   return { kind: 'missed', val: 'Missed window' };
 }
 
+function homeHour() { return (typeof window !== 'undefined' && window.__homeHour != null) ? window.__homeHour : new Date().getHours(); }
+// One definition of "workouts this week" for all of Home: calendar week so far, days with a lifting session.
+function weekLiftDays() {
+  const ws = lbWeekStart(todayStr()), today = todayStr();
+  return entries.filter(e => e.date >= ws && e.date <= today && (e.ex || []).some(x => x.type === 'Strength')).length;
+}
+function deloadNoteHtml() {
+  try {
+    const d = detectDeloadNeeded(); if (!d) return '';
+    return `<div class="tw-note" id="twDeload">📉 ${d.weeksSinceDeload == null ? 'No lighter (deload) week in your tracked history yet' : `It has been ${d.weeksSinceDeload}+ weeks since your last lighter week`}</div>`;
+  } catch (err) { return ''; }
+}
 function renderTodayCard() {
   const card = document.getElementById('todayCard');
   if (!card) return;
@@ -17720,21 +17831,24 @@ function renderTodayCard() {
 
   const chips = [];
   if (dose) chips.push({ key: 'dose', ico: '💉', lbl: 'Dose', val: dose.val, done: dose.kind === 'done', urgent: doseNeeded });
-  chips.push({ key: 'workout', ico: '🏋️', lbl: 'Workout', val: lifted ? 'Done ✓' : 'Not yet', done: lifted });
-  chips.push({ key: 'protein', ico: '🥩', lbl: 'Protein', val: `${Math.round(protein)} / ${PROTEIN_GOAL} g`, done: protein >= PROTEIN_GOAL });
-  chips.push({ key: 'water', ico: '💧', lbl: 'Water', val: `${Math.round(water)} / ${WATER_GOAL} oz`, done: water >= WATER_GOAL });
-
-  const tasks = chips.filter(c => c.key !== 'dose' || doseNeeded || dose.kind === 'done');
-  const doneCount = tasks.filter(c => c.done).length;
+  let planName = ''; try { planName = currentPlanDisplayName(); } catch (err) { /* ignore */ }
+  chips.push({ key: 'workout', ico: '🏋️', lbl: 'Workout', val: lifted ? 'Done ✓' : (planName ? `Next: ${planName}` : 'Not yet'), done: lifted });
+  // The headline is the day's briefing: what is still to go. (Protein and water live in the rings right below.)
+  const proteinLeft = Math.max(0, Math.round(PROTEIN_GOAL - protein)), waterLeft = Math.max(0, Math.round(WATER_GOAL - water));
+  const left = [];
+  if (!lifted) left.push(planName ? `${planName} workout` : 'a workout');
+  if (proteinLeft > 0) left.push(`${proteinLeft} g protein`);
+  if (waterLeft > 0) left.push(`${waterLeft} oz water`);
   let headline;
   if (doseNeeded) headline = dose.kind === 'due' ? 'Injection day: log your dose' : 'Your dose is waiting to be logged';
-  else if (doneCount === tasks.length) headline = 'All set for today ✓';
-  else headline = `${doneCount} of ${tasks.length} done today`;
+  else if (!left.length) headline = 'All set for today ✓';
+  else headline = `To go: ${left.join(' · ')}`;
 
   document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   document.getElementById('todayHeadline').textContent = headline;
   const box = document.getElementById('todayChips');
   box.innerHTML = chips.map(c => `<button type="button" class="today-chip${c.done ? ' done' : ''}${c.urgent ? ' urgent' : ''}" data-today-chip="${c.key}"><span class="today-chip-ico">${c.ico}</span><span class="today-chip-txt"><span class="today-chip-lbl">${c.lbl}</span><span class="today-chip-val">${c.val}</span></span></button>`).join('');
+  const recap = document.getElementById('weeklyRecapBody'); if (recap && !recap.dataset.wired) { recap.dataset.wired = '1'; recap.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-recap-go]')) { showView('badges'); window.scrollTo(0, 0); } }); }
   box.querySelectorAll('[data-today-chip]').forEach(b => b.addEventListener('click', () => {
     const k = b.dataset.todayChip;
     if (k === 'dose') { document.getElementById('fInjection').checked = true; document.getElementById('injSiteWrap').style.display = 'block'; updateLastSiteHint(); showView('log'); }
@@ -17742,19 +17856,21 @@ function renderTodayCard() {
     else if (k === 'protein') showView('food');
   }));
 
-  // Week line: workouts so far, weight movement, logging streak.
-  const wkStart = lbWeekStart(today);
-  const wkWorkouts = entries.filter(e => e.date >= wkStart && e.date <= today && (e.ex || []).some(x => x.type === 'Strength')).length;
-  const parts = [`${wkWorkouts} of ${WORKOUT_GOAL} workouts this week`];
-  try {
-    const wc = weightChangeOverDays(7);
-    if (wc) {
-      const c = Math.round(wc.change * 10) / 10;
-      parts.push(c === 0 ? `weight steady since ${fmtDate(wc.from)}` : `weight ${c < 0 ? 'down' : 'up'} ${Math.abs(c).toFixed(1)} lb since ${fmtDate(wc.from)}`);
+  // Evening wrap-up: after 8 pm, the things still missing get one-tap buttons.
+  const wrap = document.getElementById('todayWrapUp');
+  if (wrap) {
+    const items = [];
+    if (homeHour() >= 20) {
+      if (waterLeft > 0) items.push({ k: 'water', t: '+8 oz water' });
+      let wv = false; try { wv = weighInVisible(today); } catch (err) { wv = true; }
+      if (!t.weight && wv) items.push({ k: 'weight', t: 'Log weight' });
     }
-  } catch (err) { console.error(err); }
-  try { const st = currentLoggingStreak(); if (st > 0) parts.push(`🔥 ${st}-day streak`); } catch (err) { console.error(err); }
-  document.getElementById('todayWeek').textContent = parts.join(' · ');
+    if (items.length) {
+      wrap.style.display = '';
+      wrap.innerHTML = `<div class="today-sub">Wrap up your day</div><div class="wrap-row">${items.map(i => `<button type="button" class="btn btn-secondary btn-sm wrap-btn" data-wrap="${i.k}">${i.t}</button>`).join('')}</div>`;
+      wrap.querySelectorAll('[data-wrap]').forEach(bn => bn.addEventListener('click', () => document.getElementById(bn.dataset.wrap === 'water' ? 'quickWaterBtn' : 'quickWeightBtn').click()));
+    } else { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+  }
   card.style.display = hiddenCards.includes('todaySummary') ? 'none' : '';
 }
 
@@ -17762,7 +17878,7 @@ function renderDueToday() {
   const card = document.getElementById('dueTodayCard');
   const list = document.getElementById('dueTodayList');
   if (!card || !list) return;
-  const items = computeDueTodayItems();
+  const items = computeDueTodayItems().filter(i => i.icon !== '🏋️' && i.icon !== '📉'); // next workout is a Today tile; the deload note moved to the Workout tab
   if (!items.length) { card.style.display = 'none'; return; }
   card.style.display = '';
   list.innerHTML = items.map(i => `
