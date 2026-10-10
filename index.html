@@ -11089,7 +11089,7 @@ async function logExercise(type, min, dist, incline) {
     workoutSessionState = {};
     workoutNotesState = {};
     workoutVariationState = {};
-    todaysSwaps = {};
+    todaysSwaps = {}; todaysSkips = {};
     clearWorkoutDraft();
     lastAutoFilledMin = null;
     stopRestTimer();
@@ -11871,6 +11871,7 @@ function lastVariationFor(exerciseName) {
   }
   return null;
 }
+let todaysSkips = {}; // { exerciseName: true } - "skip today": hidden for this session only, never added to the plan's removed list, cleared with the swaps
 let todaysSwaps = {}; // { originalExerciseName: {name, sets} } - session-only substitute exercises, never persisted, cleared on the same resets as workoutSessionState
 let lastAutoFilledMin = null; // so auto-fill never overwrites a value you typed yourself
 let restTimerEndTime = null;
@@ -13008,7 +13009,7 @@ function wireWorkoutPlanEvents() {
       workoutSessionState = {};
       workoutNotesState = {};
       workoutVariationState = {};
-      todaysSwaps = {};
+      todaysSwaps = {}; todaysSkips = {};
       zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
     });
@@ -13020,7 +13021,7 @@ function wireWorkoutPlanEvents() {
       workoutSessionState = {};
       workoutNotesState = {};
       workoutVariationState = {};
-      todaysSwaps = {};
+      todaysSwaps = {}; todaysSkips = {};
       zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
     });
@@ -13033,7 +13034,7 @@ function wireWorkoutPlanEvents() {
       workoutSessionState = {};
       workoutNotesState = {};
       workoutVariationState = {};
-      todaysSwaps = {};
+      todaysSwaps = {}; todaysSkips = {};
       zoomedExercise = null; reorderingExercises = false;
       renderWorkoutPlan();
     });
@@ -13061,7 +13062,7 @@ function wireWorkoutPlanEvents() {
         workoutSessionState = {};
         workoutNotesState = {};
         workoutVariationState = {};
-        todaysSwaps = {};
+        todaysSwaps = {}; todaysSkips = {};
         feelingCheckDismissed = true;
       } else if (area === 'lower') {
         // Avoid Legs specifically; Push and Pull are equally fine for
@@ -13072,7 +13073,7 @@ function wireWorkoutPlanEvents() {
         workoutSessionState = {};
         workoutNotesState = {};
         workoutVariationState = {};
-        todaysSwaps = {};
+        todaysSwaps = {}; todaysSkips = {};
         feelingCheckDismissed = true;
       } else if (area === 'push') {
         // Chest/shoulders/triceps sore (Day A's focus) — Day B avoids those.
@@ -13080,7 +13081,7 @@ function wireWorkoutPlanEvents() {
         workoutSessionState = {};
         workoutNotesState = {};
         workoutVariationState = {};
-        todaysSwaps = {};
+        todaysSwaps = {}; todaysSkips = {};
         feelingCheckDismissed = true;
       } else if (area === 'pull') {
         // Back/biceps sore (Day B's focus) — Day A avoids those.
@@ -13088,7 +13089,7 @@ function wireWorkoutPlanEvents() {
         workoutSessionState = {};
         workoutNotesState = {};
         workoutVariationState = {};
-        todaysSwaps = {};
+        todaysSwaps = {}; todaysSkips = {};
         feelingCheckDismissed = true;
       } else {
         // Everywhere sore — no day is meaningfully easier than another,
@@ -13330,6 +13331,17 @@ function wireWorkoutPlanEvents() {
       }
       renderWorkoutPlan();
     });
+  });
+  document.querySelectorAll('.skip-today-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.exercise;
+      todaysSkips[name] = true;
+      renderWorkoutPlan();
+      showUndoToast(`Skipped ${name} for today`, async () => { delete todaysSkips[name]; renderWorkoutPlan(); });
+    });
+  });
+  document.querySelectorAll('.unskip-btn').forEach(btn => {
+    btn.addEventListener('click', () => { delete todaysSkips[btn.dataset.exercise]; renderWorkoutPlan(); });
   });
   document.querySelectorAll('.remove-exercise-btn').forEach(btn => {
     btn.addEventListener('click', () => removeWorkoutExercise(btn.dataset.exercise));
@@ -13718,7 +13730,7 @@ function confirmDiscardWorkoutProgress() {
   return !hasCheckedSets() || confirm("Switching will clear the sets you've checked off in this workout. Continue?");
 }
 function resetWorkoutScreenState() {
-  workoutSessionState = {}; workoutNotesState = {}; workoutVariationState = {}; todaysSwaps = {};
+  workoutSessionState = {}; workoutNotesState = {}; workoutVariationState = {}; todaysSwaps = {}; todaysSkips = {};
   zoomedExercise = null; reorderingExercises = false;
   if (typeof clearWorkoutDraft === 'function') clearWorkoutDraft();
 }
@@ -14815,6 +14827,9 @@ function renderWorkoutPlan() {
     });
   }
 
+  const skippedToday = plan.filter(ex => todaysSkips[ex.name]);
+  if (skippedToday.length) plan = plan.filter(ex => !todaysSkips[ex.name]);
+
   const isZoomed = zoomedExercise && plan.some(ex => ex.name === zoomedExercise);
   const visiblePlan = isZoomed ? plan.filter(ex => ex.name === zoomedExercise) : plan;
   const nextExercise = isZoomed ? (() => {
@@ -14825,6 +14840,11 @@ function renderWorkoutPlan() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px">
       <button type="button" class="btn btn-ghost btn-sm" id="backToExerciseListBtn"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back to list</button>
       ${nextExercise ? `<div style="font-size:12px;color:var(--ink-soft);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Next: <strong style="color:var(--ink)">${escapeHtml(nextExercise.name)}</strong></div>` : ''}
+    </div>` : '';
+
+  const skippedStrip = skippedToday.length ? `<div class="skipped-today-strip" style="margin:0 0 12px;padding:10px 12px;border:1.5px dashed var(--line);border-radius:12px;font-size:12px;color:var(--ink-soft)">
+      <div style="font-weight:700;margin-bottom:6px">Skipped today (back next time)</div>
+      ${skippedToday.map(ex => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 0"><span style="color:var(--ink)">${escapeHtml(ex.name)}</span><button type="button" class="btn btn-ghost btn-sm unskip-btn" data-exercise="${escapeHtml(ex.name)}" style="padding:4px 10px;font-size:12px">Undo</button></div>`).join('')}
     </div>` : '';
 
   const heroKey = currentPlanKey();
@@ -14884,6 +14904,7 @@ function renderWorkoutPlan() {
       const swapControl = ex.swappedFrom
         ? `<span class="swap-label exercise-state-chip" data-exercise="${ex.name}"><span class="chip-text">🔄 was ${escapeHtml(ex.swappedFrom)}</span><button type="button" class="swap-revert-btn" data-original="${escapeHtml(ex.swappedFrom)}" title="Revert swap" aria-label="Revert swap">✕</button></span>`
         : (swapSuggestions.length ? `<button type="button" class="exercise-action-btn swap-toggle-btn" data-exercise="${ex.name}" title="Machine busy? Swap" aria-label="Machine busy? Swap">🔄</button>` : '');
+      const skipControl = doneCount === 0 ? `<button type="button" class="btn btn-ghost btn-sm skip-today-btn" data-exercise="${ex.name}" title="Skip today only" aria-label="Skip ${ex.name} today" style="flex:0 0 auto;margin-top:2px;border-style:dashed;font-size:12px;padding:9px 12px">Skip today</button>` : '';
       const swapSelect = swapSuggestions.length ? `<select class="swap-select" data-exercise="${ex.name}" style="display:none;margin-bottom:8px;width:100%;padding:8px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;background:var(--input-bg);color:var(--ink)">
             <option value="">Choose an alternative…</option>
             ${swapSuggestions.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`).join('')}
@@ -14942,11 +14963,12 @@ function renderWorkoutPlan() {
         <div class="set-rows-container" data-exercise-name="${ex.name}">
           ${setState.map((s, i) => renderSetRowHtml(ex.name, i, s, prevSets && prevSets[i], accent)).join('')}
         </div>
-        <button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${ex.name}" style="width:100%;margin-top:2px;border-style:dashed;font-size:12px;padding:9px">+ Add set</button>
+        <div style="display:flex;gap:8px"><button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${ex.name}" style="flex:1;min-width:0;margin-top:2px;border-style:dashed;font-size:12px;padding:9px">+ Add set</button>${skipControl}</div>
         </div>
       </div>`;
     }).join('')}
     </div>
+    ${isZoomed ? '' : skippedStrip}
     ${isZoomed ? '' : `<div id="addExerciseRow" style="margin-top:2px">
       <div style="display:flex;gap:8px;margin-bottom:2px">
         <button type="button" class="btn btn-ghost btn-sm" id="showAddExerciseBtn" style="flex:1">+ Add Exercise</button>
@@ -19068,7 +19090,7 @@ function persistWorkoutDraft() {
     if (!workoutDraftIsMeaningful()) { if (_lastDraftSig !== null) clearWorkoutDraft(); return; }
     if (!_draftCreatedAt) _draftCreatedAt = Date.now();
     const draft = { v: 1, createdAt: _draftCreatedAt, savedAt: Date.now(), startedAt: workoutStartedAt,
-      sessions: workoutSessionState, notes: workoutNotesState, variations: workoutVariationState, swaps: todaysSwaps,
+      sessions: workoutSessionState, notes: workoutNotesState, variations: workoutVariationState, swaps: todaysSwaps, skips: todaysSkips,
       pplDay: pplDayOverride, splitDay: splitDayOverride };
     const sig = JSON.stringify({ ...draft, savedAt: 0 }); // so an idle session doesn't rewrite storage every tick
     if (sig === _lastDraftSig) return;
@@ -19099,7 +19121,7 @@ function showDraftBanner(setsDone) {
   document.getElementById('draftDiscardBtn').addEventListener('click', () => {
     if (!confirm('Discard the workout in progress? The sets logged so far will be lost.')) return;
     b.remove();
-    workoutSessionState = {}; workoutNotesState = {}; workoutVariationState = {}; todaysSwaps = {};
+    workoutSessionState = {}; workoutNotesState = {}; workoutVariationState = {}; todaysSwaps = {}; todaysSkips = {};
     workoutStartedAt = null; stopWorkoutTimer(); pplDayOverride = null; splitDayOverride = null;
     clearWorkoutDraft();
     renderWorkoutPlan();
@@ -19121,6 +19143,7 @@ function restoreWorkoutDraft() {
   workoutNotesState = draft.notes || {};
   workoutVariationState = draft.variations || {};
   todaysSwaps = draft.swaps || {};
+  todaysSkips = draft.skips || {};
   pplDayOverride = draft.pplDay != null ? draft.pplDay : null;
   splitDayOverride = draft.splitDay != null ? draft.splitDay : null;
   workoutStartedAt = draft.startedAt || null;
