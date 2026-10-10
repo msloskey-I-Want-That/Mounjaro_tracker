@@ -1096,6 +1096,9 @@ body {
 .dose-day-btn { width: 100%; padding: 13px 14px; border: 1.5px solid var(--teal); border-radius: 12px; background: rgba(55,198,255,0.12); color: var(--ink); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; text-align: left; }
 .link-btn { background: none; border: none; color: var(--teal); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 6px 0; }
 .weight-hint { font-weight: 600; color: var(--ink-soft); }
+.ah-synced { font-size: 11px; color: var(--ink-soft); margin-top: 8px; text-align: center; }
+.hs-status { margin: -4px 0 6px; padding: 0 16px; font-size: 12px; line-height: 1.55; color: var(--ink-soft); }
+.hs-status .bad { color: var(--coral); font-weight: 700; }
 .ah-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 11px; color: var(--ink-soft); text-align: right; }
 .exercise-collapse-btn { background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 4px 2px; flex-shrink: 0; display: flex; touch-action: manipulation; }
 .workout-exercise-block > div:first-child { gap: 2px !important; }
@@ -3644,6 +3647,22 @@ body {
           <div id="healthSyncTestResults" style="margin:-4px 0 4px"></div>
           <div class="settings-row" style="align-items:center">
             <div>
+              <div class="settings-row-label">Silent Apple Health sync</div>
+              <div class="settings-row-sub">Your Shortcut sends each number straight to your tracker in the background — no Safari hop. Copy the setup sheet, paste it into Notes on your iPhone, and follow it once.</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="copyHealthSetupBtn" type="button">Copy setup sheet</button>
+          </div>
+          <div id="healthSetupStatus" class="hs-status"></div>
+          <div class="settings-row" style="align-items:center">
+            <div>
+              <div class="settings-row-label">Test the connection</div>
+              <div class="settings-row-sub">Sends one small test write from this phone to your tracker, the same way your Shortcut will, then reads it back. Do this before building the Shortcut.</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="testHealthRestBtn" type="button">Test</button>
+          </div>
+          <div id="healthRestTestResult" class="hs-status"></div>
+          <div class="settings-row" style="align-items:center">
+            <div>
               <div class="settings-row-label">Share Weight to Apple Health</div>
               <div class="settings-row-sub">One-way hand-off: opens a Shortcut you set up once, which then writes today's logged weight into Health. This app can't write to Health directly — see setup note below.</div>
             </div>
@@ -3841,8 +3860,18 @@ const HEALTH_SYNC_FIELD_BOUNDS = {
   walkDistanceMi: [0, 200],
   hrv: [0, 300]
 };
+// Reads a number the way a person would, but never half-reads: "6,200" is 6200 and "7,5" is 7.5, while text such as
+// "7h 12m", "6200 steps" or "Core" is rejected (parseFloat would quietly have taken 7, 6200 or nothing).
+function normalizeHealthNumber(raw) {
+  if (typeof raw === 'number') return isFinite(raw) ? raw : NaN;
+  let t = String(raw == null ? '' : raw).trim();
+  if (!t) return NaN;
+  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) t = t.replace(/,/g, '');
+  else if (/^\d+,\d{1,2}$/.test(t)) t = t.replace(',', '.');
+  return /^-?\d+(\.\d+)?$/.test(t) ? parseFloat(t) : NaN;
+}
 function isValidHealthSyncValue(field, raw) {
-  const num = parseFloat(raw);
+  const num = normalizeHealthNumber(raw);
   if (isNaN(num)) return false;
   const bounds = HEALTH_SYNC_FIELD_BOUNDS[field];
   if (!bounds) return true;
@@ -3889,7 +3918,7 @@ try {
     Object.entries(raw).forEach(([field, value]) => {
       if (!value) return;
       if (isValidHealthSyncValue(field, value)) {
-        pendingHealthSync[field] = value;
+        pendingHealthSync[field] = String(normalizeHealthNumber(value));
       } else {
         rejected[field] = value;
       }
@@ -3906,9 +3935,125 @@ try {
 })();
 } catch (err) { console.error('captureHealthSyncParams failed:', err); }
 
+// ── SILENT SYNC (Shortcut -> database, no Safari) ──
+// A Shortcut can PATCH a day's entry straight into Firestore. Those writes skip the URL path's checks above, so every
+// health field is checked again when it is READ: a value outside its plausible range (or text where a number belongs)
+// is ignored locally (the database is left alone) and listed in Settings so the Shortcut can be fixed.
+const HEALTH_FIELDS = ['steps', 'restHR', 'sleepHrs', 'healthMin', 'sleepScore', 'activeCal', 'distanceMi', 'hrv'];
+var healthIgnored = [];
+function entriesFromDocs(docs) {
+  const out = [];
+  docs.forEach(d => {
+    const data = d.data() || {}, date = data.date || (/^\d{4}-\d{2}-\d{2}$/.test(d.id) ? d.id : null);
+    if (date) out.push({ ...data, date });
+  });
+  return sanitizeHealthEntries(out);
+}
+function sanitizeHealthEntries(list) {
+  healthIgnored = [];
+  list.forEach(e => HEALTH_FIELDS.forEach(f => {
+    const v = e[f];
+    if (v == null || v === '') return;
+    if (!isValidHealthSyncValue(f, v)) { healthIgnored.push({ date: e.date, field: f, value: String(v).slice(0, 24) }); delete e[f]; }
+    else { const n = normalizeHealthNumber(v); if (typeof v === 'string' && String(n) !== v) e[f] = String(n); } // "6,200" is kept as 6200
+  }));
+  return list;
+}
+function lastHealthSyncAt() {
+  let best = null;
+  entries.forEach(e => { if (e.healthSyncedAt) { const t = Date.parse(e.healthSyncedAt); if (!isNaN(t) && (best == null || t > best)) best = t; } });
+  return best;
+}
+function healthSyncWhen(ms) {
+  const d = new Date(ms), t = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const days = Math.round((new Date(todayStr() + 'T00:00:00') - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
+  return days <= 0 ? `today ${t}` : days === 1 ? `yesterday ${t}` : days < 7 ? `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${t}` : `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${t}`;
+}
+function healthSyncStale() { const t = lastHealthSyncAt(); return t != null && Date.now() - t > 36 * 3600 * 1000 ? t : null; } // only once it has worked at least once
+function buildHealthSetupSheet() {
+  const base = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/trackers/${syncId || 'YOUR-SYNC-ID'}/entries/DATE?updateMask.fieldPaths=FIELD&key=${firebaseConfig.apiKey}`;
+  const rng = f => { const b = HEALTH_SYNC_FIELD_BOUNDS[f]; return b ? ` (allowed ${b[0]}–${b[1]})` : ''; };
+  return [
+    'APPLE HEALTH -> TRACKER: SILENT SYNC',
+    'PRIVATE: this sheet contains your sync ID, which works like a password. Do not share it.',
+    '',
+    'WHAT IT DOES',
+    'A shortcut on your iPhone reads Apple Health and sends each number straight to your tracker. Nothing opens, no Safari. The tracker shows "last synced" so you can see it is working.',
+    '',
+    'BUILD IT ONCE (Shortcuts app)',
+    '1. New shortcut. For each metric below add "Find Health Samples" (Today), then Calculate Statistics (Sum for steps, distance, energy, exercise minutes; Average for heart rate and HRV). For sleep use the samples\' Duration, in hours, not their label. Send plain numbers: use "Round Number" or "Format Number" with no thousands separator, so the tracker gets 6200 and not 6,200.',
+    '2. "Format Date": Current Date, Custom format yyyy-MM-dd. Call it DATE. Then send DATE itself first (FIELD = date, VALUE = DATE), the same way as in step 3 but with no If, so the day\'s entry always carries its date.',
+    '3. For EACH metric, wrap this in "If [the number] has any value" (so a blank never overwrites a good number):',
+    '   a. "Text" action holding the JSON body below, with FIELD and VALUE filled in.',
+    '   b. "Get Contents of URL": Method PATCH, URL below (put DATE and FIELD in), Header Content-Type = application/json, Request Body = File, choose the Text from (a).',
+    '4. Last step: one more PATCH with FIELD = healthSyncedAt and VALUE = Current Date formatted ISO 8601. That is what lets the app say "last synced".',
+    '5. Shortcuts > Automation > New: pick a trigger that happens while your phone is UNLOCKED (for example, when your alarm is stopped), run this shortcut, set "Run Immediately". iOS can refuse to read Health data while the phone is locked, so avoid pure time-of-day triggers until you have tested one.',
+    '',
+    'URL (replace DATE and FIELD)',
+    base,
+    '',
+    'JSON BODY (replace FIELD and VALUE, keep the quotes)',
+    '{"fields":{"FIELD":{"stringValue":"VALUE"}}}',
+    '',
+    'FIELDS',
+    'date - the day this is for, yyyy-MM-dd (send it first)',
+    ...['steps - step count, whole number', 'restHR - resting heart rate, bpm', 'sleepHrs - hours slept, a number like 7.2', 'healthMin - exercise minutes', 'sleepScore - 0 to 100', 'activeCal - active calories, kcal', 'distanceMi - walking + running distance, miles', 'hrv - heart rate variability, ms'].map(l => `${l.split(' - ')[0]} - ${l.split(' - ')[1]}${rng(l.split(' - ')[0])}`),
+    'healthSyncedAt - date and time of this run (ISO 8601)',
+    '',
+    'GOOD TO KNOW',
+    '- Values outside the allowed range are ignored by the tracker, and listed in Settings so you can fix the shortcut.',
+    '- Numbers must be plain, like 6200 or 7.2. Text such as "7h 12m" is ignored and listed in Settings, never half-read.',
+    '- Only send the metrics you have; each one is its own small PATCH, so a missing number never erases a saved one.',
+    '- Settings > Test Health Sync shows exactly what arrived today.'
+  ].join('\n');
+}
+function renderHealthSyncStatus() {
+  const box = document.getElementById('healthSetupStatus'); if (!box) return;
+  const t = lastHealthSyncAt(), lines = [];
+  lines.push(t ? `Last sync from your iPhone: <b style="color:var(--ink)">${escapeHtml(healthSyncWhen(t))}</b>${healthSyncStale() ? ' <span class="bad">(over 36 hours ago)</span>' : ''}` : 'No silent sync received yet. Once your Shortcut runs, the time shows here.');
+  if (healthIgnored.length) {
+    const sample = healthIgnored.slice(0, 3).map(x => `${x.field} on ${fmtDate(x.date)} ("${escapeHtml(x.value)}")`).join('; ');
+    lines.push(`<span class="bad">Ignored ${healthIgnored.length} value${healthIgnored.length === 1 ? ' that was not a usable number' : 's that were not usable numbers'}: ${sample}${healthIgnored.length > 3 ? '…' : ''}. Check that step of the Shortcut.</span>`);
+  }
+  box.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+}
+// One small write from this phone, then a read-back, using the same address style the Shortcut uses. It tests the web address,
+// the key and the database rules before anyone builds a Shortcut. It writes to a throwaway document under meta/ (never an entry).
+async function testHealthRest() {
+  const btn = document.getElementById('testHealthRestBtn'), out = document.getElementById('healthRestTestResult'); if (!btn || !out) return;
+  const say = (ok, text) => { out.innerHTML = `<div class="${ok ? '' : 'bad'}">${ok ? '✓ ' : '⚠ '}${escapeHtml(text)}</div>`; };
+  if (!syncId) { say(false, 'No sync ID is set on this device yet.'); return; }
+  const doc = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/trackers/${syncId}/meta/healthTest`;
+  const stamp = new Date().toISOString();
+  const timed = (url, opts) => { const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 12000); return fetch(url, { ...opts, signal: ctl.signal }).finally(() => clearTimeout(t)); };
+  const why = st => st === 403 ? 'refused it (HTTP 403): the database rules do not allow this path. Publish the project\'s Firestore rules in the Firebase console, then try again.'
+    : st === 400 ? 'rejected the request (HTTP 400): the web address or key looks wrong.' : st === 404 ? 'could not find the project (HTTP 404).' : st === 429 ? 'is rate limiting this phone (HTTP 429): wait a minute and try again.' : `answered with HTTP ${st}.`;
+  btn.disabled = true; out.textContent = 'Testing…';
+  try {
+    const w = await timed(`${doc}?updateMask.fieldPaths=at&key=${firebaseConfig.apiKey}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: { at: { stringValue: stamp } } }) });
+    if (!w.ok) { say(false, `Google ${why(w.status)}`); return; }
+    const r = await timed(`${doc}?key=${firebaseConfig.apiKey}`, {});
+    if (!r.ok) { say(false, `The write went through, but reading it back failed: Google ${why(r.status)}`); return; }
+    const j = await r.json(), back = j && j.fields && j.fields.at && j.fields.at.stringValue;
+    if (back === stamp) say(true, 'Your phone can write to your tracker the same way the Shortcut will, and read it back. You are ready to build the Shortcut.');
+    else say(false, 'The write was accepted but what came back did not match. Try once more; if it repeats, tell Claude.');
+  } catch (err) {
+    console.error('Health connection test failed:', err);
+    say(false, `Couldn't reach Google (${err.name === 'AbortError' ? 'timed out after 12 s' : err.message}). Check your connection. A Shortcut is not blocked by browsers the way this page can be, so if everything else works, try the Shortcut itself.`);
+  } finally { btn.disabled = false; }
+}
+(function wireHealthRestTest() { const b = document.getElementById('testHealthRestBtn'); if (b) b.addEventListener('click', testHealthRest); })();
+(function wireHealthSetup() {
+  const btn = document.getElementById('copyHealthSetupBtn'); if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const box = document.getElementById('healthSetupStatus');
+    try { await navigator.clipboard.writeText(buildHealthSetupSheet()); box.dataset.msg = 'copied'; renderHealthSyncStatus(); box.insertAdjacentHTML('afterbegin', '<div style="color:var(--in);font-weight:700">Copied. Paste it into Notes on your iPhone (it contains your private sync ID).</div>'); }
+    catch (err) { box.insertAdjacentHTML('afterbegin', '<div class="bad">Could not copy automatically. Press and hold in a text field and paste instead.</div>'); }
+  });
+})();
 async function applyPendingHealthSync() {
   if (!pendingHealthSync || !syncId) return;
-  const payload = { date: todayStr(), ...pendingHealthSync };
+  const payload = { date: todayStr(), ...pendingHealthSync, healthSyncedAt: new Date().toISOString() };
   pendingHealthSync = null; // clear immediately so a re-render can't reapply it twice
   try {
     await setDoc(doc(db, 'trackers', syncId, 'entries', payload.date), payload, { merge: true });
@@ -5857,10 +6002,12 @@ function startListening() {
   if (unsubLabs) unsubLabs();
 
   const entriesRef = collection(db, 'trackers', syncId, 'entries');
-  const q = query(entriesRef, orderBy('date', 'asc'));
+  // Ordered by document id (which is the date), not by a `date` field: a query ordered by a field silently skips documents that
+  // lack it, and a Shortcut that writes the first numbers of a day creates exactly such a document.
+  const q = query(entriesRef, orderBy('__name__'));
   unsub = onSnapshot(q,
     snap => {
-      entries = snap.docs.map(d => d.data());
+      entries = entriesFromDocs(snap.docs);
       renderAll();
       lbSchedulePublish();
       if (!_draftRestoreDone) { try { restoreWorkoutDraft(); } catch (err) { console.error('Draft restore failed:', err); } }
@@ -9929,7 +10076,9 @@ async function testHealthSync() {
         const d = snap.data();
         const fields = ['steps', 'restHR', 'sleepHrs', 'healthMin', 'sleepScore', 'activeCal', 'distanceMi', 'hrv'].filter(k => d[k] !== undefined);
         if (fields.length) {
-          lines.push({ ok: true, label: `Today's entry (${todayStr()}), read fresh from server`, detail: fields.map(k => `${k}=${d[k]}`).join(', ') });
+          lines.push({ ok: true, label: `Today's entry (${todayStr()}), read fresh from server`, detail: fields.map(k => `${k}=${d[k]}`).join(', ') + (d.healthSyncedAt ? ` · last written ${healthSyncWhen(Date.parse(d.healthSyncedAt))}` : '') });
+          const bad = fields.filter(k => !isValidHealthSyncValue(k, d[k]));
+          if (bad.length) lines.push({ ok: false, label: 'Unusable values on the server', detail: `${bad.map(k => `${k}="${d[k]}"`).join(', ')} — the app ignores these; fix that step of the Shortcut` });
         } else {
           lines.push({ ok: false, label: `Today's entry (${todayStr()})`, detail: 'exists but has no steps/restHR/sleepHrs/healthMin/sleepScore/activeCal/distanceMi/hrv fields yet' });
         }
@@ -11076,6 +11225,7 @@ try {
         const sum = document.createElement('span'); sum.id = 'appleHealthSummary'; sum.className = 'ah-summary';
         const chev = document.createElement('span'); chev.id = 'appleHealthChevron'; chev.style.cssText = 'font-size:11px;color:var(--ink-soft);flex-shrink:0';
         title.appendChild(lab); title.appendChild(sum); title.appendChild(chev);
+        const syncedLine = document.createElement('div'); syncedLine.className = 'ah-synced'; newCard.appendChild(syncedLine);
         makeFoodCardCollapsible('appleHealthCard', 'appleHealthChevron', 'mounjaro-applehealth-expanded', false);
       } catch (err) { console.error('Apple Health collapse failed:', err); }
     }
@@ -14748,7 +14898,11 @@ function updateAppleHealthSummary() {
   const get = id => { const n = document.getElementById(id); const t = n ? n.textContent.trim() : ''; return t && t !== '—' ? t : null; };
   const bits = [['Steps', 'exViewSteps'], ['Sleep', 'exViewSleep'], ['Active', 'exViewActiveCal'], ['Dist.', 'exViewDistance'], ['HRV', 'exViewHrv']]
     .map(([l, id]) => { const v = get(id); return v ? `${l} ${v}` : null; }).filter(Boolean);
-  el.textContent = bits.length ? bits.join(' · ') : 'not synced yet';
+  const t = lastHealthSyncAt();
+  el.textContent = bits.length ? bits.join(' · ') : (t ? `last synced ${healthSyncWhen(t)}` : 'not synced yet');
+  const line = document.querySelector('#appleHealthCard .ah-synced');
+  if (line) line.textContent = t ? `Last synced from your iPhone: ${healthSyncWhen(t)}` : 'Not synced from your iPhone yet. Settings has a silent-sync setup sheet.';
+  try { renderHealthSyncStatus(); } catch (err) { /* settings not drawn yet */ }
 }
 function renderExList() {
   const list = document.getElementById('exList');
@@ -18024,6 +18178,9 @@ function computeNextDoseCountdown() {
 
 function computeDueTodayItems() {
   const items = [];
+
+  const staleSync = healthSyncStale();
+  if (staleSync) items.push({ icon: '📱', text: `Apple Health last synced ${healthSyncWhen(staleSync)}`, urgent: false });
 
   medications.forEach(m => {
     const refill = computeRefillStatus(m.fillDate, m.daysSupply);
