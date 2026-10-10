@@ -1099,6 +1099,12 @@ body {
 .ah-synced { font-size: 11px; color: var(--ink-soft); margin-top: 8px; text-align: center; }
 .hs-status { margin: -4px 0 6px; padding: 0 16px; font-size: 12px; line-height: 1.55; color: var(--ink-soft); }
 .hs-status .bad { color: var(--coral); font-weight: 700; }
+.he-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.he-row input { width: 110px; text-align: right; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--input-bg); color: var(--ink); font-family: var(--font-num); font-weight: 700; font-size: 14px; }
+#healthEditModal .modal-sheet { max-height: 88vh; overflow-y: auto; }
+#healthEditModal .modal-sheet { background: #FFFFFF; }   /* solid: this sheet holds text boxes, so nothing may show through it */
+:root[data-theme="dark"] #healthEditModal .modal-sheet { background: #17142F; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #healthEditModal .modal-sheet { background: #17142F; } }
 .hs-btnrow { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px; margin: 0 0 8px; }
 .hs-btnrow .btn { flex: 1 1 45%; }
 .ah-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 11px; color: var(--ink-soft); text-align: right; }
@@ -1493,6 +1499,18 @@ body {
   <p>Loading My Health Tracker…</p>
 </div>
 
+<!-- ── EDIT A DAY'S HEALTH NUMBERS ── -->
+<div class="modal-overlay hidden" id="healthEditModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="healthEditTitle">Health numbers</div>
+    <div class="modal-sub">Type what Apple Health shows for this day. A box you leave empty keeps what is saved.</div>
+    <div id="healthEditFields"></div>
+    <div id="healthEditMsg" class="hs-status" style="padding:0;margin:10px 0 0"></div>
+    <button class="btn btn-primary" id="healthEditSave" type="button" style="margin-top:12px">Save</button>
+    <button class="btn btn-ghost" id="healthEditCancel" type="button" style="margin-top:8px">Cancel</button>
+  </div>
+</div>
 <!-- ── SYNC MODAL ── -->
 <div class="modal-overlay hidden" id="syncModal">
   <div class="modal-sheet">
@@ -7480,12 +7498,43 @@ function historyCardHtml(e, sumBy) {
       </div>
       <div class="entry-menu" role="menu" hidden>
         <button type="button" class="entry-edit" role="menuitem" data-date="${e.date}">✎ Edit entry</button>
+        <button type="button" class="entry-health" role="menuitem" data-date="${e.date}">🩺 Edit Health numbers</button>
         <button type="button" class="entry-del" role="menuitem" data-date="${e.date}">✕ Delete entry</button>
       </div>
       ${metrics ? `<div class="entry-metrics">${metrics}</div>` : ''}
       ${details}
     </div>`;
 }
+const HEALTH_EDIT_FIELDS = [['steps', 'Steps', 'numeric'], ['restHR', 'Resting heart rate (bpm)', 'numeric'], ['sleepHrs', 'Sleep (hours, like 7.2)', 'decimal'], ['sleepScore', 'Sleep score (0 to 100)', 'numeric'],
+  ['activeCal', 'Active energy (cal)', 'numeric'], ['distanceMi', 'Distance (miles)', 'decimal'], ['hrv', 'HRV (ms)', 'decimal'], ['healthMin', 'Exercise minutes', 'numeric']];
+var healthEditDate = null;
+function openHealthEdit(date) {
+  const m = document.getElementById('healthEditModal'); if (!m) return;
+  healthEditDate = date;
+  const e = entries.find(x => x.date === date) || {};
+  document.getElementById('healthEditTitle').textContent = `Health numbers · ${historyShortDate(date)}`;
+  document.getElementById('healthEditFields').innerHTML = HEALTH_EDIT_FIELDS.map(([f, label, mode]) => `<label class="he-row"><span>${label}</span><input type="text" inputmode="${mode}" data-hf="${f}" value="${e[f] != null && e[f] !== '' ? escapeHtml(String(e[f])) : ''}" placeholder="—"></label>`).join('');
+  document.getElementById('healthEditMsg').textContent = '';
+  m.classList.remove('hidden');
+}
+function closeHealthEdit() { const m = document.getElementById('healthEditModal'); if (m) m.classList.add('hidden'); healthEditDate = null; }
+async function saveHealthEdit() {
+  const msg = document.getElementById('healthEditMsg'), date = healthEditDate; if (!date || !syncId) return;
+  const payload = { date }, bad = [];
+  document.querySelectorAll('#healthEditFields [data-hf]').forEach(inp => {
+    const f = inp.dataset.hf, v = inp.value.trim(); if (v === '') return;
+    if (isValidHealthSyncValue(f, v)) payload[f] = String(normalizeHealthNumber(v)); else bad.push(HEALTH_EDIT_FIELDS.find(x => x[0] === f)[1].replace(/ \(.*\)$/, ''));
+  });
+  if (bad.length) { msg.innerHTML = `<div class="bad">Check ${escapeHtml(bad.join(', '))}: use plain numbers (6200 or 7.2) inside the allowed range.</div>`; return; }
+  if (Object.keys(payload).length <= 1) { msg.textContent = 'Nothing to save: every box is empty.'; return; }
+  try { await setDoc(doc(db, 'trackers', syncId, 'entries', date), payload, { merge: true }); closeHealthEdit(); showGoldToast(`Saved Health numbers for ${historyShortDate(date)}`, 2800); }
+  catch (err) { console.error('Health edit failed:', err); msg.innerHTML = `<div class="bad">Could not save (${escapeHtml(err.message || String(err))}).</div>`; }
+}
+(function wireHealthEdit() {
+  const save = document.getElementById('healthEditSave'), cancel = document.getElementById('healthEditCancel'), modal = document.getElementById('healthEditModal'); if (!save || !cancel || !modal) return;
+  save.addEventListener('click', saveHealthEdit); cancel.addEventListener('click', closeHealthEdit);
+  modal.addEventListener('click', ev => { if (ev.target === modal) closeHealthEdit(); });
+})();
 function wireHistoryCard(card) {
   const date = card.dataset.date;
   const toggle = () => { if (historyOpenCards.has(date)) historyOpenCards.delete(date); else historyOpenCards.add(date); rerenderHistoryCard(date); };
@@ -7493,6 +7542,7 @@ function wireHistoryCard(card) {
   const menu = card.querySelector('.entry-menu');
   card.querySelector('.entry-more').addEventListener('click', ev => { ev.stopPropagation(); const was = menu.hidden; document.querySelectorAll('#historyList .entry-menu').forEach(m => { m.hidden = true; }); menu.hidden = !was; });
   card.querySelector('.entry-edit').addEventListener('click', ev => { ev.stopPropagation(); editEntry(date); });
+  card.querySelector('.entry-health').addEventListener('click', ev => { ev.stopPropagation(); menu.hidden = true; openHealthEdit(date); });
   card.querySelector('.entry-del').addEventListener('click', ev => { ev.stopPropagation(); menu.hidden = true; deleteEntry(date); });
 }
 function rerenderHistoryCard(date) {
