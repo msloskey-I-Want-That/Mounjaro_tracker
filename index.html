@@ -3957,6 +3957,7 @@ var unsubInbox = null, healthInboxIgnored = [], healthInboxOutcome = null;
 // ("Oct 10, 2026 at 11:05 AM", with a narrow no-break space before AM/PM). All of them are understood.
 function parseShortcutDate(str) {
   const t = String(str == null ? '' : str).trim(); if (!t) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return null;      // a date with no time: the caller decides (Date.parse would read it as midnight UTC, which is the evening before in the Americas)
   let ms = Date.parse(t);
   if (isNaN(ms)) ms = Date.parse(t.replace(/[\u202f\u00a0]/g, ' ').replace(/ at /i, ' '));
   return isNaN(ms) ? null : new Date(ms).toISOString();
@@ -3969,8 +3970,8 @@ function inspectHealthInbox(d) {
   if (typeof q === 'string' && q.trim()) { const i = q.indexOf('?'); try { qp = new URLSearchParams(i >= 0 ? q.slice(i + 1) : q); } catch (err) { qp = null; } }
   const val = f => { const v = raw(f); if (v != null && String(v).trim() !== '') return String(v); return qp ? (qp.get(f === 'healthSyncedAt' ? 't' : f) || '') : ''; };
   const numbers = HEALTH_FIELDS.filter(f => val(f).trim() !== ''), blanks = HEALTH_FIELDS.filter(f => val(f).trim() === '' && (raw(f) != null || (qp && qp.has(f))));
-  const tRaw = val('healthSyncedAt'), stamp = parseShortcutDate(tRaw);
-  return { numbers, blanks, tRaw, stamp, hasQ: !!qp };
+  const tRaw = val('healthSyncedAt'), dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(String(tRaw).trim()), stamp = parseShortcutDate(tRaw);
+  return { numbers, blanks, tRaw, stamp, dateOnly, hasQ: !!qp };
 }
 async function processHealthInbox(d) {
   if (!d || !syncId) return;
@@ -3979,9 +3980,11 @@ async function processHealthInbox(d) {
   let qp = null; const q = raw('q');
   if (typeof q === 'string' && q.trim()) { const i = q.indexOf('?'); try { qp = new URLSearchParams(i >= 0 ? q.slice(i + 1) : q); } catch (err) { qp = null; } }
   const val = f => { const v = raw(f); if (v != null && String(v).trim() !== '') return v; return qp ? (qp.get(f === 'healthSyncedAt' ? 't' : f) || '') : v; };
-  const stamp = parseShortcutDate(val('healthSyncedAt')), stampMs = stamp ? Date.parse(stamp) : NaN;
+  const tRaw = String(val('healthSyncedAt') || '').trim(), dateOnlyT = /^\d{4}-\d{2}-\d{2}$/.test(tRaw);
+  // t= may be a bare date ("2026-10-10"): file under that day, and use the moment this phone received it as the sync time
+  const stamp = dateOnlyT ? new Date().toISOString() : parseShortcutDate(tRaw), stampMs = stamp ? Date.parse(stamp) : NaN;
   const dateRaw = String(val('date') || '').trim();
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : (stamp ? localDateFromIso(stamp) : todayStr());
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : (dateOnlyT ? tRaw : (stamp ? localDateFromIso(stamp) : todayStr()));
   const payload = { date }, ignored = [];
   HEALTH_FIELDS.forEach(f => {
     const v = val(f); if (v == null || String(v).trim() === '') return;                       // blank: leave the saved number alone
@@ -3990,7 +3993,8 @@ async function processHealthInbox(d) {
   });
   healthInboxIgnored = ignored;
   if (stamp) payload.healthSyncedAt = stamp;
-  const sig = JSON.stringify(payload);
+  const sigPayload = { ...payload }; if (dateOnlyT) delete sigPayload.healthSyncedAt;   // an approximate time must not make the same message look new each time the app opens
+  const sig = JSON.stringify(sigPayload);
   let last = null; try { last = localStorage.getItem(healthInboxKey()); } catch (err) { /* ignore */ }
   if (last === sig) { healthInboxOutcome = { at: Date.now(), text: 'this is the message already filed on this phone, so nothing new was written' }; renderHealthSyncStatus(); return; }
   const existing = entries.find(e => e.date === date);
@@ -4001,7 +4005,7 @@ async function processHealthInbox(d) {
     try { localStorage.setItem(healthInboxKey(), sig); } catch (err) { /* ignore */ }
     lastSyncDiagnostic.appliedAt = new Date().toISOString(); lastSyncDiagnostic.appliedValues = { ...payload };
     const nums = Object.keys(payload).filter(k => HEALTH_FIELDS.includes(k)).length;
-    healthInboxOutcome = { at: Date.now(), text: `filed ${nums} number${nums === 1 ? '' : 's'} under ${date}${stamp ? '' : ' (no readable sync time came with it, so "last synced" could not update)'}` };
+    healthInboxOutcome = { at: Date.now(), text: `filed ${nums} number${nums === 1 ? '' : 's'} under ${date}${dateOnlyT ? ' (its time was only a date, so "last synced" uses the moment it arrived)' : stamp ? '' : ' (no readable sync time came with it, so "last synced" could not update)'}` };
   } catch (err) { console.error('Health inbox filing failed:', err); lastSyncDiagnostic.applyError = err.message || String(err); healthInboxOutcome = { at: Date.now(), text: `could not file it: ${err.message || err}` }; }
   renderHealthSyncStatus();
 }
@@ -10150,7 +10154,8 @@ async function testHealthSync() {
       if (inbox.exists()) {
         const i = inspectHealthInbox(inbox.data());
         lines.push({ ok: i.numbers.length ? true : false, label: 'Last message from your Shortcut', detail: i.numbers.length ? `numbers sent: ${i.numbers.join(', ')}${i.blanks.length ? ` · left blank: ${i.blanks.join(', ')}` : ''}` : 'it arrived, but none of the numbers had a value' });
-        lines.push(i.stamp ? { ok: true, label: 'Its sync time', detail: `sent as "${escapeHtml(i.tRaw)}" and read as ${healthSyncWhen(Date.parse(i.stamp))}` }
+        lines.push(i.dateOnly ? { ok: null, label: 'Its sync time', detail: `sent as "${escapeHtml(i.tRaw.trim())}", a date with no time of day. The numbers are filed under that day, and "last synced" uses the moment this phone received the message. For the exact time, set the Current Date bubble after t= to ISO 8601 with the time included.` }
+          : i.stamp ? { ok: true, label: 'Its sync time', detail: `sent as "${escapeHtml(i.tRaw)}" and read as ${healthSyncWhen(Date.parse(i.stamp))}` }
           : { ok: false, label: 'Its sync time', detail: i.tRaw ? `sent as "${escapeHtml(i.tRaw)}", which the app cannot read. In the Shortcut, tap the Current Date bubble after t= and set Date Format to ISO 8601.` : 'none was sent, so "last synced" cannot update. The Shortcut text needs &t= followed by the Current Date.' });
         lines.push({ ok: healthInboxOutcome ? true : null, label: 'What this phone did with it', detail: healthInboxOutcome ? `${healthInboxOutcome.text} (at ${new Date(healthInboxOutcome.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })})` : 'nothing yet since the app opened. It files a message when the app is open; close and reopen the app, then check again.' });
       } else {
