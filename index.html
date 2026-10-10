@@ -3659,6 +3659,7 @@ body {
             <button class="btn btn-secondary btn-sm" id="copyHealthUrlBtn" type="button">Copy web address</button>
             <button class="btn btn-secondary btn-sm" id="copyHealthJsonStepsBtn" type="button">Copy starter message</button>
             <button class="btn btn-secondary btn-sm" id="copyHealthJsonAllBtn" type="button">Copy full message</button>
+            <button class="btn btn-secondary btn-sm" id="copyHealthJsonWrapBtn" type="button">Copy wrapper message</button>
           </div>
           <div id="healthCopyMsg" class="hs-status"></div>
           <div class="settings-row" style="align-items:center">
@@ -3952,12 +3953,24 @@ var healthIgnored = [];
 // ── HEALTH INBOX ── the Shortcut sends ONE request with everything it read to meta/healthInbox. The app does the careful part:
 // it checks each number, skips blanks (so a missing reading never erases a good one), picks the right day, and files it.
 var unsubInbox = null, healthInboxIgnored = [];
+// Shortcuts writes dates in whatever format you pick: ISO ("2026-10-10T11:05:00-04:00"), or the long default
+// ("Oct 10, 2026 at 11:05 AM", with a narrow no-break space before AM/PM). All of them are understood.
+function parseShortcutDate(str) {
+  const t = String(str == null ? '' : str).trim(); if (!t) return null;
+  let ms = Date.parse(t);
+  if (isNaN(ms)) ms = Date.parse(t.replace(/[\u202f\u00a0]/g, ' ').replace(/ at /i, ' '));
+  return isNaN(ms) ? null : new Date(ms).toISOString();
+}
 function localDateFromIso(iso) { const d = new Date(iso); return isNaN(d) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 function healthInboxKey() { return 'mounjaro-inbox-applied-' + (syncId || ''); }
 async function processHealthInbox(d) {
   if (!d || !syncId) return;
-  const val = f => (d[f] != null && typeof d[f] === 'object' && 'stringValue' in d[f]) ? d[f].stringValue : d[f];
-  const stampRaw = val('healthSyncedAt'), stampMs = stampRaw ? Date.parse(stampRaw) : NaN, stamp = isNaN(stampMs) ? null : new Date(stampMs).toISOString();
+  const raw = f => (d[f] != null && typeof d[f] === 'object' && 'stringValue' in d[f]) ? d[f].stringValue : d[f];
+  // Old-style Shortcut text still works: one field `q` holding "…?steps=6200&hrv=41&t=…". Explicit fields win over it.
+  let qp = null; const q = raw('q');
+  if (typeof q === 'string' && q.trim()) { const i = q.indexOf('?'); try { qp = new URLSearchParams(i >= 0 ? q.slice(i + 1) : q); } catch (err) { qp = null; } }
+  const val = f => { const v = raw(f); if (v != null && String(v).trim() !== '') return v; return qp ? (qp.get(f === 'healthSyncedAt' ? 't' : f) || '') : v; };
+  const stamp = parseShortcutDate(val('healthSyncedAt')), stampMs = stamp ? Date.parse(stamp) : NaN;
   const dateRaw = String(val('date') || '').trim();
   const date = /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : (stamp ? localDateFromIso(stamp) : todayStr());
   const payload = { date }, ignored = [];
@@ -4013,6 +4026,7 @@ function healthSyncStale() { const t = lastHealthSyncAt(); return t != null && D
 function healthInboxUrl() { return `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/trackers/${syncId || 'YOUR-SYNC-ID'}/meta/healthInbox?key=${firebaseConfig.apiKey}`; }
 const HEALTH_MESSAGE_WORDS = { date: 'DATE', steps: 'STEPS', restHR: 'RESTINGHR', sleepHrs: 'SLEEPHOURS', healthMin: 'EXERCISEMIN', sleepScore: 'SLEEPSCORE', activeCal: 'ACTIVECAL', distanceMi: 'MILES', hrv: 'HRV', healthSyncedAt: 'NOW' };
 function healthInboxMessage(kind) {
+  if (kind === 'wrap') return '{"fields":{"q":{"stringValue":"TEXT"}}}';
   const keys = kind === 'steps' ? ['date', 'steps', 'healthSyncedAt'] : ['date', 'steps', 'restHR', 'sleepHrs', 'healthMin', 'sleepScore', 'activeCal', 'distanceMi', 'hrv', 'healthSyncedAt'];
   return '{"fields":{' + keys.map(k => `"${k}":{"stringValue":"${HEALTH_MESSAGE_WORDS[k]}"}`).join(',') + '}}';
 }
@@ -4041,6 +4055,10 @@ function buildHealthSetupSheet() {
     '',
     'MESSAGE (all numbers)',
     healthInboxMessage('all'),
+    '',
+    'IF YOUR SHORTCUT ALREADY BUILDS A TEXT LIKE ?steps=...&hrv=... (the old Open URL way) you can keep it',
+    'Add a second Text action containing this, and replace TEXT with the first Text (the variable named Text). Then send that with Get Contents of URL instead of Open URL.',
+    healthInboxMessage('wrap'),
     '',
     'WHAT EACH WORD MEANS',
     'DATE - the day, yyyy-MM-dd',
@@ -4100,6 +4118,7 @@ async function testHealthRest() {
   copy('copyHealthUrlBtn', healthInboxUrl, 'web address');
   copy('copyHealthJsonStepsBtn', () => healthInboxMessage('steps'), 'starter message');
   copy('copyHealthJsonAllBtn', () => healthInboxMessage('all'), 'full message');
+  copy('copyHealthJsonWrapBtn', () => healthInboxMessage('wrap'), 'wrapper message');
 })();
 (function wireHealthRestTest() { const b = document.getElementById('testHealthRestBtn'); if (b) b.addEventListener('click', testHealthRest); })();
 (function wireHealthSetup() {
