@@ -4956,8 +4956,8 @@ const CORRELATION_PAIRS = [
     getX: e => (e.protein && !e.hasOffPlanMeal) ? parseFloat(e.protein) : null,
     getY: e => e.restHR ? parseFloat(e.restHR) : null,
     nextDay: false,
-    splitThreshold: 100,
-    sentence: (high, low) => `On days you hit 100g+ protein, resting heart rate averaged ${high} bpm. On lower-protein days, it averaged ${low} bpm.`
+    get splitThreshold() { return userProteinGoal; },
+    sentence: (high, low) => `On days you hit ${userProteinGoal}g+ protein, resting heart rate averaged ${high} bpm. On lower-protein days, it averaged ${low} bpm.`
   },
   {
     getX: e => e.glucose ? parseFloat(e.glucose) : null,
@@ -5020,33 +5020,41 @@ function muscleGroupsHitInWindow(endDate, days) {
   });
   return hit;
 }
+var _fbCache = { sig: null, dates: [] };
+function fullBodyQualifyingDates() {
+  const sig = badgeSignature(); if (_fbCache.sig === sig) return _fbCache.dates;
+  const dates = entries.filter(e => (e.ex || []).some(x => x.type === 'Strength') && muscleGroupsHitInWindow(e.date, 7).size >= MUSCLE_MAP_GROUPS.length).map(e => e.date).sort();
+  _fbCache = { sig, dates }; return dates;
+}
 function fullBodyWeekCount(asOf) {
-  const cut = asOf || todayStr(), weeks = new Set();
-  entries.filter(e => e.date <= cut && (e.ex || []).some(x => x.type === 'Strength')).forEach(e => { if (muscleGroupsHitInWindow(e.date, 7).size >= MUSCLE_MAP_GROUPS.length) weeks.add(lbWeekStart(e.date)); });
-  return weeks.size;
+  const cut = asOf || todayStr();
+  return new Set(fullBodyQualifyingDates().filter(d => d <= cut).map(d => lbWeekStart(d))).size;
 }
 
 // ── WEEKLY CHALLENGES ── three goals a week, picked from your own recent habits. Descriptive targets, nothing medical.
 const CHALLENGE_KINDS = {
   workouts: { icon: '🏋️', title: n => `Lift ${n} times`, unit: 'workouts', fn: (d, e) => !!(e && (e.ex || []).some(x => x.type === 'Strength')) },
-  protein:  { icon: '🥩', title: n => `Hit your protein goal ${n} days`, unit: 'days', fn: (d) => { const v = dayProteinForHistory(d); return v != null && v >= userProteinGoal; } },
+  protein:  { icon: '🥩', title: n => `Hit your protein goal ${n} days`, unit: 'days', fn: (d, e) => { const v = dayProteinFromEntry(e); return v != null && v >= userProteinGoal; } },
   steps:    { icon: '👟', title: n => `Hit your step goal ${n} days`, unit: 'days', fn: (d, e) => !!(e && e.steps && parseInt(e.steps) >= stepGoalForDate(d)) },
   water:    { icon: '💧', title: n => `Drink 64 oz on ${n} days`, unit: 'days', fn: (d, e) => !!(e && e.water && parseFloat(e.water) >= 64) },
   logging:  { icon: '📝', title: n => `Log something ${n} days`, unit: 'days', fn: (d, e) => !!(e && (e.protein || e.steps || e.glucose || e.weight || (e.ex && e.ex.length))) },
   weighin:  { icon: '⚖️', title: () => 'Log your weight', unit: 'weigh-in', fn: (d, e) => !!(e && e.weight) }
 };
-function weeklyChallenges(ws, cut) {
-  const byDate = {}; entries.forEach(e => { byDate[e.date] = e; });
-  const count = (kind, wk, c) => Array.from({ length: 7 }, (_, i) => lbAddDays(wk, i)).filter(d => (!c || d <= c) && CHALLENGE_KINDS[kind].fn(d, byDate[d])).length;
-  const prev = [1, 2, 3, 4].map(i => lbAddDays(ws, -7 * i));
-  const avgPrev = k => prev.reduce((t, wk) => t + count(k, wk), 0) / 4;
-  const hasRecent = k => prev.some(wk => count(k, wk) > 0);
+function entriesByDate() { const m = {}; entries.forEach(e => { m[e.date] = e; }); return m; }
+function challengeCount(kind, wk, cut, byDate) { let n = 0; for (let i = 0; i < 7; i++) { const d = lbAddDays(wk, i); if (cut && d > cut) break; if (CHALLENGE_KINDS[kind].fn(d, byDate[d])) n++; } return n; }
+function weeklyChallengePlan(ws, byDate) {
+  const prev = [1, 2, 3, 4].map(i => lbAddDays(ws, -7 * i)), memo = {};
+  const prevCounts = k => memo[k] || (memo[k] = prev.map(wk => challengeCount(k, wk, null, byDate)));
+  const avgPrev = k => prevCounts(k).reduce((x, y) => x + y, 0) / 4, hasRecent = k => prevCounts(k).some(n => n > 0);
   const kinds = [hasRecent('workouts') ? 'workouts' : 'steps', hasRecent('protein') ? 'protein' : 'logging'];
   const rot = ['water', 'steps', 'logging', 'weighin'].filter(k => !kinds.includes(k));
   kinds.push(rot[Math.floor(new Date(ws + 'T00:00:00').getTime() / (7 * 864e5)) % rot.length]);
-  return kinds.map(kind => {
-    const target = kind === 'workouts' ? Math.min(5, Math.max(2, Math.round(avgPrev('workouts')) || 3)) : kind === 'protein' ? ((hasRecent('protein') && avgPrev('protein') < 3) ? 4 : 5) : kind === 'logging' ? 6 : kind === 'weighin' ? 1 : 4;
-    const progress = count(kind, ws, cut);
+  return kinds.map(kind => ({ kind, target: kind === 'workouts' ? Math.min(5, Math.max(2, Math.round(avgPrev('workouts')) || 3)) : kind === 'protein' ? ((hasRecent('protein') && avgPrev('protein') < 3) ? 4 : 5) : kind === 'logging' ? 6 : kind === 'weighin' ? 1 : 4 }));
+}
+function weeklyChallenges(ws, cut, byDateIn, planIn) {
+  const byDate = byDateIn || entriesByDate();
+  return (planIn || weeklyChallengePlan(ws, byDate)).map(({ kind, target }) => {
+    const progress = challengeCount(kind, ws, cut, byDate);
     return { kind, target, progress, done: progress >= target, title: CHALLENGE_KINDS[kind].title(target), icon: CHALLENGE_KINDS[kind].icon, unit: CHALLENGE_KINDS[kind].unit };
   });
 }
@@ -5054,14 +5062,15 @@ var _wwCache = { sig: null, weeks: [] };
 function weeklyWinData() {
   const sig = badgeSignature();
   if (_wwCache.sig === sig) return _wwCache.weeks;
-  const out = [], dates = entries.map(e => e.date).sort(), today = todayStr();
+  const out = [], dates = entries.map(e => e.date).sort(), today = todayStr(), byDate = entriesByDate();
   if (dates.length) {
     let w = lbWeekStart(dates[0]); const last = lbWeekStart(today);
     while (w <= last) {
+      const plan = weeklyChallengePlan(w, byDate);          // the week's targets are fixed once, from the weeks before it
       let wonDate = null, doneNow = 0;
       for (let i = 0; i < 7; i++) {
         const d = lbAddDays(w, i); if (d > today) break;
-        const ch = weeklyChallenges(w, d); doneNow = ch.filter(c => c.done).length;
+        const ch = weeklyChallenges(w, d, byDate, plan); doneNow = ch.filter(c => c.done).length;
         if (!wonDate && ch.every(c => c.done)) wonDate = d;
       }
       out.push({ week: w, wonDate, done: doneNow }); w = lbAddDays(w, 7);
@@ -5079,8 +5088,18 @@ var _badgeDatesCache = { sig: null, dates: {} };
 function badgeEarnedDates() {
   const sig = badgeSignature();
   if (_badgeDatesCache.sig === sig) return _badgeDatesCache.dates;
-  const dates = {};
-  [...new Set(entries.map(e => e.date))].sort().forEach(d => { try { allEarnedBadgeIds(d).forEach(id => { if (!dates[id]) dates[id] = d; }); } catch (err) { /* skip a bad day */ } });
+  const days = [...new Set(entries.map(e => e.date))].sort(), dates = {};
+  if (days.length) {
+    const memo = new Map();
+    const at = i => { if (!memo.has(i)) { let st; try { st = new Set(allEarnedBadgeIds(days[i])); } catch (err) { st = new Set(); } memo.set(i, st); } return memo.get(i); };
+    const stride = 14, idx = []; for (let i = 0; i < days.length; i += stride) idx.push(i); if (idx[idx.length - 1] !== days.length - 1) idx.push(days.length - 1);
+    at(days.length - 1).forEach(id => {                       // only badges you have now need a date
+      const k = idx.findIndex(i => at(i).has(id)); if (k < 0) return;
+      let lo = k > 0 ? idx[k - 1] + 1 : 0, hi = idx[k];       // somewhere between the last stop that did not have it and this one
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (at(mid).has(id)) hi = mid; else lo = mid + 1; }
+      dates[id] = days[lo];
+    });
+  }
   _badgeDatesCache = { sig, dates };
   return dates;
 }
@@ -5451,6 +5470,15 @@ function renderAchievementCelebrations(categories) {
   const badgeBanner = document.getElementById('badgeCelebration');
   const milestoneBanner = document.getElementById('milestoneCelebration');
   if (!badgeBanner || !milestoneBanner) return;
+  // One-time: when the badge set grew, whatever you had already earned is marked seen (so only genuinely new unlocks get a banner).
+  // Waits until your data has loaded, so an empty first paint cannot trip it.
+  try {
+    if (entries.length && localStorage.getItem('mounjaro-badges-v2') !== '1') {
+      let seen0 = []; try { seen0 = JSON.parse(localStorage.getItem('mounjaro-badges-seen') || '[]'); } catch (err) { seen0 = []; }
+      categories.forEach(cat => cat.badges.forEach(b => { if (b.value >= b.tier && !seen0.includes(b.id)) seen0.push(b.id); }));
+      localStorage.setItem('mounjaro-badges-seen', JSON.stringify(seen0)); localStorage.setItem('mounjaro-badges-v2', '1');
+    }
+  } catch (err) { /* storage unavailable */ }
 
   const earnedNow = [];
   const titleById = {};
@@ -5510,13 +5538,6 @@ var badgeIndex = {};                 // id -> everything the detail sheet needs
 var badgeLockedOpen = new Set();     // categories whose locked badges are all showing
 var milestoneLockedOpen = new Set();
 var prShowAll = false, recentShowAll = false;
-function quietlyMarkOldBadgesSeen(categories, dates) {
-  // badges that were already earned a while ago should not pop a "new!" banner just because the badge set grew
-  let seen = []; try { seen = JSON.parse(localStorage.getItem('mounjaro-badges-seen') || '[]'); } catch (err) { seen = []; }
-  const cut = lbAddDays(todayStr(), -7); let changed = false;
-  categories.forEach(cat => cat.badges.forEach(b => { if (b.value >= b.tier && !seen.includes(b.id) && dates[b.id] && dates[b.id] < cut) { seen.push(b.id); changed = true; } }));
-  if (changed) { try { localStorage.setItem('mounjaro-badges-seen', JSON.stringify(seen)); } catch (err) { /* ignore */ } }
-}
 function badgeCountText(b) { const f = v => b.tier >= 1000 ? Math.round(v).toLocaleString() : round1(v); return `${f(Math.max(0, b.value))}/${f(b.tier)}`; }
 function badgeRemainingText(b) { const rem = Math.max(0, b.tier - b.value); const f = v => b.tier >= 1000 ? Math.round(v).toLocaleString() : round1(v); return `${f(rem)} more ${nextBadgeUnitLabel(b.id)}`; }
 function badgeProgressRow(b, cat, extra) {
@@ -5535,8 +5556,11 @@ function renderBadges() {
   if (!grid || !summary) return;
   const data = computeBadgeData();
   const categories = buildBadgeCategories(data);
-  let earnedDates = {}; try { earnedDates = badgeEarnedDates(); } catch (err) { console.error('badge dates failed:', err); }
-  quietlyMarkOldBadgesSeen(categories, earnedDates);
+  let earnedDates = _badgeDatesCache.dates || {};
+  if (_badgeDatesCache.sig !== badgeSignature()) {
+    if (window.__badgeSync) { try { earnedDates = badgeEarnedDates(); } catch (err) { console.error('badge dates failed:', err); } }
+    else setTimeout(() => { const v = document.getElementById('view-badges'); if (v && v.classList.contains('active')) { try { badgeEarnedDates(); renderBadges(); } catch (err) { console.error('badge dates failed:', err); } } }, 40);
+  }
   renderAchievementCelebrations(categories);
   try { renderMilestonesSummary(); } catch (err) { console.error('Milestones summary render failed:', err); }
   try { renderPRHallOfFame(); } catch (err) { console.error('PR Hall of Fame render failed:', err); }
@@ -6236,7 +6260,7 @@ function updateStats() {
     setStatBar('scProteinBar', p, userProteinGoal, false);
   } else {
     pEl.textContent = '—';
-    pSub.textContent = 'target: 100–120g daily';
+    pSub.textContent = userProteinGoal === 100 ? 'target: 100–120g daily' : `goal: ${userProteinGoal}g daily`;
     pSub.className = 'sc-sub';
     setStatBar('scProteinBar', 0, 100, false);
   }
@@ -6395,7 +6419,7 @@ function updateStats() {
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Day Streak</div>
           </div>
           ${chTotal ? `<div data-recap-go="badges" role="button" tabindex="0" style="cursor:pointer">
-            <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:#5CE6C0">${chDone}/${chTotal}</div>
+            <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:var(--teal)">${chDone}/${chTotal}</div>
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Challenges ›</div>
           </div>` : ''}
         `;
@@ -7118,11 +7142,12 @@ function historyHighlights() {
   if (wo) out.push({ ico: '🏋️', t: `${wo} workout${wo === 1 ? '' : 's'}`, sub: 'in 30 days' });
   return out.slice(0, 3);
 }
-function dayProteinForHistory(d) {
-  const e = entries.find(x => x.date === d); if (!e) return null;
+function dayProteinFromEntry(e) {
+  if (!e) return null;
   if (e.meals && e.meals.length) { const t = mealTotals(e.meals).protein; return t != null ? t : null; }
   const v = parseFloat(e.protein); return isNaN(v) ? null : v;
 }
+function dayProteinForHistory(d) { return dayProteinFromEntry(entries.find(x => x.date === d)); }
 function historyWeekSummary(wk) {
   const all = entries.filter(e => lbWeekStart(e.date) === wk).sort((a, b) => a.date.localeCompare(b.date));
   const parts = [];
@@ -14875,13 +14900,13 @@ function renderRings(t, tSteps, tOz, stepGoal) {
   const water = tOz || 0;
 
   document.getElementById('ringProteinVal').textContent = protein ? Math.round(protein) + 'g' : '—';
-  document.getElementById('ringProteinSub').textContent = `Protein · goal 100g`;
+  document.getElementById('ringProteinSub').textContent = `Protein · goal ${userProteinGoal}g`;
   document.getElementById('ringStepsVal').textContent = steps ? steps.toLocaleString() : '—';
   document.getElementById('ringStepsSub').textContent = `Steps · goal ${stepGoal.toLocaleString()}`;
   document.getElementById('ringWaterVal').textContent = water ? water + 'oz' : '—';
   document.getElementById('ringWaterSub').textContent = `Water · goal 64oz`;
 
-  setRingArc('ringProteinArc', protein / 100, RING_CIRC.protein);
+  setRingArc('ringProteinArc', protein / (userProteinGoal || 100), RING_CIRC.protein);
   setRingArc('ringStepsArc', steps / (stepGoal || 1), RING_CIRC.steps);
   setRingArc('ringWaterArc', water / 64, RING_CIRC.water);
 }
@@ -15249,7 +15274,7 @@ function renderWeeklySummary() {
     const v = arr.map(f).filter(x => x != null && x !== '').map(parseFloat);
     return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
   };
-  let html = '<tr><th>Wk</th><th>Dates</th><th>Avg Fast</th><th>Avg Protein</th><th>≥100g Days</th><th>Avg Carbs</th><th>Avg Water</th><th>Avg Steps</th><th>Active Min</th><th>Weight Δ</th><th>Side Effects</th></tr>';
+  let html = '<tr><th>Wk</th><th>Dates</th><th>Avg Fast</th><th>Avg Protein</th><th>≥' + userProteinGoal + 'g Days</th><th>Avg Carbs</th><th>Avg Water</th><th>Avg Steps</th><th>Active Min</th><th>Weight Δ</th><th>Side Effects</th></tr>';
   wkNums.forEach(w => {
     const es = weeks[w].sort((a,b) => a.date.localeCompare(b.date));
     const start = new Date(TREATMENT_START); start.setDate(start.getDate() + (w-1)*7);
