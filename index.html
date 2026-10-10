@@ -2940,7 +2940,7 @@ body {
 
       <div class="form-card" id="workoutPlanCard">
         <div id="workoutPlanCardHeader" class="form-section-title" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-          <span id="workoutPlanTitle">Workout Plan · Planet Fitness</span>
+          <span id="workoutPlanTitle">Workout Plan</span>
           <span style="display:flex;align-items:center;flex-shrink:0"><button type="button" id="workoutFullscreenCloseBtn" title="Minimize — workout keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px;margin-right:8px">✕</button><span id="workoutPlanChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></span>
         </div>
         <div id="workoutVolumeSparkline" style="display:none;margin:6px 0 2px;overflow-x:hidden"></div>
@@ -11656,15 +11656,15 @@ function describeWorkoutPlanForAI() {
   const fmt = (arr) => arr.map(e => `${e.name} ${e.sets}`).join(', ');
   if (workoutPlanMode === 'custom') {
     const r = activeRoutine();
-    if (r) return `Custom routine "${r.name}" (cycles through its days in order, one per workout at Planet Fitness): ${r.days.map(d => `${d.name}: ${fmt(d.exercises)}`).join('. ')}.`;
+    if (r) return `Custom routine "${r.name}" (cycles through its days in order, one per workout): ${r.days.map(d => `${d.name}: ${fmt(d.exercises)}`).join('. ')}.`;
   }
   if (workoutPlanMode === 'fullbody') {
-    return `Full Body: ${fmt(WORKOUT_PLAN_FULLBODY)}. Same list every session, target 2-3x/week at Planet Fitness.`;
+    return `Full Body: ${fmt(WORKOUT_PLAN_FULLBODY)}. Same list every session, target 2-3x/week.`;
   }
   if (workoutPlanMode === 'ppl') {
-    return `Push: ${fmt(WORKOUT_PLAN_PPL.Push)}. Pull: ${fmt(WORKOUT_PLAN_PPL.Pull)}. Legs: ${fmt(WORKOUT_PLAN_PPL.Legs)}. Rotates through all three automatically, target 3-6x/week at Planet Fitness.`;
+    return `Push: ${fmt(WORKOUT_PLAN_PPL.Push)}. Pull: ${fmt(WORKOUT_PLAN_PPL.Pull)}. Legs: ${fmt(WORKOUT_PLAN_PPL.Legs)}. Rotates through all three automatically, target 3-6x/week.`;
   }
-  return `Day A (push): ${fmt(WORKOUT_PLAN.A)}. Day B (pull): ${fmt(WORKOUT_PLAN.B)}. Alternates automatically, target 2-3x/week at Planet Fitness.`;
+  return `Day A (push): ${fmt(WORKOUT_PLAN.A)}. Day B (pull): ${fmt(WORKOUT_PLAN.B)}. Alternates automatically, target 2-3x/week.`;
 }
 
 function totalStrengthSessions() {
@@ -14448,9 +14448,11 @@ async function saveNewWorkoutExercise() {
     setTimeout(() => { nameEl.focus(); const p = nameEl.value.length - 1; try { nameEl.setSelectionRange(p, p); } catch (e) { /* not every input type allows it */ } }, 0);
     return;
   }
+  const groupEl = document.getElementById('newExerciseGroup'), pickedGroup = groupEl ? groupEl.value : '';
+  if (!pickedGroup && !muscleGroupFor(name)) { alert('I do not recognise that exercise yet. Pick the muscle it works so it counts on your muscle map.'); if (groupEl) groupEl.focus(); return; }
   const key = currentPlanKey();
   customWorkoutExercises[key] = [...(customWorkoutExercises[key] || []), { name, sets, rest: REST_SECONDS }];
-  addToCustomLibrary(name, sets); // anything created here is offered again in the library
+  addToCustomLibrary(name, sets, pickedGroup); // anything created here is offered again in the library
   await saveWorkoutPlanCustomizations();
   renderWorkoutPlan();
 }
@@ -14575,7 +14577,7 @@ function renderWorkoutPlan() {
       : workoutPlanMode === 'ppl' ? 'PPL'
       : workoutPlanMode === 'custom' ? (activeRoutine() ? activeRoutine().name : 'My Routine')
       : 'Upper/Lower';
-    titleEl.textContent = `Workout Plan · Planet Fitness, ${modeLabel}`;
+    titleEl.textContent = `Workout Plan · ${modeLabel}`;
   }
   renderWorkoutVolumeSparkline();
 
@@ -14957,6 +14959,10 @@ function renderWorkoutPlan() {
           <input type="text" id="newExerciseName" placeholder="Exercise name" style="flex:1.4;min-width:0;padding:7px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:12px;background:var(--input-bg);color:var(--ink)">
           <input type="text" id="newExerciseSets" placeholder="e.g. 3 × 10" style="flex:1;min-width:0;padding:7px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:12px;background:var(--input-bg);color:var(--ink)">
         </div>
+        <select id="newExerciseGroup" aria-label="Muscle it works" style="width:100%;margin-bottom:6px;padding:7px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:12px;background:var(--input-bg);color:var(--ink)">
+          <option value="">Muscle it works: figure it out from the name</option>
+          ${MUSCLE_MAP_GROUPS.map(g => `<option value="${g}">${g}</option>`).join('')}
+        </select>
         <div style="display:flex;gap:6px">
           <button type="button" class="btn btn-secondary btn-sm" id="saveNewExerciseBtn" style="flex:1">Add to today's list</button>
           <button type="button" class="btn btn-ghost btn-sm" id="cancelNewExerciseBtn">Cancel</button>
@@ -16186,9 +16192,12 @@ async function savePinnedFavorites() {
 }
 
 async function pinFavorite(f) {
-  if (isPinned(f)) return;
-  pinnedFavorites = [...pinnedFavorites, { desc: f.desc, protein: f.protein || null, cal: f.cal || null, carbs: f.carbs || null, fat: f.fat || null }];
+  if (isPinned(f)) { showUndoToast(`"${f.desc}" is already in your Favorites`, async () => {}); return; }
+  const added = { desc: f.desc, protein: f.protein || null, cal: f.cal || null, carbs: f.carbs || null, fat: f.fat || null };
+  pinnedFavorites = [...pinnedFavorites, added];
+  pendingFlashDesc = added.desc; // the new chip lights up briefly in the Favorites row
   renderFavorites();
+  showUndoToast(`⭐ Added "${f.desc}" to Favorites`, async () => { await unpinFavorite(added); });
   await savePinnedFavorites();
 }
 
