@@ -1099,6 +1099,8 @@ body {
 .ah-synced { font-size: 11px; color: var(--ink-soft); margin-top: 8px; text-align: center; }
 .hs-status { margin: -4px 0 6px; padding: 0 16px; font-size: 12px; line-height: 1.55; color: var(--ink-soft); }
 .hs-status .bad { color: var(--coral); font-weight: 700; }
+.hs-btnrow { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px; margin: 0 0 8px; }
+.hs-btnrow .btn { flex: 1 1 45%; }
 .ah-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 11px; color: var(--ink-soft); text-align: right; }
 .exercise-collapse-btn { background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 4px 2px; flex-shrink: 0; display: flex; touch-action: manipulation; }
 .workout-exercise-block > div:first-child { gap: 2px !important; }
@@ -3653,6 +3655,12 @@ body {
             <button class="btn btn-secondary btn-sm" id="copyHealthSetupBtn" type="button">Copy setup sheet</button>
           </div>
           <div id="healthSetupStatus" class="hs-status"></div>
+          <div class="hs-btnrow">
+            <button class="btn btn-secondary btn-sm" id="copyHealthUrlBtn" type="button">Copy web address</button>
+            <button class="btn btn-secondary btn-sm" id="copyHealthJsonStepsBtn" type="button">Copy starter message</button>
+            <button class="btn btn-secondary btn-sm" id="copyHealthJsonAllBtn" type="button">Copy full message</button>
+          </div>
+          <div id="healthCopyMsg" class="hs-status"></div>
           <div class="settings-row" style="align-items:center">
             <div>
               <div class="settings-row-label">Test the connection</div>
@@ -3941,6 +3949,38 @@ try {
 // is ignored locally (the database is left alone) and listed in Settings so the Shortcut can be fixed.
 const HEALTH_FIELDS = ['steps', 'restHR', 'sleepHrs', 'healthMin', 'sleepScore', 'activeCal', 'distanceMi', 'hrv'];
 var healthIgnored = [];
+// ── HEALTH INBOX ── the Shortcut sends ONE request with everything it read to meta/healthInbox. The app does the careful part:
+// it checks each number, skips blanks (so a missing reading never erases a good one), picks the right day, and files it.
+var unsubInbox = null, healthInboxIgnored = [];
+function localDateFromIso(iso) { const d = new Date(iso); return isNaN(d) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function healthInboxKey() { return 'mounjaro-inbox-applied-' + (syncId || ''); }
+async function processHealthInbox(d) {
+  if (!d || !syncId) return;
+  const val = f => (d[f] != null && typeof d[f] === 'object' && 'stringValue' in d[f]) ? d[f].stringValue : d[f];
+  const stampRaw = val('healthSyncedAt'), stampMs = stampRaw ? Date.parse(stampRaw) : NaN, stamp = isNaN(stampMs) ? null : new Date(stampMs).toISOString();
+  const dateRaw = String(val('date') || '').trim();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : (stamp ? localDateFromIso(stamp) : todayStr());
+  const payload = { date }, ignored = [];
+  HEALTH_FIELDS.forEach(f => {
+    const v = val(f); if (v == null || String(v).trim() === '') return;                       // blank: leave the saved number alone
+    if (isValidHealthSyncValue(f, v)) payload[f] = String(normalizeHealthNumber(v));
+    else ignored.push({ date, field: f, value: String(v).slice(0, 24) });
+  });
+  healthInboxIgnored = ignored;
+  if (stamp) payload.healthSyncedAt = stamp;
+  const sig = JSON.stringify(payload);
+  let last = null; try { last = localStorage.getItem(healthInboxKey()); } catch (err) { /* ignore */ }
+  if (last === sig) { renderHealthSyncStatus(); return; }                                      // already filed on this phone
+  const existing = entries.find(e => e.date === date);
+  if (stamp && existing && existing.healthSyncedAt && Date.parse(existing.healthSyncedAt) >= stampMs) { try { localStorage.setItem(healthInboxKey(), sig); } catch (err) { /* ignore */ } renderHealthSyncStatus(); return; } // another device already did
+  if (Object.keys(payload).length <= (stamp ? 2 : 1)) { renderHealthSyncStatus(); return; }     // nothing usable to file
+  try {
+    await setDoc(doc(db, 'trackers', syncId, 'entries', date), payload, { merge: true });
+    try { localStorage.setItem(healthInboxKey(), sig); } catch (err) { /* ignore */ }
+    lastSyncDiagnostic.appliedAt = new Date().toISOString(); lastSyncDiagnostic.appliedValues = { ...payload };
+  } catch (err) { console.error('Health inbox filing failed:', err); lastSyncDiagnostic.applyError = err.message || String(err); }
+  renderHealthSyncStatus();
+}
 function entriesFromDocs(docs) {
   const out = [];
   docs.forEach(d => {
@@ -3970,50 +4010,56 @@ function healthSyncWhen(ms) {
   return days <= 0 ? `today ${t}` : days === 1 ? `yesterday ${t}` : days < 7 ? `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${t}` : `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${t}`;
 }
 function healthSyncStale() { const t = lastHealthSyncAt(); return t != null && Date.now() - t > 36 * 3600 * 1000 ? t : null; } // only once it has worked at least once
+function healthInboxUrl() { return `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/trackers/${syncId || 'YOUR-SYNC-ID'}/meta/healthInbox?key=${firebaseConfig.apiKey}`; }
+const HEALTH_MESSAGE_WORDS = { date: 'DATE', steps: 'STEPS', restHR: 'RESTINGHR', sleepHrs: 'SLEEPHOURS', healthMin: 'EXERCISEMIN', sleepScore: 'SLEEPSCORE', activeCal: 'ACTIVECAL', distanceMi: 'MILES', hrv: 'HRV', healthSyncedAt: 'NOW' };
+function healthInboxMessage(kind) {
+  const keys = kind === 'steps' ? ['date', 'steps', 'healthSyncedAt'] : ['date', 'steps', 'restHR', 'sleepHrs', 'healthMin', 'sleepScore', 'activeCal', 'distanceMi', 'hrv', 'healthSyncedAt'];
+  return '{"fields":{' + keys.map(k => `"${k}":{"stringValue":"${HEALTH_MESSAGE_WORDS[k]}"}`).join(',') + '}}';
+}
 function buildHealthSetupSheet() {
-  const base = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/trackers/${syncId || 'YOUR-SYNC-ID'}/entries/DATE?updateMask.fieldPaths=FIELD&key=${firebaseConfig.apiKey}`;
-  const rng = f => { const b = HEALTH_SYNC_FIELD_BOUNDS[f]; return b ? ` (allowed ${b[0]}–${b[1]})` : ''; };
+  const rng = f => { const b = HEALTH_SYNC_FIELD_BOUNDS[f]; return b ? ` (allowed ${b[0]}-${b[1]})` : ''; };
   return [
     'APPLE HEALTH -> TRACKER: SILENT SYNC',
     'PRIVATE: this sheet contains your sync ID, which works like a password. Do not share it.',
     '',
-    'WHAT IT DOES',
-    'A shortcut on your iPhone reads Apple Health and sends each number straight to your tracker. Nothing opens, no Safari. The tracker shows "last synced" so you can see it is working.',
+    'THE IDEA',
+    'Your Shortcut reads Apple Health, then sends everything in ONE web request to your tracker. The tracker checks every number and files it under the right day the next time it opens. Nothing opens on the phone, no Safari.',
     '',
-    'BUILD IT ONCE (Shortcuts app)',
-    '1. New shortcut. For each metric below add "Find Health Samples" (Today), then Calculate Statistics (Sum for steps, distance, energy, exercise minutes; Average for heart rate and HRV). For sleep use the samples\' Duration, in hours, not their label. Send plain numbers: use "Round Number" or "Format Number" with no thousands separator, so the tracker gets 6200 and not 6,200.',
-    '2. "Format Date": Current Date, Custom format yyyy-MM-dd. Call it DATE. Then send DATE itself first (FIELD = date, VALUE = DATE), the same way as in step 3 but with no If, so the day\'s entry always carries its date.',
-    '3. For EACH metric, wrap this in "If [the number] has any value" (so a blank never overwrites a good number):',
-    '   a. "Text" action holding the JSON body below, with FIELD and VALUE filled in.',
-    '   b. "Get Contents of URL": Method PATCH, URL below (put DATE and FIELD in), Header Content-Type = application/json, Request Body = File, choose the Text from (a).',
-    '4. Last step: one more PATCH with FIELD = healthSyncedAt and VALUE = Current Date formatted ISO 8601. That is what lets the app say "last synced".',
-    '5. Shortcuts > Automation > New: pick a trigger that happens while your phone is UNLOCKED (for example, when your alarm is stopped), run this shortcut, set "Run Immediately". iOS can refuse to read Health data while the phone is locked, so avoid pure time-of-day triggers until you have tested one.',
+    'AT THE END OF YOUR SHORTCUT (replace the old "Open URL" step)',
+    '1. "Format Date": Current Date, Custom format yyyy-MM-dd. Name it DATE.',
+    '2. "Format Date": Current Date, format ISO 8601. Name it NOW.',
+    '3. "Text": paste the MESSAGE below, then replace each CAPITAL WORD with the matching variable (DATE, NOW, STEPS, ...). Keep the quotes around them.',
+    '4. "Get Contents of URL": paste the WEB ADDRESS below. Tap Show More: Method = PATCH. Headers: add Content-Type = application/json. Request Body = File, and choose the Text from step 3.',
+    '5. Run the shortcut once by hand. Open this tracker: Settings shows "Last sync from your iPhone".',
+    '6. Shortcuts > Automation > New: pick a trigger that happens while your phone is UNLOCKED (for example, when your alarm is stopped), run this shortcut, set "Run Immediately". iOS can refuse to read Health data while the phone is locked, so avoid pure time-of-day triggers until you have tested one.',
     '',
-    'URL (replace DATE and FIELD)',
-    base,
+    'WEB ADDRESS',
+    healthInboxUrl(),
     '',
-    'JSON BODY (replace FIELD and VALUE, keep the quotes)',
-    '{"fields":{"FIELD":{"stringValue":"VALUE"}}}',
+    'MESSAGE (starter: steps only)',
+    healthInboxMessage('steps'),
     '',
-    'FIELDS',
-    'date - the day this is for, yyyy-MM-dd (send it first)',
-    ...['steps - step count, whole number', 'restHR - resting heart rate, bpm', 'sleepHrs - hours slept, a number like 7.2', 'healthMin - exercise minutes', 'sleepScore - 0 to 100', 'activeCal - active calories, kcal', 'distanceMi - walking + running distance, miles', 'hrv - heart rate variability, ms'].map(l => `${l.split(' - ')[0]} - ${l.split(' - ')[1]}${rng(l.split(' - ')[0])}`),
-    'healthSyncedAt - date and time of this run (ISO 8601)',
+    'MESSAGE (all numbers)',
+    healthInboxMessage('all'),
+    '',
+    'WHAT EACH WORD MEANS',
+    'DATE - the day, yyyy-MM-dd',
+    'NOW - the date and time of this run, ISO 8601 (this is how the tracker knows it is a new sync)',
+    ...['steps - STEPS: step count, whole number', 'restHR - RESTINGHR: resting heart rate, bpm', 'sleepHrs - SLEEPHOURS: hours slept, a number like 7.2', 'healthMin - EXERCISEMIN: exercise minutes', 'sleepScore - SLEEPSCORE: 0 to 100', 'activeCal - ACTIVECAL: active calories, kcal', 'distanceMi - MILES: walking + running distance', 'hrv - HRV: heart rate variability, ms'].map(l => { const [f, rest] = l.split(' - '); return `${rest}${rng(f)}`; }),
     '',
     'GOOD TO KNOW',
-    '- Values outside the allowed range are ignored by the tracker, and listed in Settings so you can fix the shortcut.',
-    '- Numbers must be plain, like 6200 or 7.2. Text such as "7h 12m" is ignored and listed in Settings, never half-read.',
-    '- Only send the metrics you have; each one is its own small PATCH, so a missing number never erases a saved one.',
-    '- Settings > Test Health Sync shows exactly what arrived today.'
+    '- A number that is missing or blank is simply skipped, so it never erases a saved one.',
+    '- Numbers must be plain, like 6200 or 7.2 (6,200 is fine too). Text such as "7h 12m" is ignored and listed in Settings, never half-read.',
+    '- Start with the steps-only message, get that working, then add the others one at a time.'
   ].join('\n');
 }
 function renderHealthSyncStatus() {
   const box = document.getElementById('healthSetupStatus'); if (!box) return;
-  const t = lastHealthSyncAt(), lines = [];
+  const allIgnored = healthIgnored.concat(healthInboxIgnored), t = lastHealthSyncAt(), lines = [];
   lines.push(t ? `Last sync from your iPhone: <b style="color:var(--ink)">${escapeHtml(healthSyncWhen(t))}</b>${healthSyncStale() ? ' <span class="bad">(over 36 hours ago)</span>' : ''}` : 'No silent sync received yet. Once your Shortcut runs, the time shows here.');
-  if (healthIgnored.length) {
-    const sample = healthIgnored.slice(0, 3).map(x => `${x.field} on ${fmtDate(x.date)} ("${escapeHtml(x.value)}")`).join('; ');
-    lines.push(`<span class="bad">Ignored ${healthIgnored.length} value${healthIgnored.length === 1 ? ' that was not a usable number' : 's that were not usable numbers'}: ${sample}${healthIgnored.length > 3 ? '…' : ''}. Check that step of the Shortcut.</span>`);
+  if (allIgnored.length) {
+    const sample = allIgnored.slice(0, 3).map(x => `${x.field} on ${fmtDate(x.date)} ("${escapeHtml(x.value)}")`).join('; ');
+    lines.push(`<span class="bad">Ignored ${allIgnored.length} value${allIgnored.length === 1 ? ' that was not a usable number' : 's that were not usable numbers'}: ${sample}${allIgnored.length > 3 ? '…' : ''}. Check that step of the Shortcut.</span>`);
   }
   box.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
 }
@@ -4042,6 +4088,19 @@ async function testHealthRest() {
     say(false, `Couldn't reach Google (${err.name === 'AbortError' ? 'timed out after 12 s' : err.message}). Check your connection. A Shortcut is not blocked by browsers the way this page can be, so if everything else works, try the Shortcut itself.`);
   } finally { btn.disabled = false; }
 }
+(function wireHealthCopyButtons() {
+  const msg = document.getElementById('healthCopyMsg'); if (!msg) return;
+  const copy = async (btnId, text, what) => {
+    const b = document.getElementById(btnId); if (!b) return;
+    b.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(text()); msg.innerHTML = `<div style="color:var(--in);font-weight:700">Copied the ${what}. Now switch to the Shortcuts app and paste it.</div>`; }
+      catch (err) { msg.innerHTML = '<div class="bad">Could not copy automatically. Press and hold in the box and choose Copy.</div>'; }
+    });
+  };
+  copy('copyHealthUrlBtn', healthInboxUrl, 'web address');
+  copy('copyHealthJsonStepsBtn', () => healthInboxMessage('steps'), 'starter message');
+  copy('copyHealthJsonAllBtn', () => healthInboxMessage('all'), 'full message');
+})();
 (function wireHealthRestTest() { const b = document.getElementById('testHealthRestBtn'); if (b) b.addEventListener('click', testHealthRest); })();
 (function wireHealthSetup() {
   const btn = document.getElementById('copyHealthSetupBtn'); if (!btn) return;
@@ -6002,6 +6061,8 @@ function startListening() {
   if (unsubLabs) unsubLabs();
 
   const entriesRef = collection(db, 'trackers', syncId, 'entries');
+  if (unsubInbox) unsubInbox();
+  try { unsubInbox = onSnapshot(doc(db, 'trackers', syncId, 'meta', 'healthInbox'), snap => { if (snap.exists && snap.exists()) processHealthInbox(snap.data()); }, err => console.error('Health inbox listener failed:', err)); } catch (err) { console.error('Health inbox listener failed:', err); }
   // Ordered by document id (which is the date), not by a `date` field: a query ordered by a field silently skips documents that
   // lack it, and a Shortcut that writes the first numbers of a day creates exactly such a document.
   const q = query(entriesRef, orderBy('__name__'));
