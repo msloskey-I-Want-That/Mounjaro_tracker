@@ -1060,6 +1060,12 @@ body {
 }
 .set-field .unit { position: absolute; right: 7px; bottom: 3px; font-size: 8px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; pointer-events: none; }
 .set-row.done .set-field input { border-color: var(--accent); font-weight: 800; }
+.set-timer-btn {
+  width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px;
+  border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+  font-size: 15px; font-weight: 800; cursor: pointer; touch-action: manipulation;
+}
+.set-timer-btn.running { background: var(--coral); border-color: var(--coral); color: #0d0d0f; }
 .set-check-btn {
   width: 44px; height: 40px; flex-shrink: 0; border-radius: 12px;
   border: 1.5px solid var(--line); background: var(--card); color: var(--ink-soft);
@@ -12894,6 +12900,39 @@ function wireCollapseControls() {
   });
 }
 
+// Stopwatch for timed sets (farmers carry, plank, dead hang...): tap ▶, carry,
+// tap ■ and the seconds are filled in. Session-only; one runs at a time.
+let setStopwatch = null; // { exercise, idx, startedAt, tick }
+function stopwatchRow(sw) { return [...document.querySelectorAll('.set-row')].find(r => r.dataset.exercise === sw.exercise && Number(r.dataset.setIdx) === sw.idx) || null; }
+function stopwatchPaint(sw, running) {
+  const row = stopwatchRow(sw); if (!row) return false;
+  const secs = Math.max(0, Math.round((Date.now() - sw.startedAt) / 1000));
+  const input = row.querySelector('.set-reps-input'), btn = row.querySelector('.set-timer-btn');
+  if (workoutSessionState[sw.exercise] && workoutSessionState[sw.exercise][sw.idx]) workoutSessionState[sw.exercise][sw.idx].reps = String(secs);
+  if (input) input.value = secs;
+  if (btn) { btn.classList.toggle('running', running); btn.textContent = running ? '■' : '▶'; btn.setAttribute('aria-label', running ? 'Stop timer' : 'Start timer'); }
+  return true;
+}
+function stopSetStopwatch() {
+  if (!setStopwatch) return;
+  const sw = setStopwatch; setStopwatch = null; clearInterval(sw.tick);
+  stopwatchPaint(sw, false);
+  try { if (navigator.vibrate) navigator.vibrate(60); } catch (e) {}
+}
+function toggleSetStopwatch(exerciseName, idx) {
+  if (setStopwatch && setStopwatch.exercise === exerciseName && setStopwatch.idx === idx) { stopSetStopwatch(); return; }
+  stopSetStopwatch(); // a different one was running: finish it first
+  const sw = { exercise: exerciseName, idx, startedAt: Date.now(), tick: null };
+  setStopwatch = sw;
+  stopwatchPaint(sw, true);
+  sw.tick = setInterval(() => {
+    const row = stopwatchRow(sw);
+    if (setStopwatch !== sw || !row || row.classList.contains('done')) { if (setStopwatch === sw) { setStopwatch = null; } clearInterval(sw.tick); return; }
+    stopwatchPaint(sw, true);
+  }, 250);
+  try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) {}
+}
+
 function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
   const mode = exerciseMode(exerciseName), hasWeight = mode === 'weighted' || mode === 'timedLoaded', isTimed = mode === 'timed' || mode === 'timedLoaded';
   const prevText = prevData ? `last ${fmtPrevSet(prevData)}${prevData.warmup ? ' (W)' : ''}` : 'no history yet';
@@ -12917,6 +12956,7 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
           <button type="button" class="set-step-btn set-weight-plus" aria-label="Increase weight by 5 pounds">+</button>
         </div>` : ''}
         <div class="set-field set-reps-field"><input type="number" class="set-reps-input" inputmode="numeric" value="${setData.reps}" placeholder="0"><span class="unit">${isTimed ? 'sec' : 'reps'}</span></div>
+        ${isTimed && !setData.done ? (() => { const run = setStopwatch && setStopwatch.exercise === exerciseName && setStopwatch.idx === idx; return `<button type="button" class="set-timer-btn${run ? ' running' : ''}" aria-label="${run ? 'Stop timer' : 'Start timer'}" title="${run ? 'Stop timer' : 'Start timer'}">${run ? '■' : '▶'}</button>`; })() : ''}
         <button type="button" class="set-check-btn${justDone ? ' set-just-done' : ''}" aria-label="${setData.done ? 'Mark set not done' : 'Mark set done'}">✓</button>
       </div>
     </div>${restInlineHtml(exerciseName, idx)}`;
@@ -13134,6 +13174,10 @@ function wireWorkoutPlanEvents() {
     const idx = Number(row.dataset.setIdx);
     input.addEventListener('input', () => { workoutSessionState[exName][idx].reps = input.value; });
     input.addEventListener('focus', () => input.select());
+  });
+  document.querySelectorAll('.set-timer-btn').forEach(btn => {
+    const row = btn.closest('.set-row');
+    btn.addEventListener('click', () => toggleSetStopwatch(row.dataset.exercise, Number(row.dataset.setIdx)));
   });
   document.querySelectorAll('.set-check-btn').forEach(btn => {
     const row = btn.closest('.set-row');
