@@ -1061,9 +1061,9 @@ body {
 .set-field .unit { position: absolute; right: 7px; bottom: 3px; font-size: 8px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; pointer-events: none; }
 .set-row.done .set-field input { border-color: var(--accent); font-weight: 800; }
 .set-timer-btn {
-  width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px;
+  height: 30px; padding: 0 12px; flex-shrink: 0; border-radius: 15px;
   border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
-  font-size: 15px; font-weight: 800; cursor: pointer; touch-action: manipulation;
+  font-size: 12px; font-weight: 800; cursor: pointer; touch-action: manipulation; white-space: nowrap;
 }
 .set-timer-btn.running { background: var(--coral); border-color: var(--coral); color: #0d0d0f; }
 .set-check-btn {
@@ -12910,7 +12910,7 @@ function stopwatchPaint(sw, running) {
   const input = row.querySelector('.set-reps-input'), btn = row.querySelector('.set-timer-btn');
   if (workoutSessionState[sw.exercise] && workoutSessionState[sw.exercise][sw.idx]) workoutSessionState[sw.exercise][sw.idx].reps = String(secs);
   if (input) input.value = secs;
-  if (btn) { btn.classList.toggle('running', running); btn.textContent = running ? '■' : '▶'; btn.setAttribute('aria-label', running ? 'Stop timer' : 'Start timer'); }
+  if (btn) { btn.classList.toggle('running', running); btn.textContent = running ? '■ Stop' : '▶ Start'; btn.setAttribute('aria-label', running ? 'Stop timer' : 'Start timer'); }
   return true;
 }
 function stopSetStopwatch() {
@@ -12947,6 +12947,7 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
         <span class="set-prev">${prevText}</span>
         ${setData.warmup ? '' : '<span class="pr-proximity-hint" style="display:none"></span>'}
         ${isPR ? '<span class="set-pr-badge">🏆 NEW PR</span>' : ''}
+        ${isTimed && !setData.done ? (() => { const run = setStopwatch && setStopwatch.exercise === exerciseName && setStopwatch.idx === idx; return `<button type="button" class="set-timer-btn${run ? ' running' : ''}" aria-label="${run ? 'Stop timer' : 'Start timer'}" title="${run ? 'Stop timer' : 'Start timer'}">${run ? '■ Stop' : '▶ Start'}</button>`; })() : ''}
         <button type="button" class="set-remove-btn" data-exercise="${exerciseName}" data-set-idx="${idx}" aria-label="Remove this set">✕</button>
       </div>
       <div class="set-row-main">
@@ -12956,7 +12957,6 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
           <button type="button" class="set-step-btn set-weight-plus" aria-label="Increase weight by 5 pounds">+</button>
         </div>` : ''}
         <div class="set-field set-reps-field"><input type="number" class="set-reps-input" inputmode="numeric" value="${setData.reps}" placeholder="0"><span class="unit">${isTimed ? 'sec' : 'reps'}</span></div>
-        ${isTimed && !setData.done ? (() => { const run = setStopwatch && setStopwatch.exercise === exerciseName && setStopwatch.idx === idx; return `<button type="button" class="set-timer-btn${run ? ' running' : ''}" aria-label="${run ? 'Stop timer' : 'Start timer'}" title="${run ? 'Stop timer' : 'Start timer'}">${run ? '■' : '▶'}</button>`; })() : ''}
         <button type="button" class="set-check-btn${justDone ? ' set-just-done' : ''}" aria-label="${setData.done ? 'Mark set not done' : 'Mark set done'}">✓</button>
       </div>
     </div>${restInlineHtml(exerciseName, idx)}`;
