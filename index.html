@@ -915,6 +915,7 @@ body {
   user-select: none;
   transition: all 0.15s;
 }
+body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data-view="food"], body.mode-exercise .full-only { display: none !important; }
 .chip.on { background: var(--teal); border-color: var(--teal); color: white; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 /* My Routine editor + library picker */
 .re-overlay { position: fixed; inset: 0; z-index: 1200; background: rgba(4,7,18,0.74); display: flex; align-items: flex-end; justify-content: center; }
@@ -1521,10 +1522,15 @@ body {
 <div class="modal-overlay hidden" id="syncModal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title" id="modalTitle">Welcome, Mike</div>
+    <div class="modal-title" id="modalTitle">Welcome</div>
     <div class="modal-sub" id="modalSub">Your Sync ID lets you access your data on any device — iPhone, computer, or tablet. Save it somewhere safe.</div>
 
     <div id="modalNewSection">
+      <input class="modal-input" id="welcomeName" placeholder="Your first name" autocomplete="given-name" maxlength="24" style="margin-bottom:10px">
+      <div class="chip-row" id="welcomeModeRow" style="margin-bottom:12px">
+        <div class="chip welcome-mode-chip on" data-mode-choice="full">Everything</div>
+        <div class="chip welcome-mode-chip" data-mode-choice="exercise">Workouts only</div>
+      </div>
       <div class="sync-id-display" id="newSyncIdDisplay">Generating…</div>
       <button class="btn btn-secondary" style="margin-bottom:10px" id="copySyncIdBtn"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg> Copy Sync ID</button>
       <button class="btn btn-primary" id="useNewIdBtn">Use This ID & Start</button>
@@ -1684,7 +1690,7 @@ body {
         <span id="printDate"></span>
       </div>
 
-      <div style="display:flex;gap:8px;margin-bottom:14px">
+      <div class="full-only" style="display:flex;gap:8px;margin-bottom:14px">
         <button type="button" class="btn btn-secondary" id="quickWaterBtn" style="flex:1;flex-direction:column;padding:12px 6px;gap:5px">
           <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 8 7 13a7 7 0 0 1-14 0c0-5 7-13 7-13z"/></svg>
           <span style="font-size:11px;font-weight:700">+8oz Water</span>
@@ -1699,7 +1705,7 @@ body {
         </button>
       </div>
 
-      <div id="quickLogFoodSection" style="display:none;margin-bottom:14px">
+      <div class="full-only" id="quickLogFoodSection" style="display:none;margin-bottom:14px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Quick Log</div>
         <div id="quickLogFoodRow" style="display:flex;gap:8px;overflow-x:auto"></div>
       </div>
@@ -1715,9 +1721,9 @@ body {
         </div>
       </div>
 
-      <div class="inj-banner" id="injBanner"></div>
+      <div class="full-only inj-banner" id="injBanner"></div>
 
-      <div class="form-card" id="ringsCard" style="margin-bottom:14px;border-radius:20px;box-shadow:var(--shadow-hero)">
+      <div class="full-only form-card" id="ringsCard" style="margin-bottom:14px;border-radius:20px;box-shadow:var(--shadow-hero)">
         <div style="display:flex;align-items:center;gap:16px">
           <div style="flex:1;display:flex;flex-direction:column;gap:16px;min-width:0">
             <div style="display:flex;align-items:center;gap:10px">
@@ -1753,7 +1759,7 @@ body {
         </div>
       </div>
 
-      <div class="form-card" id="weeklyRecapCard" style="display:none">
+      <div class="full-only form-card" id="weeklyRecapCard" style="display:none">
         <div class="form-section-title"><span style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;background:linear-gradient(135deg,#37C6FF,#5CE6C0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent"><svg width="15" height="15" viewBox="0 0 24 24" stroke="#5CE6C0" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> This Week</span></div>
         <div id="weeklyRecapBody" style="display:flex;justify-content:space-around;text-align:center;gap:8px"></div>
         <div id="patternsSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
@@ -1763,7 +1769,7 @@ body {
         </div>
       </div>
 
-      <div class="form-card" id="aiInsightsCard">
+      <div class="full-only form-card" id="aiInsightsCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
           <span><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Weekly Insights</span>
           <span id="aiInsightsChevron" style="font-size:11px;color:var(--ink-soft)">▶</span>
@@ -1773,7 +1779,7 @@ body {
         <div id="aiInsightsBody" style="font-size:13px;color:var(--ink);margin-top:10px;line-height:1.5"></div>
       </div>
 
-      <div class="form-card" id="aiAskCard">
+      <div class="full-only form-card" id="aiAskCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
           <span><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> Ask About Your Data</span>
           <span id="aiAskChevron" style="font-size:11px;color:var(--ink-soft)">▶</span>
@@ -2046,7 +2052,7 @@ body {
       </div>
       <div id="addCardMenu" style="display:none"></div>
 
-      <div class="timeline-card">
+      <div class="full-only timeline-card">
         <div class="timeline-title">Dose Timeline</div>
         <div class="timeline-row" id="timelineRow">
           <div class="timeline-phase" id="tp1"><div class="ph-dose">2.5mg</div><div>Wk 1–4</div></div>
@@ -2964,7 +2970,7 @@ body {
       </div>
       <div class="form-card" id="exerciseActivityCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Exercise</span><button type="button" id="exerciseFullscreenCloseBtn" title="Minimize — timer keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px">✕</button><span id="exerciseCardChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></div>
-        <div id="workoutDescBlock" style="margin-bottom:12px">
+        <div class="full-only" id="workoutDescBlock" style="margin-bottom:12px">
           <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Describe your workout <span style="font-weight:500">(optional)</span></label>
           <div style="display:flex;gap:8px">
             <input type="text" id="workoutDescInput" placeholder="e.g. did the elliptical for 35 min, felt strong" style="flex:1">
@@ -2972,13 +2978,13 @@ body {
           </div>
           <div id="workoutParseResults" style="font-size:12px;margin-top:6px"></div>
         </div>
-        <div style="margin-bottom:12px">
+        <div class="full-only" style="margin-bottom:12px">
           <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Scan treadmill finish screen <span style="font-weight:500">(optional)</span></label>
           <button class="btn btn-secondary btn-sm" id="scanTreadmillBtn" style="width:100%"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Scan Screen</button>
           <input type="file" id="treadmillFileInput" accept="image/*" style="display:none">
           <div id="treadmillScanResults" style="font-size:12px;margin-top:6px"></div>
         </div>
-        <div class="chip-row" id="exTypeRow" style="margin-bottom:12px">
+        <div class="full-only chip-row" id="exTypeRow" style="margin-bottom:12px">
           <div class="chip ex-chip" data-ex="Walk">Walk</div>
           <div class="chip ex-chip" data-ex="Dog Walk">Dog Walk</div>
           <div class="chip ex-chip" data-ex="Hiking">Hiking</div>
@@ -2999,13 +3005,13 @@ body {
             <label for="exMin" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em">Minutes</label>
             <input type="number" id="exMin" inputmode="numeric" placeholder="e.g. 30" style="padding:12px;font-size:18px;font-weight:800;text-align:center">
           </div>
-          <div class="field" style="flex:1;margin-bottom:0">
+          <div class="full-only field" style="flex:1;margin-bottom:0">
             <label for="exDist" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em">Distance (mi)</label>
             <input type="number" id="exDist" inputmode="decimal" step="0.01" placeholder="optional" style="padding:12px;font-size:18px;font-weight:800;text-align:center">
           </div>
         </div>
         <div style="display:flex;gap:10px;align-items:flex-end;margin-top:10px">
-          <div class="field" style="flex:1;margin-bottom:0">
+          <div class="full-only field" style="flex:1;margin-bottom:0">
             <label for="exIncline" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em">Incline (%)</label>
             <input type="number" id="exIncline" inputmode="decimal" step="0.5" placeholder="optional" style="padding:12px;font-size:18px;font-weight:800;text-align:center">
           </div>
@@ -3022,7 +3028,7 @@ body {
         </div>
         <div id="workoutHistoryList"></div>
       </div>
-      <div class="form-card">
+      <div class="full-only form-card">
         <div class="form-section-title" id="activityHistoryToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
           <span>Activity History</span>
           <span id="activityHistoryChevron" style="font-size:11px;color:var(--ink-soft)">▶</span>
@@ -3072,28 +3078,28 @@ body {
         </div>
         <div class="chart-hint" id="chartRangeHint"></div>
       </div>
-      <div class="chart-card" id="compareCard">
+      <div class="full-only chart-card" id="compareCard">
         <div class="chart-title">Compare two metrics</div>
         <div class="cmp-row"><select id="cmpA" aria-label="First metric"></select><span>vs</span><select id="cmpB" aria-label="Second metric"></select></div>
         <div class="chart-wrap" id="cmpWrap"><canvas id="compareChart"></canvas></div>
         <div class="cmp-note" id="cmpNote"></div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Dose Escalation Timeline</div>
         <div id="doseTimelineBody"></div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
           <div class="chart-title" style="margin-bottom:0">Dose Change Comparison</div>
           <select id="doseComparisonPicker" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:11px;background:var(--input-bg);color:var(--ink);max-width:160px;font-weight:700"></select>
         </div>
         <div id="doseComparisonBody"></div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Side Effects Near Dose Changes</div>
         <div id="sideEffectCorrelationBody"></div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Glucose Trend</div>
         <div class="chart-wrap"><canvas id="glucoseChart"></canvas></div>
         <div class="chart-legend">
@@ -3101,7 +3107,7 @@ body {
           <span><span class="legend-dot" style="background:var(--coral)"></span>2hr Post-Meal (target &lt;180)</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Weight Trend</div>
         <div class="chart-wrap"><canvas id="weightChart"></canvas></div>
         <div class="chart-legend">
@@ -3109,7 +3115,7 @@ body {
           <span><span class="legend-dot" style="background:var(--coral)"></span>Goal (<span id="legendGoal">197</span> lbs)</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Body Measurements</div>
         <div class="chart-wrap"><canvas id="measurementsChart"></canvas></div>
         <div class="chart-legend">
@@ -3118,7 +3124,7 @@ body {
           <span><span class="legend-dot" style="background:var(--sage)"></span>Arms</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Daily Protein</div>
         <div class="chart-wrap"><canvas id="proteinChart"></canvas></div>
         <div class="chart-legend">
@@ -3126,7 +3132,7 @@ body {
           <span><span class="legend-dot" style="background:var(--sage)"></span><span id="proteinLegend">100g minimum target</span></span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Daily Water</div>
         <div class="chart-wrap"><canvas id="waterChart"></canvas></div>
         <div class="chart-legend">
@@ -3134,7 +3140,7 @@ body {
           <span><span class="legend-dot" style="background:var(--sage)"></span>64 oz minimum</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Daily Carbs</div>
         <div class="chart-wrap"><canvas id="carbsChart"></canvas></div>
         <div class="chart-legend">
@@ -3142,7 +3148,7 @@ body {
           <span><span class="legend-dot" style="background:var(--sage)"></span>150g moderate reference</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Daily Calories</div>
         <div class="chart-wrap"><canvas id="caloriesChart"></canvas></div>
         <div class="chart-legend">
@@ -3150,7 +3156,7 @@ body {
           <span><span class="legend-dot" style="background:var(--sage)"></span>Target (from Settings)</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Daily Fat</div>
         <div class="chart-wrap"><canvas id="fatChart"></canvas></div>
         <div class="chart-legend">
@@ -3158,7 +3164,7 @@ body {
           <span><span class="legend-dot" style="background:var(--sage)"></span>Target (from Settings)</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Daily Steps</div>
         <div class="chart-wrap"><canvas id="stepsChart"></canvas></div>
         <div class="chart-legend">
@@ -3167,7 +3173,7 @@ body {
           <span><span class="legend-dot" style="background:var(--teal);opacity:0.5"></span>7-day trend</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Daily Exercise</div>
         <div class="chart-wrap"><canvas id="exChart"></canvas></div>
         <div class="chart-legend">
@@ -3175,7 +3181,7 @@ body {
           <span><span class="legend-dot" style="background:var(--sage)"></span>30 min/day reference</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Active Energy</div>
         <div class="chart-wrap"><canvas id="activeCalChart"></canvas></div>
         <div class="chart-legend">
@@ -3183,7 +3189,7 @@ body {
           <span><span class="legend-dot" style="background:var(--teal);opacity:0.5"></span>7-day trend</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Distance</div>
         <div class="chart-wrap"><canvas id="distanceChart"></canvas></div>
         <div class="chart-legend">
@@ -3191,14 +3197,14 @@ body {
           <span><span class="legend-dot" style="background:var(--teal);opacity:0.5"></span>7-day trend</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Pace (Walks &amp; Runs)</div>
         <div class="chart-wrap"><canvas id="paceChart"></canvas></div>
         <div class="chart-legend">
           <span><span class="legend-dot" style="background:var(--teal)"></span>mph (only days with distance logged)</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Treadmill Incline</div>
         <div class="chart-wrap"><canvas id="inclineChart"></canvas></div>
         <div class="chart-legend">
@@ -3223,14 +3229,14 @@ body {
           <span><span class="legend-dot" style="background:var(--teal)"></span>Heaviest set that session (lbs)</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Weekly Summary</div>
         <div style="overflow-x:auto">
           <table class="wk-table" id="wkTable"></table>
         </div>
         <button type="button" class="bsec-more" id="wkMoreBtn" style="display:none"></button>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Blood Pressure</div>
         <div class="chart-wrap"><canvas id="bpChart"></canvas></div>
         <div class="chart-legend">
@@ -3238,7 +3244,7 @@ body {
           <span><span class="legend-dot" style="background:var(--coral)"></span>Diastolic (target &lt;80)</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Resting Heart Rate</div>
         <div class="chart-wrap"><canvas id="hrChart"></canvas></div>
         <div class="chart-legend">
@@ -3247,7 +3253,7 @@ body {
           <span><span class="legend-dot" style="background:var(--coral)"></span>Side effect logged that day</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Heart Rate Variability</div>
         <div class="chart-wrap"><canvas id="hrvChart"></canvas></div>
         <div class="chart-legend">
@@ -3256,7 +3262,7 @@ body {
           <span><span class="legend-dot" style="background:var(--coral)"></span>Side effect logged that day</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Sleep</div>
         <div class="chart-wrap"><canvas id="sleepChart"></canvas></div>
         <div class="chart-legend">
@@ -3265,7 +3271,7 @@ body {
           <span><span class="legend-dot" style="background:var(--teal);opacity:0.5"></span>7-day trend</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Sleep Score</div>
         <div class="chart-wrap"><canvas id="sleepScoreChart"></canvas></div>
         <div class="chart-legend">
@@ -3273,7 +3279,7 @@ body {
           <span><span class="legend-dot" style="background:var(--teal);opacity:0.5"></span>7-day trend</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">A1C Progress</div>
         <div class="chart-wrap"><canvas id="a1cChart"></canvas></div>
         <div class="chart-legend">
@@ -3283,7 +3289,7 @@ body {
         </div>
         <div class="lab-list" id="labList"></div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">LDL Cholesterol</div>
         <div class="chart-wrap"><canvas id="ldlChart"></canvas></div>
         <div class="chart-legend">
@@ -3291,7 +3297,7 @@ body {
           <span><span class="legend-dot" style="background:var(--sage);opacity:0.6"></span>Reference range (&lt;100)</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">Kidney Function (eGFR)</div>
         <div class="chart-wrap"><canvas id="egfrChart"></canvas></div>
         <div class="chart-legend">
@@ -3299,7 +3305,7 @@ body {
           <span><span class="legend-dot" style="background:var(--sage);opacity:0.6"></span>Reference range (&gt;60)</span>
         </div>
       </div>
-      <div class="chart-card">
+      <div class="full-only chart-card">
         <div class="chart-title">ALT (Liver)</div>
         <div class="chart-wrap"><canvas id="altChart"></canvas></div>
         <div class="chart-legend">
@@ -3327,6 +3333,22 @@ body {
               <div class="settings-row-sub">Connect to a different Sync ID</div>
             </div>
             <button class="btn btn-ghost btn-sm" id="switchIdBtn">Switch</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">App Mode</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">What do you use this for?</div>
+              <div class="settings-row-sub">Workouts only hides the Log and Food tabs and the health cards. You can switch back any time.</div>
+            </div>
+          </div>
+          <div class="chip-row" id="appModeRow" style="padding: 4px 0 8px">
+            <div class="chip mode-chip" data-mode-choice="full">Everything</div>
+            <div class="chip mode-chip" data-mode-choice="exercise">Workouts only</div>
           </div>
         </div>
       </div>
@@ -3427,7 +3449,7 @@ body {
         </div>
       </div>
 
-      <div class="settings-section">
+      <div class="settings-section full-only">
         <div class="settings-title">Doctor Visit</div>
         <div class="settings-card">
           <div class="settings-row">
@@ -3469,7 +3491,7 @@ body {
         </div>
       </div>
 
-      <div class="settings-section">
+      <div class="settings-section full-only">
         <div class="settings-title">Print</div>
         <div class="settings-card">
           <div class="settings-row">
@@ -3482,7 +3504,7 @@ body {
         </div>
       </div>
 
-      <div class="settings-section">
+      <div class="settings-section full-only">
         <div class="settings-title">Profile &amp; Goals</div>
         <div class="settings-card">
           <div class="settings-row">
@@ -3538,7 +3560,7 @@ body {
         </div>
       </div>
 
-      <div class="settings-section">
+      <div class="settings-section full-only">
         <div class="settings-title">Calorie Calculator</div>
         <div class="settings-card">
           <div class="settings-row">
@@ -3611,7 +3633,7 @@ body {
         </div>
       </div>
 
-      <div class="settings-section">
+      <div class="settings-section full-only">
         <div class="settings-title">Food Search APIs</div>
         <div class="settings-card">
           <div class="settings-row" style="align-items:center"><div class="settings-row-sub" style="margin:0">🔒 Keys are saved on <b>this device only</b>, never in the shared database or in backup files. Enter them once on each phone you use.</div></div>
@@ -4209,6 +4231,8 @@ let fatSecretTokenExp     = 0;       // epoch ms when fatSecretAccessToken expir
 const KEY_FIELDS = ['usdaKey', 'spoonacularKey', 'fatSecretClientId', 'fatSecretClientSecret', 'anthropicKey'];
 const DEVICE_KEYS_STORE = 'mounjaro-device-keys';
 loadDeviceKeys();                    // the keys above come from this device's own storage
+let appMode = (() => { try { return localStorage.getItem('fit-app-mode') === 'exercise' ? 'exercise' : 'full'; } catch (e) { return 'full'; } })(); // 'full' | 'exercise' (workouts only: no Log or Food tabs, health cards hidden)
+let userDisplayName = (() => { try { return localStorage.getItem('fit-user-name') || ''; } catch (e) { return ''; } })();
 let themeOverride       = '';        // '' = auto, or 'light' / 'dark'
 let pinnedFavorites     = [];        // user-starred foods, synced to Firestore, always shown
 let pinnedRecipes       = [];        // saved multi-ingredient recipes, synced to Firestore
@@ -4333,6 +4357,8 @@ try { renderPaletteRow(); } catch (err) { console.error('renderPaletteRow failed
 
 // ── DASHBOARD LAYOUT (drag-and-drop card reordering + show/hide) ──
 let dashboardOrder = []; // array of data-card-key values, in the user's chosen order
+const EXERCISE_MODE_STAT_KEYS = new Set(['exercise', 'workoutVolume', 'planDay']); // the only Home stat cards shown in workouts-only mode
+function cardModeHidden(key) { return appMode === 'exercise' && !EXERCISE_MODE_STAT_KEYS.has(key); }
 let hiddenCards = [];    // array of data-card-key values currently hidden from Home
 let dashSortable = null;
 
@@ -4398,7 +4424,7 @@ function applyStatSections() {
   const cards = [...grid.querySelectorAll('.stat-card')];
   cards.forEach(c => c.classList.remove('sc-auto-hidden'));
   if (grid.classList.contains('editing')) return;               // customizing: show everything, headers off
-  const live = cards.filter(c => !hiddenCards.includes(c.dataset.cardKey));
+  const live = cards.filter(c => !hiddenCards.includes(c.dataset.cardKey) && !cardModeHidden(c.dataset.cardKey));
   const isEmpty = c => { const v = c.querySelector('.sc-value'); const t = v ? v.textContent.trim() : ''; return t === '' || t === '—'; };
   const groupOf = c => STAT_GROUP[c.dataset.cardKey] || 'More';
   const emptyN = { n: 0 };
@@ -4453,7 +4479,7 @@ function applyDashboardOrder(order) {
 
 function applyCardVisibility() {
   document.querySelectorAll('#statGrid .stat-card, .home-extra-card').forEach(card => {
-    card.style.display = hiddenCards.includes(card.dataset.cardKey) ? 'none' : '';
+    card.style.display = (hiddenCards.includes(card.dataset.cardKey) || cardModeHidden(card.dataset.cardKey)) ? 'none' : '';
   });
   try { applyStatSections(); } catch (err) { console.error(err); }
 }
@@ -6066,13 +6092,20 @@ function showSyncModal(isNew) {
     document.getElementById('newSyncIdDisplay').textContent = newId;
     document.getElementById('modalNewSection').style.display = '';
     document.getElementById('modalExistingSection').style.display = 'none';
-    document.getElementById('modalTitle').textContent = 'Welcome, Mike';
+    document.getElementById('modalTitle').textContent = 'Welcome';
     document.getElementById('modalSub').textContent = 'Your Sync ID lets you access your data on any device. Save it somewhere safe — you\'ll need it to connect other devices.';
+    document.querySelectorAll('.welcome-mode-chip').forEach(c => { c.onclick = () => document.querySelectorAll('.welcome-mode-chip').forEach(o => o.classList.toggle('on', o === c)); });
     document.getElementById('useNewIdBtn').onclick = () => {
+      const chosenMode = (document.querySelector('.welcome-mode-chip.on') || {}).dataset?.modeChoice || 'full';
+      const chosenName = (document.getElementById('welcomeName').value || '').trim();
       localStorage.setItem('mounjaro-sync-id', newId);
       syncId = newId;
       modal.classList.add('hidden');
+      setAppModeLocal(chosenMode, chosenName);
       startListening();
+      const startFields = { appMode, userName: userDisplayName };
+      if (appMode === 'exercise') { workoutPlanMode = 'custom'; startFields.workoutPlanMode = 'custom'; } // she builds her own routine, not the A/B split
+      setDoc(doc(db, 'trackers', newId, 'meta', 'settings'), startFields, { merge: true }).catch(err => console.error(err));
     };
     document.getElementById('copySyncIdBtn').onclick = () => {
       navigator.clipboard?.writeText(newId).then(() => {
@@ -6098,7 +6131,7 @@ document.getElementById('showExistingBtn').onclick = () => {
 document.getElementById('backToNewBtn').onclick = () => {
   document.getElementById('modalNewSection').style.display = '';
   document.getElementById('modalExistingSection').style.display = 'none';
-  document.getElementById('modalTitle').textContent = 'Welcome, Mike';
+  document.getElementById('modalTitle').textContent = 'Welcome';
   document.getElementById('modalSub').textContent = 'Your Sync ID lets you access your data on any device. Save it somewhere safe.';
 };
 
@@ -6168,6 +6201,7 @@ function startListening() {
       if (s.weighInDay != null)     weighInDay = String(s.weighInDay);
       if (s.proteinGoal)            userProteinGoal = (parseInt(s.proteinGoal) >= 30 && parseInt(s.proteinGoal) <= 300) ? parseInt(s.proteinGoal) : 100;
       if (s.workoutPlanMode)        workoutPlanMode = s.workoutPlanMode;
+      if (s.appMode || s.userName) { setAppModeLocal(s.appMode || appMode, s.userName != null ? s.userName : null); }
       if (Array.isArray(s.customRoutines)) customRoutines = s.customRoutines;
       if (typeof s.activeRoutineId === 'string') activeRoutineId = s.activeRoutineId;
       if (Array.isArray(s.customLibrary)) { customLibrary = s.customLibrary; registerCustomLibrary(); }
@@ -8815,7 +8849,23 @@ function renderChartsCore(entries, Chart) {
 const views   = document.querySelectorAll('.view');
 const navItems = document.querySelectorAll('.nav-item');
 
+function applyAppMode() {
+  document.body.classList.toggle('mode-exercise', appMode === 'exercise');
+  try { const ph = document.querySelector('#printHeader strong'); if (ph && appMode === 'exercise') ph.textContent = (userDisplayName ? userDisplayName + ' - ' : '') + 'Workout Log'; } catch (e) {}
+  document.querySelectorAll('#appModeRow .mode-chip').forEach(c => c.classList.toggle('on', c.dataset.modeChoice === appMode));
+  try { applyCardVisibility(); } catch (e) {}
+  if (appMode === 'exercise') { try { setExType('Strength'); } catch (e) {} } // the hidden cardio type chips are gone, so a manual entry is always strength
+  const active = document.querySelector('.view.active');
+  if (appMode === 'exercise' && active && (active.id === 'view-log' || active.id === 'view-food')) showView('dashboard');
+}
+function setAppModeLocal(mode, name) {
+  appMode = mode === 'exercise' ? 'exercise' : 'full';
+  try { localStorage.setItem('fit-app-mode', appMode); } catch (e) {}
+  if (name != null) { userDisplayName = String(name).trim().slice(0, 24); try { localStorage.setItem('fit-user-name', userDisplayName); } catch (e) {} }
+  applyAppMode();
+}
 function showView(name) {
+  if (appMode === 'exercise' && (name === 'log' || name === 'food')) name = 'exercise'; // those tabs are hidden in exercise-only mode
   if (name === 'food') setTimeout(() => { try { updateFoodStripVisibility(); } catch (err) { /* view not ready */ } }, 60);
   views.forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
   navItems.forEach(n => n.classList.toggle('active', n.dataset.view === name));
@@ -8827,6 +8877,14 @@ function showView(name) {
 }
 
 navItems.forEach(n => n.addEventListener('click', () => showView(n.dataset.view)));
+document.querySelectorAll('#appModeRow .mode-chip').forEach(c => {
+  c.addEventListener('click', async () => {
+    setAppModeLocal(c.dataset.modeChoice);
+    if (typeof renderDashboard === 'function') { try { renderDashboard(); } catch (e) {} }
+    if (syncId) { try { await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { appMode }, { merge: true }); } catch (err) { console.error(err); } }
+  });
+});
+applyAppMode();
 document.getElementById('quickLogBtn').addEventListener('click', () => showView('log'));
 document.getElementById('settingsNavBtn').addEventListener('click', () => showView('settings'));
 
@@ -18923,6 +18981,7 @@ document.getElementById('exportJsonBtn').addEventListener('click', () => {
       workoutPlanMode,
       stepGoal: stepGoalOverride,
       theme: themeOverride,
+      appMode,
       accentPalette,
       favoriteFoods: pinnedFavorites,
       recipes: pinnedRecipes,
