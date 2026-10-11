@@ -2968,6 +2968,19 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
           <div class="prog-body" id="progressionResults"></div>
         </div>
       </div>
+      <div class="form-card" id="aiCoachCard">
+        <div class="form-section-title">AI Coach</div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">Looks at your logged lifts: weights, sets and how often you train each muscle.</div>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-secondary btn-sm" id="aiAnalyzeBtn" style="flex:1">Analyze my training</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="aiWorkoutBtn" style="flex:1">Suggest a workout</button>
+        </div>
+        <div id="aiCoachOut" style="display:none;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><span id="aiCoachMeta" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft)"></span><button type="button" id="aiCoachClear" aria-label="Clear" style="background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;padding:2px 6px">&#10005;</button></div>
+          <div id="aiCoachText" style="white-space:pre-wrap;font-size:14px;line-height:1.55"></div>
+        </div>
+      </div>
+
       <div class="form-card" id="exerciseActivityCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Exercise</span><button type="button" id="exerciseFullscreenCloseBtn" title="Minimize — timer keeps running" style="display:none;background:none;border:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:2px 6px">✕</button><span id="exerciseCardChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></div>
         <div class="full-only" id="workoutDescBlock" style="margin-bottom:12px">
@@ -3353,6 +3366,24 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
         </div>
       </div>
 
+      <div class="settings-section" id="aiCoachSettings">
+        <div class="settings-title">AI Coach</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Anthropic API Key</div>
+              <div class="settings-row-sub">Powers the AI Coach on the Exercise tab: training analysis, workout ideas and progression. Only your workout log is sent, never weight, food or health data. The key stays on this phone and is never synced. It is visible to this browser, so use a key with a spending limit (console.anthropic.com).</div>
+            </div>
+          </div>
+          <div class="settings-row" style="align-items:center;gap:8px">
+            <input type="password" id="setAnthropicKey" placeholder="sk-ant-..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+              style="flex:1;min-width:0;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:13px;background:var(--input-bg);color:var(--ink);font-weight:700">
+            <button type="button" class="btn btn-secondary btn-sm" id="saveAiKeyBtn" style="flex-shrink:0">Save &amp; test</button>
+          </div>
+          <div class="settings-row-sub" id="aiKeyMsg" style="padding:0 2px 8px"></div>
+        </div>
+      </div>
+
       <div class="settings-section">
         <div class="settings-title">Appearance</div>
         <div class="settings-card">
@@ -3667,14 +3698,6 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
               <div class="settings-row-sub">Optional — paired with the Client ID above</div>
             </div>
             <input type="password" id="setFatSecretClientSecret" placeholder="not set"
-              style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Anthropic API Key <span style="color:var(--coral);font-weight:500;text-transform:none">(paid, exposed in-browser — see note)</span></div>
-              <div class="settings-row-sub">Powers "Estimate from Photo" for food logging. This key is visible in your browser's network requests when used — regenerate anytime at console.anthropic.com if you're ever unsure.</div>
-            </div>
-            <input type="password" id="setAnthropicKey" placeholder="not set"
               style="width:130px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
           </div>
           <div class="settings-row" style="align-items:center">
@@ -10648,6 +10671,75 @@ document.getElementById('suggestProgressionBtn').addEventListener('click', async
 });
 
 // ── BARCODE SCANNER ──
+//  AI COACH  analysis + workout ideas from the logged lifts only (never weight, food or health data)
+const AICOACH_KEY = 'fit-aicoach';
+let aiCoachState = null; // { kind, text, ts } | null
+function strengthSummaryForAI(days) {
+  const today = todayStr(), cut = lbAddDays(today, -days), per = {}, dates = new Set(), mus = {};
+  entries.filter(e => e.date >= cut && e.date <= today && e.ex).forEach(e => (e.ex || []).forEach(x => {
+    if (x.type !== 'Strength' || !x.sets || typeof x.sets !== 'object') return;
+    Object.keys(x.sets).forEach(name => {
+      const sets = (x.sets[name] || []).filter(s => s && !s.warmup && parseFloat(s.reps) > 0);
+      if (!sets.length) return;
+      dates.add(e.date);
+      const top = sets.reduce((a, s) => (parseFloat(s.weight) || 0) > (parseFloat(a.weight) || 0) ? s : a, sets[0]);
+      (per[name] = per[name] || []).push({ date: e.date, top: `${parseFloat(top.weight) || 0} lb x ${parseFloat(top.reps) || 0}`, n: sets.length });
+      const g = muscleGroupFor(name); if (g) mus[g] = (mus[g] || 0) + sets.length;
+    });
+  }));
+  const weeks = days / 7, lines = Object.keys(per).sort((a, b) => per[b].length - per[a].length).slice(0, 16).map(name => {
+    const l = per[name].sort((a, b) => a.date.localeCompare(b.date)), f = l[0], z = l[l.length - 1];
+    return `${name}: ${l.length} session${l.length === 1 ? '' : 's'}; first ${f.top} (${f.date}); latest ${z.top} (${z.date}); ${z.n} sets last time`;
+  });
+  const muscleLine = MUSCLE_MAP_GROUPS.map(g => `${g} ${((mus[g] || 0) / weeks).toFixed(1)}`).join(', ');
+  const recent = {}; entries.filter(e => e.date >= lbAddDays(today, -7) && e.ex).forEach(e => (e.ex || []).forEach(x => { if (x.type === 'Strength' && x.sets) Object.keys(x.sets).forEach(n => { const g = muscleGroupFor(n); if (g) recent[g] = true; }); }));
+  return { sessions: dates.size, text: `Strength training days in the last ${days} days: ${dates.size} (about ${(dates.size / weeks).toFixed(1)} per week).\nPer exercise (top set = heaviest working set; for timed exercises the second number is seconds):\n${lines.join('\n')}\nAverage working sets per muscle group per week: ${muscleLine}.\nMuscle groups trained in the last 7 days: ${Object.keys(recent).join(', ') || 'none'}.` };
+}
+function aiCoachSave() { try { if (aiCoachState) localStorage.setItem(AICOACH_KEY, JSON.stringify(aiCoachState)); else localStorage.removeItem(AICOACH_KEY); } catch (err) { /* storage unavailable */ } }
+function aiCoachShow(msg, meta) {
+  const out = document.getElementById('aiCoachOut'); if (!out) return;
+  out.style.display = ''; document.getElementById('aiCoachText').textContent = msg; document.getElementById('aiCoachMeta').textContent = meta || '';
+}
+function aiCoachRender() {
+  const out = document.getElementById('aiCoachOut'); if (!out) return;
+  if (!aiCoachState) { out.style.display = 'none'; return; }
+  aiCoachShow(aiCoachState.text, `${aiCoachState.kind === 'workout' ? 'Suggested workout' : 'Training analysis'} \u00b7 ${progAgeLabel(aiCoachState.ts)}`);
+}
+async function runAiCoach(kind) {
+  if (!anthropicKey) { aiCoachShow('Add your Anthropic API key in Settings, under AI Coach, first.', ''); return; }
+  const sum = strengthSummaryForAI(56);
+  if (sum.sessions < 3) { aiCoachShow('Log at least a few strength workouts first. The coach needs some history to work with.', ''); return; }
+  aiCoachShow(kind === 'workout' ? 'Planning your next workout\u2026' : 'Reviewing your last 8 weeks\u2026', '');
+  const plan = (() => { try { return describeWorkoutPlanForAI(); } catch (err) { return ''; } })();
+  const base = `You are a friendly, practical strength coach. Here is a person's logged strength training (weights in pounds).\n${plan ? `Their routine: ${plan}\n` : ''}\n${sum.text}\n\n`;
+  const ask = kind === 'workout'
+    ? `Design the single best next workout for them, about 45 minutes, using gym machines and dumbbells. Favor muscle groups with the fewest recent sets and the ones not trained in the last 7 days. List 5 to 7 exercises, one per line, as: Exercise - sets x reps - suggested starting weight in lb (based on their recent top sets; if there is no history for an exercise say "pick a light weight"). Then add one short line on why this order. Plain text, no markdown, no medical advice, under 180 words.`
+    : `Analyze their training. Give: (1) what is going well, 2 short bullets; (2) what is stalled or neglected: muscle groups with few sets and lifts that have not progressed; (3) three specific changes for the next two weeks with real numbers in lb. Only use the data above, do not invent anything. Plain text, no markdown, no medical advice, under 220 words.`;
+  try {
+    const result = await callClaudeText(base + ask, 600);
+    if (!result.ok) { aiCoachShow(`Failed (HTTP ${result.status}). Check your Anthropic API key in Settings, under AI Coach.`, ''); return; }
+    if (!result.text) { aiCoachShow('No response. Try again.', ''); return; }
+    aiCoachState = { kind, text: result.text.trim(), ts: Date.now() }; aiCoachSave(); aiCoachRender();
+  } catch (err) { console.error(err); aiCoachShow('Failed. Check your connection and API key.', ''); }
+}
+document.getElementById('aiAnalyzeBtn').addEventListener('click', () => runAiCoach('analyze'));
+document.getElementById('aiWorkoutBtn').addEventListener('click', () => runAiCoach('workout'));
+document.getElementById('aiCoachClear').addEventListener('click', () => { aiCoachState = null; aiCoachSave(); aiCoachRender(); });
+try { const raw = JSON.parse(localStorage.getItem(AICOACH_KEY) || 'null'); aiCoachState = raw && typeof raw.text === 'string' && raw.text ? { kind: raw.kind, text: raw.text, ts: Number(raw.ts) || Date.now() } : null; } catch (err) { aiCoachState = null; }
+aiCoachRender();
+// Saves just the key (the big Save button also needs a baseline weight, which workouts-only mode hides)
+document.getElementById('saveAiKeyBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('aiKeyMsg'), v = document.getElementById('setAnthropicKey').value.trim();
+  if (!v) { msg.textContent = 'Paste your key first.'; msg.style.color = 'var(--coral)'; return; }
+  anthropicKey = v; saveDeviceKeys();
+  msg.textContent = 'Saved on this phone. Testing\u2026'; msg.style.color = 'var(--ink-soft)';
+  try {
+    const r = await callClaudeText('Reply with the single word OK.', 5);
+    if (r.ok) { msg.textContent = 'Connected. The AI Coach is ready.'; msg.style.color = 'var(--in)'; }
+    else { msg.textContent = r.status === 401 ? 'Saved, but Anthropic rejected the key (401). Check it.' : `Saved, but the test failed (HTTP ${r.status}).`; msg.style.color = 'var(--coral)'; }
+  } catch (err) { msg.textContent = 'Saved, but could not reach Anthropic. Check your connection.'; msg.style.color = 'var(--coral)'; }
+});
+
 let scanStream = null;
 let zxingReader = null;
 let scanActive = false;
