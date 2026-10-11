@@ -915,7 +915,7 @@ body {
   user-select: none;
   transition: all 0.15s;
 }
-body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data-view="food"], body.mode-exercise .full-only, body.mode-exercise #injBanner, body.mode-exercise #todayCard, body.mode-exercise #quickLogBtn, body.mode-exercise #quickLogFoodSection { display: none !important; }
+body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data-view="food"], body.mode-exercise .full-only, body.mode-exercise #injBanner, body.mode-exercise #printBtn, body.mode-exercise #todayCard, body.mode-exercise #quickLogBtn, body.mode-exercise #quickLogFoodSection { display: none !important; }
 .chip.on { background: var(--teal); border-color: var(--teal); color: white; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 /* My Routine editor + library picker */
 .re-overlay { position: fixed; inset: 0; z-index: 1200; background: rgba(4,7,18,0.74); display: flex; align-items: flex-end; justify-content: center; }
@@ -3058,7 +3058,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
         <div id="muscleMap" style="display:none;margin-top:10px"></div>
       </div>
       <div class="hist-highlights" id="historyHighlights"></div>
-      <div class="hist-tools"><span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft)">Your log</span><button type="button" class="btn btn-ghost btn-sm" id="historyDoctorBtn">📄 Doctor summary</button></div>
+      <div class="hist-tools"><span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft)">Your log</span><button type="button" class="btn btn-ghost btn-sm full-only" id="historyDoctorBtn">📄 Doctor summary</button></div>
       <div class="history-search">
         <span style="color:var(--ink-soft)"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
         <input type="text" id="historySearch" placeholder="Search notes…">
@@ -5365,6 +5365,7 @@ function weeklyChallengePlan(ws, byDate) {
   const prev = [1, 2, 3, 4].map(i => lbAddDays(ws, -7 * i)), memo = {};
   const prevCounts = k => memo[k] || (memo[k] = prev.map(wk => challengeCount(k, wk, null, byDate)));
   const avgPrev = k => prevCounts(k).reduce((x, y) => x + y, 0) / 4, hasRecent = k => prevCounts(k).some(n => n > 0);
+  if (appMode === 'exercise') return [{ kind: 'workouts', target: Math.min(5, Math.max(2, Math.round(avgPrev('workouts')) || 3)) }]; // workouts-only: one lifting goal, no step/protein/weigh-in goals
   const kinds = [hasRecent('workouts') ? 'workouts' : 'steps', hasRecent('protein') ? 'protein' : 'logging'];
   const rot = ['water', 'steps', 'logging', 'weighin'].filter(k => !kinds.includes(k));
   kinds.push(rot[Math.floor(new Date(ws + 'T00:00:00').getTime() / (7 * 864e5)) % rot.length]);
@@ -5401,7 +5402,7 @@ function weeklyWinData() {
 // cheap fingerprint of the data the badges depend on, so the (heavier) date replay only reruns when something changed
 function badgeSignature() {
   let b = 0; entries.forEach(e => { b += (e.ex ? e.ex.length : 0) + (e.meals ? e.meals.length : 0) + (parseFloat(e.weight) || 0) + (parseFloat(e.steps) || 0) / 100 + (parseFloat(e.protein) || 0) + (parseFloat(e.water) || 0) + (e.injection ? 1 : 0); });
-  return `${entries.length}:${Math.round(b * 10)}:${userProteinGoal}:${baselineWeight}:${goalWeight}:${todayStr()}`;
+  return `${entries.length}:${Math.round(b * 10)}:${userProteinGoal}:${baselineWeight}:${goalWeight}:${todayStr()}:${appMode}`;
 }
 var _badgeDatesCache = { sig: null, dates: {} };
 function badgeEarnedDates() {
@@ -5497,7 +5498,9 @@ function computeBadgeData(asOfDate) {
   };
 }
 
-function buildBadgeCategories(d) {
+const EXERCISE_MODE_BADGE_CATS = ['Workouts', 'Consistency', 'Challenges'], EXERCISE_MODE_MILESTONE_CATS = ['Workouts Logged', 'Personal Records'];
+function buildBadgeCategories(d) { const all = buildBadgeCategoriesAll(d); return appMode === 'exercise' ? all.filter(c => EXERCISE_MODE_BADGE_CATS.includes(c.category)) : all; }
+function buildBadgeCategoriesAll(d) {
   const svg = (inner) => `<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em">${inner}</svg>`;
   const cats = [
     { category: 'Steps', color: '#37C6FF', icon: svg('<ellipse cx="8" cy="7" rx="2.5" ry="3.5"/><ellipse cx="16" cy="15" rx="2.5" ry="3.5"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="6" r="1"/>'), badges: [
@@ -5712,7 +5715,8 @@ function computeMilestonesReached() {
 // is what actually closes the gap where a milestone celebration
 // disappears forever once dismissed. Shows both earned AND upcoming
 // tiers, the same "browse anytime" shape badges already have.
-function buildMilestoneCategories() {
+function buildMilestoneCategories() { const all = buildMilestoneCategoriesAll(); return appMode === 'exercise' ? all.filter(c => EXERCISE_MODE_MILESTONE_CATS.includes(c.category)) : all; }
+function buildMilestoneCategoriesAll() {
   const svg = (inner) => `<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em">${inner}</svg>`;
   const treatmentDay = daysSinceStart() + 1;
   let d = {};
@@ -7614,7 +7618,7 @@ function renderHistory() {
   if (hl) hl.innerHTML = historyHighlights().map(h => `<span class="hist-hl">${h.ico} ${escapeHtml(h.t)}${h.sub ? ` <small>${escapeHtml(h.sub)}</small>` : ''}</span>`).join('');
   const fb = document.getElementById('historyFilters');
   if (fb) {
-    fb.innerHTML = HISTORY_FILTERS.map(f => `<div class="chip${historyFilters.has(f.k) ? ' on' : ''}" data-histfilter="${f.k}" role="button" tabindex="0">${f.label}<small>${sorted.filter(f.fn).length}</small></div>`).join('');
+    fb.innerHTML = HISTORY_FILTERS.filter(f => appMode !== 'exercise' || f.k === 'workouts' || f.k === 'notes').map(f => `<div class="chip${historyFilters.has(f.k) ? ' on' : ''}" data-histfilter="${f.k}" role="button" tabindex="0">${f.label}<small>${sorted.filter(f.fn).length}</small></div>`).join('');
     fb.querySelectorAll('[data-histfilter]').forEach(c => {
       const flip = () => { const k = c.dataset.histfilter; if (historyFilters.has(k)) historyFilters.delete(k); else historyFilters.add(k); renderHistory(); };
       c.addEventListener('click', flip); c.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); flip(); } });
@@ -7626,7 +7630,7 @@ function renderHistory() {
     (e.meals || []).some(m => (m.desc || '').toLowerCase().includes(search)) || (e.tags || []).some(t => t.toLowerCase().includes(search))));
   const narrowing = !!search || historyFilters.size > 0;
   if (!filtered.length) {
-    list.innerHTML = `<div class="empty-state"><div class="icon">📋</div>${narrowing ? 'No entries match your search or filters.' : 'No entries yet. Log your first reading in the Log tab.'}</div>`;
+    list.innerHTML = `<div class="empty-state"><div class="icon">📋</div>${narrowing ? 'No entries match your search or filters.' : (appMode === 'exercise' ? 'No workouts yet. Finish one on the Exercise tab and it shows up here.' : 'No entries yet. Log your first reading in the Log tab.')}</div>`;
     return;
   }
   const groups = [], byWeek = new Map();
@@ -7928,9 +7932,12 @@ function latestTextFor(id) { const ser = chartSeries(id); if (!ser) return null;
 function applyChartSections() {
   if (!chartSectionsReady) return;
   let emptyN = 0;
+  const exMode = appMode === 'exercise', exChartOk = x => !exMode || x.id === 'volumeChart' || x.id === 'weightProgressChart';
   CHART_SECTIONS.forEach(sec => {
     const open = chartSecIsOpen(sec); let withData = 0;
+    const modeHidden = exMode && !sec.cards.some(x => exChartOk(x));
     sec.cards.forEach(x => {
+      if (!exChartOk(x)) { x.card.classList.add('cs-skip'); return; }
       const empty = !!x.id && !chartSeries(x.id);
       x.card.classList.toggle('cs-empty', empty);
       if (empty) emptyN++; else withData++;
@@ -7938,7 +7945,7 @@ function applyChartSections() {
       if (x.id) { if (empty) { const el = document.getElementById('sum-' + x.id); if (el) el.innerHTML = ''; } else setChartSummary(x.id); }
     });
     const nothing = sec.cards.length && sec.cards.every(x => x.id) && withData === 0 && !showEmptyCharts;
-    sec.head.hidden = !!nothing;
+    sec.head.hidden = !!nothing || modeHidden;
     sec.head.setAttribute('aria-expanded', String(open));
     sec.head.querySelector('.cs-chev').textContent = open ? '▼' : '▶';
     let sum = '';
@@ -7946,7 +7953,7 @@ function applyChartSections() {
       if (sec.name === 'Compare') sum = 'pick any two metrics';
       else if (sec.name === 'Weekly summary') { try { sum = `week ${weekIndex(todayStr())}`; } catch (err) { sum = ''; } }
       else if (sec.name === 'Treatment') { const d = [...entries].reverse().find(e => e.dose); sum = d ? `${d.dose} mg` : ''; }
-      else sum = sec.cards.filter(x => x.id).map(x => latestTextFor(x.id)).filter(Boolean).slice(0, 3).join(' · ');
+      else sum = sec.cards.filter(x => x.id && exChartOk(x)).map(x => latestTextFor(x.id)).filter(Boolean).slice(0, 3).join(' · ');
     }
     sec.head.querySelector('.cs-sum').textContent = sum;
   });
@@ -8856,6 +8863,8 @@ function applyAppMode() {
   document.querySelectorAll('#appModeRow .mode-chip').forEach(c => c.classList.toggle('on', c.dataset.modeChoice === appMode));
   try { applyCardVisibility(); } catch (e) {}
   try { updateHeader(); } catch (e) {}
+  try { applyChartSections(); } catch (e) {}
+  try { if (document.getElementById('view-badges').classList.contains('active')) renderBadges(); if (document.getElementById('view-history').classList.contains('active')) renderHistory(); } catch (e) {}
   if (appMode === 'exercise') { try { setExType('Strength'); } catch (e) {} } // the hidden cardio type chips are gone, so a manual entry is always strength
   const active = document.querySelector('.view.active');
   if (appMode === 'exercise' && active && (active.id === 'view-log' || active.id === 'view-food')) showView('dashboard');
