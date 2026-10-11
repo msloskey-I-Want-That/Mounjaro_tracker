@@ -915,7 +915,7 @@ body {
   user-select: none;
   transition: all 0.15s;
 }
-body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data-view="food"], body.mode-exercise .full-only { display: none !important; }
+body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data-view="food"], body.mode-exercise .full-only, body.mode-exercise #injBanner, body.mode-exercise #todayCard, body.mode-exercise #quickLogBtn, body.mode-exercise #quickLogFoodSection { display: none !important; }
 .chip.on { background: var(--teal); border-color: var(--teal); color: white; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 /* My Routine editor + library picker */
 .re-overlay { position: fixed; inset: 0; z-index: 1200; background: rgba(4,7,18,0.74); display: flex; align-items: flex-end; justify-content: center; }
@@ -6333,6 +6333,7 @@ function updateHeader() {
   } else {
     sub.textContent = `Treatment day ${diff + 1}`;
   }
+  if (appMode === 'exercise' && sub) sub.textContent = userDisplayName ? `${userDisplayName}'s workouts` : 'Workout tracker';
 }
 
 // ── STATS ──
@@ -8854,6 +8855,7 @@ function applyAppMode() {
   try { const ph = document.querySelector('#printHeader strong'); if (ph && appMode === 'exercise') ph.textContent = (userDisplayName ? userDisplayName + ' - ' : '') + 'Workout Log'; } catch (e) {}
   document.querySelectorAll('#appModeRow .mode-chip').forEach(c => c.classList.toggle('on', c.dataset.modeChoice === appMode));
   try { applyCardVisibility(); } catch (e) {}
+  try { updateHeader(); } catch (e) {}
   if (appMode === 'exercise') { try { setExType('Strength'); } catch (e) {} } // the hidden cardio type chips are gone, so a manual entry is always strength
   const active = document.querySelector('.view.active');
   if (appMode === 'exercise' && active && (active.id === 'view-log' || active.id === 'view-food')) showView('dashboard');
