@@ -929,8 +929,8 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 .re-foot { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px 14px; border-top: 1px solid var(--line); }
 .re-foot .btn { flex: 1; }
 .re-lead { font-weight: 800; font-size: 15px; margin-bottom: 10px; }
-.re-tpl { display: block; width: 100%; text-align: left; background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; color: var(--ink); cursor: pointer; font: inherit; }
-.re-tpl b { display: block; font-weight: 800; } .re-tpl span { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.re-tpl, .re-import-btn { display: block; width: 100%; text-align: left; background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; color: var(--ink); cursor: pointer; font: inherit; }
+.re-tpl b, .re-import-btn b { display: block; font-weight: 800; } .re-tpl span, .re-import-btn span { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
 .re-label { display: block; font-size: 12px; font-weight: 700; color: var(--ink-soft); margin-bottom: 4px; }
 .re-input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--input-bg); color: var(--ink); font-size: 16px; min-width: 0; }
 .re-day { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px; margin-top: 12px; }
@@ -1629,6 +1629,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 <div id="exPicker" class="re-overlay" style="display:none"></div>
 <div id="routineManager" class="re-overlay" style="display:none"></div>
 <div id="routineEditor" class="re-overlay" style="display:none"></div>
+<div id="routineShare" class="re-overlay" style="display:none"></div>
 <div id="soreSheet" style="display:none;position:fixed;inset:0;z-index:1700;background:rgba(10,12,20,0.55)">
   <div class="sore-card" role="dialog" aria-modal="true" aria-label="How sore are you?">
     <div style="font-size:18px;font-weight:800;margin-bottom:4px">How sore are you?</div>
@@ -3077,6 +3078,12 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
         <div style="display:flex;gap:8px">
           <button type="button" class="btn btn-secondary btn-sm" id="aiAnalyzeBtn" style="flex:1">Analyze my training</button>
           <button type="button" class="btn btn-secondary btn-sm" id="aiWorkoutBtn" style="flex:1">Suggest a workout</button>
+        </div>
+        <div style="margin-top:12px">
+          <textarea id="askCoachInput" rows="2" maxlength="300" placeholder="Ask the coach, e.g. I only have 30 minutes, what should I drop?" aria-label="Ask the coach" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;background:var(--input-bg);color:var(--ink);resize:vertical"></textarea>
+          <div class="chip-row" style="gap:6px;margin-top:6px"><div class="chip ask-example" role="button" tabindex="0" style="font-size:12px;padding:6px 10px">I only have 30 minutes</div><div class="chip ask-example" role="button" tabindex="0" style="font-size:12px;padding:6px 10px">Swap my pressing, my shoulder feels cranky</div></div>
+          <button type="button" class="btn btn-secondary btn-sm" id="askCoachBtn" style="width:100%;margin-top:8px">Ask the Coach</button>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.4">Sent with your logged lifts only. Leave out names and health details. For pain or an injury, see a doctor or physical therapist.</div>
         </div>
         <div id="aiCoachOut" style="display:none;margin-top:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><span id="aiCoachMeta" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft)"></span><button type="button" id="aiCoachClear" aria-label="Clear" style="background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;padding:2px 6px">&#10005;</button></div>
@@ -10886,29 +10893,35 @@ function aiCoachShow(msg, meta) {
 function aiCoachRender() {
   const out = document.getElementById('aiCoachOut'); if (!out) return;
   if (!aiCoachState) { out.style.display = 'none'; return; }
-  aiCoachShow(aiCoachState.text, `${aiCoachState.kind === 'workout' ? 'Suggested workout' : 'Training analysis'} \u00b7 ${progAgeLabel(aiCoachState.ts)}`);
+  aiCoachShow(aiCoachState.text, `${aiCoachState.kind === 'ask' ? `You asked: ${String(aiCoachState.q || '').slice(0, 80)}` : aiCoachState.kind === 'workout' ? 'Suggested workout' : 'Training analysis'} \u00b7 ${progAgeLabel(aiCoachState.ts)}`);
 }
 async function runAiCoach(kind) {
   if (!anthropicKey) { aiCoachShow('Add your Anthropic API key in Settings, under AI Coach, first.', ''); return; }
   const sum = strengthSummaryForAI(56);
-  if (sum.sessions < 3) { aiCoachShow('Log at least a few strength workouts first. The coach needs some history to work with.', ''); return; }
-  aiCoachShow(kind === 'workout' ? 'Planning your next workout\u2026' : 'Reviewing your last 8 weeks\u2026', '');
+  const askQ = kind === 'ask' ? String((document.getElementById('askCoachInput') || {}).value || '').replace(/["`<>\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 300) : '';
+  if (kind === 'ask' && askQ.length < 3) { aiCoachShow('Type your question first.', ''); return; }
+  if (sum.sessions < (kind === 'ask' ? 1 : 3)) { aiCoachShow('Log at least a few strength workouts first. The coach needs some history to work with.', ''); return; }
+  aiCoachShow(kind === 'ask' ? 'Thinking about your question\u2026' : kind === 'workout' ? 'Planning your next workout\u2026' : 'Reviewing your last 8 weeks\u2026', '');
   const plan = (() => { try { return describeWorkoutPlanForAI(); } catch (err) { return ''; } })();
   const base = `You are a friendly, practical strength coach. Here is a person's logged strength training (weights in pounds).\n${plan ? `Their routine: ${plan}\n` : ''}\n${sum.text}\n\n`;
-  const ask = kind === 'workout'
+  const ask = kind === 'ask'
+    ? `The person asks: "${askQ}"\nAnswer using only the training data above. Suggest alternatives or changes with real exercises, sets and numbers in lb where it helps. Do not give medical advice and do not diagnose anything. If they mention pain, an injury or a health problem, say plainly to check with a doctor or physical therapist, and offer a gentler option for now. Plain text, no markdown, under 180 words.`
+    : kind === 'workout'
     ? `Design the single best next workout for them, about 45 minutes, using gym machines and dumbbells. Favor muscle groups with the fewest recent sets and the ones not trained in the last 7 days. List 5 to 7 exercises, one per line, as: Exercise - sets x reps - suggested starting weight in lb (based on their recent top sets; if there is no history for an exercise say "pick a light weight"). Then add one short line on why this order. Plain text, no markdown, no medical advice, under 180 words.`
     : `Analyze their training. Give: (1) what is going well, 2 short bullets; (2) what is stalled or neglected: muscle groups with few sets and lifts that have not progressed; (3) three specific changes for the next two weeks with real numbers in lb. Only use the data above, do not invent anything. If soreness is reported, factor it in (for example, lighter volume for sore muscles); if they rarely stretch, you may suggest the app's stretch routines. Plain text, no markdown, no medical advice, under 220 words.`;
   try {
     const result = await callClaudeText(base + ask, 600);
     if (!result.ok) { aiCoachShow(`Failed (HTTP ${result.status}). Check your Anthropic API key in Settings, under AI Coach.`, ''); return; }
     if (!result.text) { aiCoachShow('No response. Try again.', ''); return; }
-    aiCoachState = { kind, text: result.text.trim(), ts: Date.now() }; aiCoachSave(); aiCoachRender();
+    aiCoachState = { kind, text: result.text.trim(), ts: Date.now(), ...(kind === 'ask' ? { q: askQ } : {}) }; aiCoachSave(); aiCoachRender();
   } catch (err) { console.error(err); aiCoachShow('Failed. Check your connection and API key.', ''); }
 }
 document.getElementById('aiAnalyzeBtn').addEventListener('click', () => runAiCoach('analyze'));
 document.getElementById('aiWorkoutBtn').addEventListener('click', () => runAiCoach('workout'));
+document.getElementById('askCoachBtn').addEventListener('click', () => runAiCoach('ask'));
+document.querySelectorAll('.ask-example').forEach(c => c.addEventListener('click', () => { const i = document.getElementById('askCoachInput'); i.value = c.textContent.trim(); i.focus(); }));
 document.getElementById('aiCoachClear').addEventListener('click', () => { aiCoachState = null; aiCoachSave(); aiCoachRender(); });
-try { const raw = JSON.parse(localStorage.getItem(AICOACH_KEY) || 'null'); aiCoachState = raw && typeof raw.text === 'string' && raw.text ? { kind: raw.kind, text: raw.text, ts: Number(raw.ts) || Date.now() } : null; } catch (err) { aiCoachState = null; }
+try { const raw = JSON.parse(localStorage.getItem(AICOACH_KEY) || 'null'); aiCoachState = raw && typeof raw.text === 'string' && raw.text ? { kind: raw.kind, text: raw.text, ts: Number(raw.ts) || Date.now(), q: typeof raw.q === 'string' ? raw.q.slice(0, 300) : '' } : null; } catch (err) { aiCoachState = null; }
 aiCoachRender();
 // Saves just the key (the big Save button also needs a baseline weight, which workouts-only mode hides)
 document.getElementById('saveAiKeyBtn').addEventListener('click', async () => {
@@ -14432,6 +14445,7 @@ function renderRoutineEditor() {
       <button type="button" class="re-tpl" data-tpl="ppl"><b>Start from Push / Pull / Legs</b><span>3 days, then change anything you like</span></button>
       <button type="button" class="re-tpl" data-tpl="split"><b>Start from Upper / Lower</b><span>2 days, then change anything you like</span></button>
       <button type="button" class="re-tpl" data-tpl="fullbody"><b>Start from Full Body</b><span>1 day, then change anything you like</span></button>
+      <button type="button" class="re-import-btn" data-tpl-import="1"><b>Import from a code</b><span>Paste a routine a friend shared with you</span></button>
       <div class="re-hint">Your current plan style is not touched until you save a routine.</div>`;
     foot.innerHTML = `<button type="button" class="btn btn-ghost" data-foot="cancel">Cancel</button>`;
     return;
@@ -14477,6 +14491,7 @@ function onReBodyInput(e) {
   else if (t.classList.contains('re-sets')) { const d = reDay(t.dataset.day); if (d && d.exercises[+t.dataset.i]) d.exercises[+t.dataset.i].sets = t.value; }
 }
 function onReBodyClick(e) {
+  if (e.target.closest('[data-tpl-import]')) { openShareSheet('import'); return; }
   const tpl = e.target.closest('[data-tpl]');
   if (tpl) { routineDraft = routineFromTemplate(tpl.dataset.tpl); reStage = 'edit'; reDirty = true; renderRoutineEditor(); return; }
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
@@ -14645,6 +14660,7 @@ function renderRoutineManager() {
           ${live ? '' : `<button type="button" class="btn btn-primary btn-sm" data-m="use" data-id="${r.id}">Use this</button>`}
           <button type="button" class="btn btn-secondary btn-sm" data-m="edit" data-id="${r.id}">Edit</button>
           <button type="button" class="btn btn-secondary btn-sm" data-m="copy" data-id="${r.id}" ${full ? 'disabled' : ''}>Copy</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-m="share" data-id="${r.id}">Share</button>
           <button type="button" class="rm-del" data-m="del" data-id="${r.id}" aria-label="Delete ${escapeHtml(r.name)}">🗑</button>
         </div>
       </div>`;
@@ -14658,6 +14674,7 @@ function renderRoutineManager() {
         <div class="re-hint">Switching style never deletes anything. Push/Pull/Legs, Split and Full Body are always here.</div>
         ${customRoutines.map(card).join('')}
         <button type="button" class="re-add-day" data-m="new" ${full ? 'disabled' : ''}>＋ New routine</button>
+        <button type="button" class="re-add-day" data-m="import" ${full ? 'disabled' : ''}>⇩ Import from a code</button>
         <div class="re-hint">${customRoutines.length} of ${RE_MAX_ROUTINES} saved.${full ? ' Delete one to add another.' : ''} Each routine remembers where you were in its cycle.</div>
       </div>
     </div>`;
@@ -14670,6 +14687,8 @@ async function onRoutineManagerClick(e) {
   else if (act === 'edit') openRoutineEditor(id);
   else if (act === 'use') await useRoutine(id);
   else if (act === 'copy') await duplicateRoutine(id);
+  else if (act === 'share') openShareSheet('share', id);
+  else if (act === 'import') openShareSheet('import');
   else if (act === 'style') {
     const k = b.dataset.style;
     if (k === 'custom') { const r = activeRoutine() || customRoutines[0]; if (r) await useRoutine(r.id); }
@@ -14713,6 +14732,117 @@ async function removeRoutine(id) {
   if (activeRoutineId === id) { activeRoutineId = customRoutines.length ? customRoutines[0].id : null; customDayOverride = null; if (workoutPlanMode === 'custom') resetWorkoutScreenState(); }
   await saveRoutinesToCloud();
   renderWorkoutPlan(); if (typeof updateStats === 'function') updateStats();
+}
+
+// ── SHARE A ROUTINE ─────────────────────────────────────────────────────
+// A routine becomes a short text code (MTR1-...~) that can be pasted into any message. Importing checks every
+// part of it: only names, sets/reps text and a muscle group travel, never anything about the person.
+const SHARE_PREFIX = 'MTR1', SHARE_MAX_CODE = 8000, SHARE_MAX_PER_DAY = 20, SHARE_MAX_TOTAL = 70;
+function shareB64(str) { return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function shareUnB64(t) { t = t.replace(/-/g, '+').replace(/_/g, '/'); return decodeURIComponent(escape(atob(t + '==='.slice((t.length + 3) % 4)))); }
+function shareChk(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0; return h.toString(36).slice(-4).padStart(4, '0'); }
+function routineToCode(r) {
+  const lib = new Map((customLibrary || []).filter(e => e && e.name && MUSCLE_MAP_GROUPS.includes(e.group)).map(e => [e.name, e.group]));
+  const o = { n: r.name, d: r.days.map(d => [d.name, d.exercises.map(e => lib.has(e.name) ? [e.name, e.sets, lib.get(e.name)] : [e.name, e.sets])]) };
+  const payload = shareB64(JSON.stringify(o));
+  return `${SHARE_PREFIX}-${payload}-${shareChk(payload)}~`;
+}
+function shareCleanSets(v) {
+  const t = String(v == null ? '' : v).replace(/sec(?:onds?|s)?/gi, '§').replace(/[^0-9×x–\-.\s§]/g, '').replace(/§/g, ' sec').replace(/\s+/g, ' ').trim().slice(0, 22); // digits, x, dashes and "sec" only
+  return /\d/.test(t) ? t : '3 × 10';
+}
+// -> { error } or { routine, newLib, unplaced }. Never touches saved data.
+function parseRoutineCode(text) {
+  const flat = String(text == null ? '' : text).replace(/\s+/g, '');
+  if (!flat) return { error: 'Paste a routine code first.' };
+  if (flat.length > SHARE_MAX_CODE) return { error: 'That is too long to be a routine code.' };
+  const m = flat.match(/MTR1-([A-Za-z0-9_-]+)-([0-9a-z]{4})~/) || flat.match(/^MTR1-([A-Za-z0-9_-]+)-([0-9a-z]{4})$/);
+  if (!m) return { error: 'That does not look like a routine code. It starts with MTR1- and ends with ~. Copy the whole thing.' };
+  if (shareChk(m[1]) !== m[2]) return { error: 'The code looks cut off or changed. Ask for it again and copy all of it.' };
+  let o; try { o = JSON.parse(shareUnB64(m[1])); } catch (err) { return { error: 'The code could not be read. Ask for it again.' }; }
+  if (!o || typeof o !== 'object' || typeof o.n !== 'string' || !Array.isArray(o.d)) return { error: 'The code could not be read. Ask for it again.' };
+  if (!o.d.length || o.d.length > RE_MAX_DAYS) return { error: `A routine has 1 to ${RE_MAX_DAYS} days. This code has ${o.d.length}.` };
+  const days = [], newLib = [], unplaced = []; let total = 0; const usedDay = new Set();
+  for (let i = 0; i < o.d.length; i++) {
+    const d = o.d[i];
+    if (!Array.isArray(d) || typeof d[0] !== 'string' || !Array.isArray(d[1])) return { error: 'The code could not be read. Ask for it again.' };
+    if (d[1].length > SHARE_MAX_PER_DAY) return { error: `A day can hold up to ${SHARE_MAX_PER_DAY} exercises. This code has ${d[1].length} on one day.` };
+    let dn = cleanExerciseName(d[0]).slice(0, 30) || `Day ${i + 1}`; const base = dn; let k = 2;
+    while (usedDay.has(dn.toLowerCase())) dn = `${base} ${k++}`; usedDay.add(dn.toLowerCase());
+    const seen = new Set(), exercises = [];
+    for (const e of d[1]) {
+      if (!Array.isArray(e) || typeof e[0] !== 'string') return { error: 'The code could not be read. Ask for it again.' };
+      const name = cleanExerciseName(e[0]); if (!name || /^(__proto__|constructor|prototype|hasOwnProperty|toString)$/i.test(name) || seen.has(libKey(name))) continue; seen.add(libKey(name)); // names are used as object keys
+      const sets = shareCleanSets(e[1]);
+      if (typeof e[2] === 'string' && MUSCLE_MAP_GROUPS.includes(e[2]) && !muscleGroupFor(name) && !newLib.some(x => x.name === name) && !(customLibrary || []).some(x => x && x.name === name)) newLib.push({ name, sets, group: e[2] });
+      if (!muscleGroupFor(name) && !newLib.some(x => x.name === name) && !unplaced.includes(name)) unplaced.push(name);
+      exercises.push({ name, sets }); total++;
+    }
+    if (!exercises.length) return { error: `"${dn}" has no exercises in it.` };
+    days.push({ id: newRoutineId(), name: dn, exercises });
+  }
+  if (total > SHARE_MAX_TOTAL) return { error: `That routine has ${total} exercises. The most is ${SHARE_MAX_TOTAL}.` };
+  return { routine: { id: newRoutineId(), name: cleanExerciseName(o.n).slice(0, 30) || 'Shared routine', days }, newLib, unplaced };
+}
+async function importRoutineFromCode(text) {
+  const res = parseRoutineCode(text); if (res.error) return res;
+  if (customRoutines.length >= RE_MAX_ROUTINES) return { error: `You can keep up to ${RE_MAX_ROUTINES} routines. Delete one first.` };
+  let name = res.routine.name, k = 2; while (customRoutines.some(r => r.name.toLowerCase() === name.toLowerCase())) name = `${res.routine.name.slice(0, 26)} ${k++}`;
+  res.routine.name = name;
+  res.newLib.forEach(e => customLibrary.push(e)); if (res.newLib.length) registerCustomLibrary();
+  customRoutines.push(res.routine);
+  await saveRoutinesToCloud();
+  return { ok: true, routine: res.routine, unplaced: res.unplaced };
+}
+let shareMode = 'share', shareRoutineId = null, shareErr = '', shareDone = null, shareCopied = false;
+function ensureShareDom() {
+  const el = document.getElementById('routineShare'); if (!el || el.dataset.ready) return; el.dataset.ready = '1';
+  el.addEventListener('click', onShareClick);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && el.style.display !== 'none') closeShareSheet(); });
+}
+function openShareSheet(mode, id) { ensureShareDom(); shareMode = mode; shareRoutineId = id || null; shareErr = ''; shareDone = null; shareCopied = false; document.getElementById('routineShare').style.display = 'flex'; renderShareSheet(); }
+function closeShareSheet() { const el = document.getElementById('routineShare'); if (el) el.style.display = 'none'; }
+function renderShareSheet() {
+  const el = document.getElementById('routineShare'); if (!el) return; let title, inner;
+  if (shareMode === 'share') {
+    const r = customRoutines.find(x => x.id === shareRoutineId); if (!r) { closeShareSheet(); return; }
+    title = 'Share this routine';
+    inner = `<div class="re-lead">${escapeHtml(r.name)}</div>
+      <div class="re-hint">Copy this code and send it in a message. Your friend opens My routines, taps Import from a code, and pastes it. It only holds the routine's name, days, exercises and sets. Nothing else about you.</div>
+      <textarea id="shareCodeBox" class="re-input" rows="5" readonly aria-label="Routine code" style="font-size:12px">${escapeHtml(routineToCode(r))}</textarea>
+      <div class="rm-actions" style="margin-top:10px"><button type="button" class="btn btn-primary btn-sm" data-sh="copy">${shareCopied ? 'Copied ✓' : 'Copy code'}</button>${navigator.share ? '<button type="button" class="btn btn-secondary btn-sm" data-sh="send">Send…</button>' : ''}</div>`;
+  } else if (shareDone) {
+    const r = shareDone.routine, n = r.days.reduce((t, d) => t + d.exercises.length, 0);
+    title = 'Routine added';
+    inner = `<div class="re-lead">${escapeHtml(r.name)}</div><div class="re-hint">${r.days.length} day${r.days.length === 1 ? '' : 's'}, ${n} exercise${n === 1 ? '' : 's'}. It is saved but not switched on. Tap Use this on its card when you want it.</div>
+      ${shareDone.unplaced.length ? `<div class="re-hint">These have no muscle group yet, so they will not count on the muscle map: ${escapeHtml(shareDone.unplaced.join(', '))}.</div>` : ''}
+      <div class="rm-actions" style="margin-top:10px"><button type="button" class="btn btn-primary btn-sm" data-sh="done">Done</button></div>`;
+  } else {
+    title = 'Import from a code';
+    inner = `<div class="re-hint">Paste the code a friend sent you. It starts with MTR1- and ends with ~.</div>
+      <textarea id="shareImportBox" class="re-input" rows="5" placeholder="MTR1-…" aria-label="Routine code" autocomplete="off" autocapitalize="off" spellcheck="false" style="font-size:12px"></textarea>
+      <div class="re-hint" id="shareErr" style="color:var(--coral);font-weight:700" ${shareErr ? '' : 'hidden'}>${escapeHtml(shareErr)}</div>
+      <div class="rm-actions" style="margin-top:10px"><button type="button" class="btn btn-primary btn-sm" data-sh="import-go" ${customRoutines.length >= RE_MAX_ROUTINES ? 'disabled' : ''}>Add routine</button><button type="button" class="btn btn-ghost btn-sm" data-sh="close">Cancel</button></div>
+      ${customRoutines.length >= RE_MAX_ROUTINES ? `<div class="re-hint">You have ${RE_MAX_ROUTINES} routines already. Delete one to make room.</div>` : ''}`;
+  }
+  el.innerHTML = `<div class="re-sheet" role="dialog" aria-modal="true" aria-label="${title}" style="height:auto;max-height:90vh"><div class="re-top"><div class="re-title">${title}</div><button type="button" class="re-x" data-sh="close" aria-label="Close">✕</button></div><div class="re-body">${inner}</div></div>`;
+}
+async function onShareClick(e) {
+  const b = e.target.closest('[data-sh]'); if (!b || b.disabled) return; const a = b.dataset.sh;
+  if (a === 'close') closeShareSheet();
+  else if (a === 'copy') {
+    const code = routineToCode(customRoutines.find(x => x.id === shareRoutineId) || { name: '', days: [] });
+    try { await navigator.clipboard.writeText(code); } catch (err) { const t = document.getElementById('shareCodeBox'); if (t) { t.select(); try { document.execCommand('copy'); } catch (e2) { /* the box is selected: long-press to copy */ } } }
+    shareCopied = true; renderShareSheet();
+  }
+  else if (a === 'send') { const r = customRoutines.find(x => x.id === shareRoutineId); if (r) { try { await navigator.share({ title: r.name, text: routineToCode(r) }); } catch (err) { /* cancelled */ } } }
+  else if (a === 'import-go') {
+    const box = document.getElementById('shareImportBox'), res = await importRoutineFromCode(box ? box.value : '');
+    if (res.error) { shareErr = res.error; renderShareSheet(); const nb = document.getElementById('shareImportBox'); if (nb) nb.value = box ? box.value : ''; return; }
+    shareErr = ''; shareDone = res; if (document.getElementById('routineEditor').style.display !== 'none') closeRoutineEditor(true);
+    renderShareSheet(); if (routineManagerOpen()) renderRoutineManager();
+  }
+  else if (a === 'done') { closeShareSheet(); if (customRoutines.length) openRoutineManager(); }
 }
 
 // ── CHOOSING AN EXERCISE FROM THE LIBRARY, MID-WORKOUT ──────────────────
