@@ -2110,6 +2110,26 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
         </div>
       </div>
 
+      <div class="timeline-card home-extra-card" data-card-key="weeklyGoal" id="goalCard">
+        <div class="timeline-title">Weekly goal</div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <svg id="goalRing" width="84" height="84" viewBox="0 0 84 84" role="img" aria-label="Workouts this week" style="flex-shrink:0">
+            <circle cx="42" cy="42" r="34" fill="none" stroke="var(--line)" stroke-width="9"/>
+            <circle id="goalRingArc" cx="42" cy="42" r="34" fill="none" stroke="var(--teal)" stroke-width="9" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="213.6" transform="rotate(-90 42 42)"/>
+            <text id="goalRingText" x="42" y="48" text-anchor="middle" font-size="20" font-weight="800" fill="currentColor">0/3</text>
+          </svg>
+          <div style="flex:1;min-width:0">
+            <div id="goalMsg" style="font-weight:700;font-size:14px;line-height:1.3"></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+              <button type="button" class="btn btn-ghost btn-sm" id="goalMinus" aria-label="Fewer workouts a week" style="flex:0 0 40px;padding:6px 0">−</button>
+              <span id="goalNum" style="font-size:13px;font-weight:700;min-width:0">3 a week</span>
+              <button type="button" class="btn btn-ghost btn-sm" id="goalPlus" aria-label="More workouts a week" style="flex:0 0 40px;padding:6px 0">+</button>
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--ink-soft)"><input type="checkbox" id="goalStretch"> Count stretch days too</label>
+          </div>
+        </div>
+      </div>
+
       <div class="timeline-card home-extra-card" data-card-key="milestoneProgress">
         <div class="timeline-title" id="msTitle">Milestone Progress</div>
         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
@@ -3024,7 +3044,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
       </div>
 
       <div class="form-card" id="recoveryCard">
-        <div class="form-section-title">Stretch &amp; warm-up</div>
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Stretch &amp; warm-up</span><span id="recoveryChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></div>
         <div id="recSub" style="font-size:12px;color:var(--ink-soft);margin-bottom:10px"></div>
         <div id="recNudge" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--coral);font-size:13px;line-height:1.45"></div>
         <button type="button" class="btn btn-primary" id="recStretchBtn" style="width:100%;padding:13px;font-size:14px">Stretch what I trained</button>
@@ -3323,6 +3343,17 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
         <div class="chart-wrap"><canvas id="weightProgressChart"></canvas></div>
         <div class="chart-legend">
           <span><span class="legend-dot" style="background:var(--teal)"></span>Heaviest set that session (lbs)</span>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
+          <div class="chart-title" style="margin-bottom:0">Estimated 1RM</div>
+          <select id="e1rmExercisePicker" aria-label="Exercise" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:11px;background:var(--input-bg);color:var(--ink);max-width:150px;font-weight:700"></select>
+        </div>
+        <div id="e1rmEmptyMsg" style="display:none;text-align:center;padding:20px 4px;color:var(--ink-soft);font-size:12px">Log a few weighted sessions (12 reps or fewer per set) to see your estimated max here.</div>
+        <div class="chart-wrap"><canvas id="e1rmChart"></canvas></div>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:var(--coral)"></span>Estimated one-rep max (lb), from your best set each session. An estimate, not a test.</span>
         </div>
       </div>
       <div class="full-only chart-card">
@@ -4463,8 +4494,9 @@ try { renderPaletteRow(); } catch (err) { console.error('renderPaletteRow failed
 
 // ── DASHBOARD LAYOUT (drag-and-drop card reordering + show/hide) ──
 let dashboardOrder = []; // array of data-card-key values, in the user's chosen order
-const EXERCISE_MODE_STAT_KEYS = new Set(['exercise', 'workoutVolume', 'planDay']); // the only Home stat cards shown in workouts-only mode
+const EXERCISE_MODE_STAT_KEYS = new Set(['exercise', 'workoutVolume', 'planDay', 'weeklyGoal']); // the only Home stat cards shown in workouts-only mode
 function cardModeHidden(key) { return appMode === 'exercise' && !EXERCISE_MODE_STAT_KEYS.has(key); }
+let weeklyGoal = 3, weeklyGoalStretch = false; // 'N workouts a week' ring on Home; synced in the settings doc
 let hiddenCards = [];    // array of data-card-key values currently hidden from Home
 let dashSortable = null;
 
@@ -4502,6 +4534,7 @@ const CARD_CATALOG = {
 // The two milestone cards live outside the stat grid (full-width blocks), but hide/show the same way.
 CARD_CATALOG.milestoneProgress = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><path d="M4 22V4"/><path d="M4 4h12l-2 4 2 4H4"/></svg>', label: 'Milestone Progress' };
 CARD_CATALOG.todaySummary = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>', label: 'Today' };
+CARD_CATALOG.weeklyGoal = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>', label: 'Weekly goal' };
 CARD_CATALOG.milestoneRoadmap = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>', label: 'Milestone Roadmap' };
 
 // ── HOME SECTIONS ── the stat cards grouped under headers that open and close; cards with no data fold into one row.
@@ -4719,6 +4752,7 @@ let paceChart    = null;
 let inclineChart = null;
 let volumeChart  = null;
 let weightProgressChart = null;
+let e1rmChart = null;
 let stepsChart   = null;
 let bpChart      = null;
 let hrChart      = null;
@@ -6337,6 +6371,7 @@ function startListening() {
       lbConfig = (s.leaderboard && s.leaderboard.code && s.leaderboard.memberId) ? s.leaderboard : null;
       lbSubscribe(); lbSchedulePublish(); renderLeaderboard();
       stepGoalOverride = s.stepGoal != null ? parseInt(s.stepGoal) || 0 : 0;
+      if (s.weeklyGoal != null) weeklyGoal = Math.min(7, Math.max(1, parseInt(s.weeklyGoal) || 3)); weeklyGoalStretch = !!s.weeklyGoalStretch; try { renderGoalRing(); } catch (err) { /* card not ready yet */ }
       if (s.theme != null) themeOverride = s.theme;
       pinnedFavorites = Array.isArray(s.favoriteFoods) ? s.favoriteFoods : [];
       pinnedRecipes = Array.isArray(s.recipes) ? s.recipes : [];
@@ -6599,6 +6634,7 @@ function updateStats() {
 
   try { renderDueToday(); } catch (err) { console.error('Due Today render failed:', err); }
   try { renderTodayCard(); } catch (err) { console.error('Today card render failed:', err); }
+  try { renderGoalRing(); } catch (err) { console.error('Goal ring render failed:', err); }
   try { renderQuickLogFood(); } catch (err) { console.error('Quick Log Food render failed:', err); }
 
   // Computed once here rather than per stat card below — each call
@@ -7958,7 +7994,7 @@ const CHART_SECTIONS = [
   { name: 'Treatment', titles: ['Dose Escalation Timeline', 'Dose Change Comparison', 'Side Effects Near Dose Changes'], open: true },
   { name: 'Body', ids: ['weightChart', 'measurementsChart', 'glucoseChart', 'bpChart'], open: true },
   { name: 'Nutrition', ids: ['proteinChart', 'waterChart', 'carbsChart', 'caloriesChart', 'fatChart'], open: false },
-  { name: 'Activity', ids: ['stepsChart', 'exChart', 'activeCalChart', 'distanceChart', 'paceChart', 'inclineChart', 'volumeChart', 'weightProgressChart'], open: false },
+  { name: 'Activity', ids: ['stepsChart', 'exChart', 'activeCalChart', 'distanceChart', 'paceChart', 'inclineChart', 'volumeChart', 'weightProgressChart', 'e1rmChart'], open: false },
   { name: 'Recovery', ids: ['hrChart', 'hrvChart', 'sleepChart', 'sleepScoreChart'], open: false },
   { name: 'Labs', ids: ['a1cChart', 'ldlChart', 'egfrChart', 'altChart'], open: false },
   { name: 'Weekly summary', titles: ['Weekly Summary'], open: false }
@@ -7970,7 +8006,7 @@ const CHART_META = {
   carbsChart: { label: 'Carbs', unit: ' g', daily: true }, caloriesChart: { label: 'Calories', unit: ' cal', daily: true }, fatChart: { label: 'Fat', unit: ' g', daily: true },
   stepsChart: { label: 'Steps', unit: '', daily: true, goal: () => currentStepGoal() }, exChart: { label: 'Exercise', unit: ' min', daily: true }, activeCalChart: { label: 'Active', unit: ' cal', daily: true },
   distanceChart: { label: 'Distance', unit: ' mi', dec: 1, daily: true }, paceChart: { label: 'Pace', unit: ' mph', dec: 1 }, inclineChart: { label: 'Incline', unit: '%', dec: 1 },
-  volumeChart: { label: 'Volume', unit: ' lb', daily: true }, weightProgressChart: { label: 'Best set', unit: ' lb' },
+  volumeChart: { label: 'Volume', unit: ' lb', daily: true }, weightProgressChart: { label: 'Best set', unit: ' lb' }, e1rmChart: { label: '1RM', unit: ' lb', dec: 0 },
   hrChart: { label: 'Resting HR', unit: ' bpm', dec: 0 }, hrvChart: { label: 'HRV', unit: ' ms', dec: 0 }, sleepChart: { label: 'Sleep', unit: ' h', dec: 1, daily: true }, sleepScoreChart: { label: 'Sleep score', unit: '', dec: 0 },
   a1cChart: { label: 'A1C', unit: '%', dec: 1 }, ldlChart: { label: 'LDL', unit: '', dec: 0 }, egfrChart: { label: 'eGFR', unit: '', dec: 0 }, altChart: { label: 'ALT', unit: '', dec: 0 }
 };
@@ -7998,7 +8034,7 @@ function ChartGate(ctx, cfg) {
   if (!cfg.options.onClick) cfg.options.onClick = (evt, els, chart) => chartTapToHistory(els, chart);
   if (!cfg.options.interaction) cfg.options.interaction = { mode: 'nearest', axis: 'x', intersect: false };   // a fingertip does not have to land on the dot
   const inst = new window.Chart(ctx, cfg);
-  if (id === 'weightProgressChart' && chartMode === 'draw') { chartProbe[id] = cfg.data; try { setChartSummary(id); } catch (err) { /* ignore */ } }
+  if ((id === 'weightProgressChart' || id === 'e1rmChart') && chartMode === 'draw') { chartProbe[id] = cfg.data; try { setChartSummary(id); } catch (err) { /* ignore */ } }
   return inst;
 }
 function chartSeries(id) {
@@ -8058,7 +8094,7 @@ function latestTextFor(id) { const ser = chartSeries(id); if (!ser) return null;
 function applyChartSections() {
   if (!chartSectionsReady) return;
   let emptyN = 0;
-  const exMode = appMode === 'exercise', exChartOk = x => !exMode || x.id === 'volumeChart' || x.id === 'weightProgressChart';
+  const exMode = appMode === 'exercise', exChartOk = x => !exMode || x.id === 'volumeChart' || x.id === 'weightProgressChart' || x.id === 'e1rmChart';
   CHART_SECTIONS.forEach(sec => {
     const open = chartSecIsOpen(sec); let withData = 0;
     const modeHidden = exMode && !sec.cards.some(x => exChartOk(x));
@@ -8228,6 +8264,31 @@ function renderWeightProgressChart(exerciseName) {
         x: { grid: { display: false }, ticks: { font: { family: CHART_FONT_NUM, weight: '700', size: 10 }, color: cTick, maxRotation: 0 } }
       }
     }
+  });
+}
+
+function renderE1rmChart(exerciseName) {
+  const ctxEl = document.getElementById('e1rmChart');
+  if (!ctxEl || !exerciseName) return;
+  const ctx = ctxEl.getContext('2d');
+  if (e1rmChart) e1rmChart.destroy();
+  const cs = getComputedStyle(document.documentElement), cv = name => cs.getPropertyValue(name).trim();
+  const cLine = cv('--coral'), cGrid = cv('--divider'), cTick = cv('--ink-soft');
+  const dates = [], values = [];
+  [...chartRangeEntries(entries)].sort((a, b) => a.date.localeCompare(b.date)).forEach(e => {
+    (e.ex || []).forEach(x => {
+      if (x.type !== 'Strength' || !x.sets || !x.sets[exerciseName] || !x.sets[exerciseName].length) return;
+      const best = x.sets[exerciseName].filter(isWeightedWorkingSet).map(q => estimatedOneRepMax(q.weight, q.reps)).filter(v => v != null);
+      if (!best.length) return; // warm-ups only, or every set above 12 reps (too rough to estimate)
+      dates.push(fmtDate(e.date)); values.push(Math.round(Math.max(...best) * 10) / 10);
+    });
+  });
+  e1rmChart = new ChartGate(ctx, {
+    type: 'line',
+    data: { labels: dates, datasets: [{ label: 'Estimated 1RM (lbs)', data: values, borderColor: cLine, backgroundColor: 'rgba(255,111,165,0.08)', pointBackgroundColor: cLine, pointRadius: 4, tension: 0.2, fill: true }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, elements: { point: { radius: 4, hoverRadius: 6 } },
+      scales: { y: { beginAtZero: false, grid: { color: cGrid }, ticks: { font: { family: CHART_FONT_NUM, weight: '700', size: 10 }, color: cTick } },
+        x: { grid: { display: false }, ticks: { font: { family: CHART_FONT_NUM, weight: '700', size: 10 }, color: cTick, maxRotation: 0 } } } }
   });
 }
 
@@ -8739,6 +8800,23 @@ function renderChartsCore(entries, Chart) {
       }
       renderWeightProgressChart(wpPickerEl.value);
       wpPickerEl.onchange = () => renderWeightProgressChart(wpPickerEl.value);
+    }
+  }
+
+  // Estimated 1RM trend: one lift at a time, like Exercise Weight Progress above
+  const e1PickerEl = document.getElementById('e1rmExercisePicker'), e1CtxEl = document.getElementById('e1rmChart'), e1Empty = document.getElementById('e1rmEmptyMsg');
+  if (e1PickerEl && e1CtxEl) {
+    const names = allLoggedExerciseNames().filter(n => exerciseMode(n) === 'weighted');
+    if (!names.length) {
+      e1Empty.style.display = 'block'; e1CtxEl.style.display = 'none'; e1PickerEl.style.display = 'none';
+      if (e1rmChart) { e1rmChart.destroy(); e1rmChart = null; }
+    } else {
+      e1Empty.style.display = 'none'; e1CtxEl.style.display = ''; e1PickerEl.style.display = '';
+      const prev = e1PickerEl.value, wpv = wpPickerEl ? wpPickerEl.value : '';
+      e1PickerEl.innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join('');
+      e1PickerEl.value = names.includes(prev) ? prev : (names.includes(wpv) ? wpv : names[0]);
+      renderE1rmChart(e1PickerEl.value);
+      e1PickerEl.onchange = () => renderE1rmChart(e1PickerEl.value);
     }
   }
 
@@ -10927,6 +11005,7 @@ function recSetFromDoc(r) { recovery = { sessions: Array.isArray(r && r.sessions
 async function saveRecovery() {
   recovery.sessions = recovery.sessions.slice(-300);
   const cut = lbAddDays(todayStr(), -120); Object.keys(recovery.sore).forEach(d => { if (d < cut) delete recovery.sore[d]; });
+  try { renderGoalRing(); } catch (err) { /* ignore */ }
   if (syncId) { try { await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { recovery }, { merge: true }); } catch (err) { console.error(err); } }
 }
 // muscles worked in the last N days (today counts), most sets first
@@ -14893,7 +14972,8 @@ function lbAnalyze() {
     best: { streak: bestStreak, setsWeek: bestSets, prsMonth: Math.max(0, ...Object.values(perMonth)), workoutsWeek: bestWeek }, last: last || null };
 }
 function lbComputeStats() { return lbAnalyze(); }
-function lbPayload() { const a = lbAnalyze(); return { name: lbConfig.name, since: lbConfig.joinedWeek || a.weekStart, weekStart: a.weekStart, month: a.month, workouts: a.workouts, sets: a.sets, prs: a.prs, streak: a.streak, weeks: a.weeks, best: a.best, last: a.last, updatedAt: Date.now(), v: 2 }; }
+function lbStretchDaysThisWeek() { const ws = lbWeekStart(todayStr()); return new Set(recovery.sessions.filter(x => x.date >= ws).map(x => x.date)).size; }
+function lbPayload() { const a = lbAnalyze(); return { ...(lbConfig.shareStretch ? { stretch: lbStretchDaysThisWeek() } : {}), name: lbConfig.name, since: lbConfig.joinedWeek || a.weekStart, weekStart: a.weekStart, month: a.month, workouts: a.workouts, sets: a.sets, prs: a.prs, streak: a.streak, weeks: a.weeks, best: a.best, last: a.last, updatedAt: Date.now(), v: 2 }; }
 function lbMemberRef(code, id) { return doc(db, 'groups', code, 'members', id); }
 async function lbPublish(force) {
   if (!lbConfig || !lbConfig.sharing || !lbConfig.code) return;
@@ -14915,6 +14995,12 @@ function lbSubscribe() {
   lbCheerUnsub = onSnapshot(collection(db, 'groups', lbConfig.code, 'cheers'),
     snap => { lbCheers = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderLeaderboard(); },
     err => { console.error(err); /* cheers are a nice extra: the board works without them */ });
+}
+async function lbToggleStretch() {
+  if (!lbConfig) return;
+  lbConfig.shareStretch = !lbConfig.shareStretch;
+  await lbSaveConfig(); if (lbConfig.sharing) await lbPublish(true);
+  renderLbSheet(); renderLeaderboard();
 }
 async function lbSaveConfig() { if (!syncId) return; await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { leaderboard: lbConfig || null }, { merge: true }); }
 
@@ -15043,12 +15129,30 @@ function ensureLbSheetDom() {
 }
 function openLbSheet(mode) { ensureLbSheetDom(); lbSheetMode = mode || (lbConfig && lbConfig.code ? 'board' : 'start'); lbSheetErr = ''; document.getElementById('lbSheet').style.display = 'flex'; renderLbSheet(); }
 function closeLbSheet() { const el = document.getElementById('lbSheet'); if (el) el.style.display = 'none'; }
+function lbHeadToHeadHtml() { // who trained more: this week live, and last week from everyone's published history
+  const wk = lbWeekStart(todayStr()), prevWk = lbAddDays(wk, -7);
+  const names = list => list.map(x => escapeHtml(String(x.name || 'Someone'))).join(' & ');
+  const cur = lbMembers.filter(m => m.weekStart === wk).map(m => ({ id: m.id, name: m.name, n: +m.workouts || 0, stretch: m.stretch != null ? +m.stretch : null })).sort((a, b) => b.n - a.n);
+  if (cur.length < 2) return '';
+  const top = cur.filter(x => x.n === cur[0].n), rest = cur.filter(x => x.n !== cur[0].n);
+  let line;
+  if (cur[0].n === 0) line = 'Nobody has trained yet this week. First one on the board takes the lead.';
+  else if (top.length > 1) line = `🤝 Dead even at ${cur[0].n}: ${names(top)}`;
+  else line = `🏋️ ${names(top)} leads with ${cur[0].n} workout${cur[0].n === 1 ? '' : 's'}${rest.length ? ` (${rest.map(x => `${escapeHtml(String(x.name || 'Someone'))} ${x.n}`).join(', ')})` : ''}`;
+  const prev = lbMembers.filter(m => m.weeks && m.weeks[prevWk]).map(m => ({ name: m.name, n: +m.weeks[prevWk][0] || 0 })).sort((a, b) => b.n - a.n);
+  let last = '';
+  if (prev.length >= 2 && prev[0].n > 0) { const pt = prev.filter(x => x.n === prev[0].n); last = pt.length > 1 ? `<br>Last week: tied at ${prev[0].n} (${names(pt)})` : `<br>Last week: ${names(pt)} trained more (${prev[0].n} vs ${prev[1].n})`; }
+  const st = cur.filter(x => x.stretch != null);
+  const stretch = st.length ? `<br>🧘 Stretch days this week: ${st.map(x => `${escapeHtml(String(x.name || 'Someone'))} ${x.stretch}`).join(' · ')}` : '';
+  return `<div class="lb-recap" id="lbHeadToHead"><b>Head to head</b><br>${line}${last}${stretch}</div>`;
+}
 function lbTabWeek(b) {
   const prevWk = lbAddDays(b.wk, -7), prev = lbWeekResult(lbMembers, prevWk), imp = lbMostImproved(lbMembers, prevWk);
   const mine = lbCheers.filter(c => c.week === b.wk && c.to === lbConfig.memberId).map(c => (lbMembers.find(m => m.id === c.from) || {}).name).filter(Boolean);
   const recap = (prev.winners.length || imp) ? `<div class="lb-recap"><b>Last week</b> (${lbWeekLabel(prevWk)})${prev.winners.length ? `<br>🥇 ${escapeHtml(prev.winners.map(x => x.name).join(' & '))} won with ${prev.winners[0].points} pts` : ''}${imp ? `<br>📈 Most improved: ${escapeHtml(imp.name)} (+${Math.round(imp.gain * 100)}% sets vs their own recent weeks)` : ''}</div>` : '';
   return `<div class="lb-week">Week of ${lbWeekLabel(b.wk)} · ${b.n} in the group</div>
     ${!lbConfig.sharing ? '<div class="lb-note">Sharing is paused: you are hidden from the board.</div>' : ''}
+    ${lbHeadToHeadHtml()}
     ${lbTeamHtml()}
     <div class="lb-h">Overall <span>points from every category</span></div>${b.n ? lbOverallRows(b) : '<div class="lb-note">Loading the group…</div>'}
     ${mine.length ? `<div class="lb-note">👏 Cheered by ${escapeHtml(mine.join(', '))} this week</div>` : '<div class="lb-note">Tap 👏 to cheer a friend. One cheer per friend per week.</div>'}
@@ -15077,10 +15181,13 @@ function lbTabRecords() {
 function lbTabGroup() {
   return `<div class="lb-h">Your group</div><div class="lb-code">${escapeHtml(lbShowCode(lbConfig.code))}</div>
     <div class="lb-actions"><button type="button" class="btn btn-secondary btn-sm" data-lb="copy">${lbJustCopied ? 'Copied ✓' : 'Copy code'}</button><button type="button" class="btn btn-secondary btn-sm" data-lb="share-toggle">${lbConfig.sharing ? 'Pause sharing' : 'Resume sharing'}</button></div>
+    <div class="lb-h">Stretch days</div>
+    <div class="lb-actions" style="margin-top:4px"><button type="button" class="btn btn-secondary btn-sm" data-lb="stretch-toggle">${lbConfig.shareStretch ? 'Sharing my stretch days: on' : 'Sharing my stretch days: off'}</button></div>
+    <div class="lb-note">Optional. Shares only how many days you stretched this week. It never changes anyone's points.</div>
     <div class="lb-h">Your name</div>
     <div class="lb-actions" style="margin-top:4px"><input id="lbRename" class="re-input" maxlength="16" autocomplete="off" value="${escapeHtml(lbConfig.name)}" aria-label="Your name"><button type="button" class="btn btn-secondary btn-sm" data-lb="rename" style="flex:0 0 90px">Save</button></div>
     <button type="button" class="re-delete-routine" data-lb="leave" style="margin-top:14px">Leave this group</button>
-    <div class="lb-foot">For fun and motivation. Workouts stop counting at ${LB_WORKOUT_CAP} a week, so it never pays to overdo it. Rest days are part of training. Each category earns more points the higher you rank. What is shared: your name, those four numbers for each recent week, your personal records, and the date you last trained. Never your weight, glucose, medication, food, or notes.</div>`;
+    <div class="lb-foot">For fun and motivation. Workouts stop counting at ${LB_WORKOUT_CAP} a week, so it never pays to overdo it. Rest days are part of training. Each category earns more points the higher you rank. What is shared: your name, those four numbers for each recent week, your personal records, and the date you last trained (and, only if you switch it on, how many days you stretched this week). Never your weight, glucose, medication, food, or notes.</div>`;
 }
 function renderLbSheet() {
   const el = document.getElementById('lbSheet'); if (!el) return;
@@ -15179,6 +15286,7 @@ function onLbClick(e) {
   else if (a === 'board') { lbSheetMode = 'board'; renderLbSheet(); }
   else if (a === 'leave') lbLeave();
   else if (a === 'share-toggle') lbToggleSharing();
+  else if (a === 'stretch-toggle') lbToggleStretch();
   else if (a === 'tab') { lbTab = b.dataset.tab; lbSheetErr = ''; renderLbSheet(); }
   else if (a === 'cheer') lbCheer(b.dataset.to);
   else if (a === 'rename') lbRename();
@@ -17558,6 +17666,7 @@ try {
   // While the timer is running the card is full screen: tapping its title must not collapse it away.
   if (exCardTitle) exCardTitle.addEventListener('click', e => { if (e.target.closest('button')) return; /* the close button must still work */ if (document.getElementById('exerciseActivityCard').classList.contains('entry-popup-fullscreen')) e.stopImmediatePropagation(); }, true);
 } catch (err) { console.error('exerciseActivityCard collapsible setup failed:', err); }
+try { makeFoodCardCollapsible('recoveryCard', 'recoveryChevron', 'mounjaro-recovery-expanded', true); } catch (err) { console.error('recoveryCard collapsible setup failed:', err); }
 try { makeFoodCardCollapsible('workoutPlanCard', 'workoutPlanChevron', 'mounjaro-workoutplan-expanded', false); } catch (err) { console.error('workoutPlanCard collapsible setup failed:', err); }
 try { makeFoodCardCollapsible('measurementsCard', 'measurementsChevron', 'mounjaro-measurements-expanded', false); } catch (err) { console.error('measurementsCard collapsible setup failed:', err); }
 
@@ -19238,6 +19347,32 @@ function todayDoseStatus() {
   return { kind: 'missed', val: 'Missed window' };
 }
 
+function goalDaysSoFar() { // days this calendar week with a lift (plus a stretch session, if that is switched on)
+  const today = todayStr(), ws = lbWeekStart(today), days = new Set();
+  entries.forEach(e => { if (e.date >= ws && e.date <= today && (e.ex || []).some(x => x.type === 'Strength')) days.add(e.date); });
+  if (weeklyGoalStretch) recovery.sessions.forEach(x => { if (x.date >= ws && x.date <= today) days.add(x.date); });
+  return days.size;
+}
+function renderGoalRing() {
+  const arc = document.getElementById('goalRingArc'); if (!arc) return;
+  const n = goalDaysSoFar(), pct = Math.min(1, n / weeklyGoal), C = 213.6;
+  arc.setAttribute('stroke-dashoffset', String(C * (1 - pct))); arc.setAttribute('stroke', pct >= 1 ? 'var(--sage)' : 'var(--teal)');
+  document.getElementById('goalRingText').textContent = `${Math.min(n, 99)}/${weeklyGoal}`;
+  document.getElementById('goalNum').textContent = `${weeklyGoal} a week`;
+  document.getElementById('goalStretch').checked = weeklyGoalStretch;
+  const left = weeklyGoal - n, daysLeft = 7 - ((new Date(lbParse(todayStr())).getDay() + 6) % 7);
+  document.getElementById('goalMsg').textContent = left <= 0 ? 'Goal reached this week. Nice work.' : left === 1 ? '1 more to hit your goal' : `${left} more to hit your goal`;
+  if (left > 0 && left > daysLeft) document.getElementById('goalMsg').textContent += ' (a stretch this week, no pressure)';
+  document.getElementById('goalRing').setAttribute('aria-label', `${n} of ${weeklyGoal} this week`);
+}
+async function saveWeeklyGoal() {
+  renderGoalRing();
+  if (!syncId) return;
+  try { await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { weeklyGoal, weeklyGoalStretch }, { merge: true }); } catch (err) { console.error(err); }
+}
+document.getElementById('goalMinus').addEventListener('click', () => { weeklyGoal = Math.max(1, weeklyGoal - 1); saveWeeklyGoal(); });
+document.getElementById('goalPlus').addEventListener('click', () => { weeklyGoal = Math.min(7, weeklyGoal + 1); saveWeeklyGoal(); });
+document.getElementById('goalStretch').addEventListener('change', e => { weeklyGoalStretch = !!e.target.checked; saveWeeklyGoal(); });
 function homeHour() { return (typeof window !== 'undefined' && window.__homeHour != null) ? window.__homeHour : new Date().getHours(); }
 // One definition of "workouts this week" for all of Home: calendar week so far, days with a lifting session.
 function weekLiftDays() {
