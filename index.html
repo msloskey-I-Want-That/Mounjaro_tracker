@@ -3019,6 +3019,13 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
         <label class="ex-date-chip" id="exDateChip" for="exDate"><span id="exDateChipText">Today</span><span aria-hidden="true">▾</span><input type="date" id="exDate" class="ex-date-input" aria-label="Date to log exercise for"></label>
       </div>
 
+      <div class="form-card" id="weekRecapCard">
+        <div class="form-section-title">This week</div>
+        <div id="weekRecapGrid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center"></div>
+        <div id="weekRecapMissed" style="font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.4"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="weekRecapShare" style="width:100%;margin-top:10px">Share my week</button>
+      </div>
+
       <div class="form-card" id="workoutPlanCard">
         <div id="workoutPlanCardHeader" class="form-section-title" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <span id="workoutPlanTitle">Workout Plan</span>
@@ -3037,13 +3044,6 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
           <div class="prog-body" id="progressionResults"></div>
         </div>
       </div>
-      <div class="form-card" id="weekRecapCard">
-        <div class="form-section-title">This week</div>
-        <div id="weekRecapGrid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center"></div>
-        <div id="weekRecapMissed" style="font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.4"></div>
-        <button type="button" class="btn btn-ghost btn-sm" id="weekRecapShare" style="width:100%;margin-top:10px">Share my week</button>
-      </div>
-
       <div class="form-card" id="recoveryCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Stretch &amp; warm-up</span><span id="recoveryChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></div>
         <div id="recSub" style="font-size:12px;color:var(--ink-soft);margin-bottom:10px"></div>
@@ -3070,25 +3070,6 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
           <div class="chip" role="button" tabindex="0" id="recFoamChip">Foam rolling: off</div>
         </div>
         <div style="font-size:11px;color:var(--ink-soft);margin-top:10px;line-height:1.4">Gentle holds, no bouncing. Stop if anything feels sharp or it is in a joint. If soreness lasts more than a few days, check with a professional.</div>
-      </div>
-
-      <div class="form-card" id="aiCoachCard">
-        <div class="form-section-title">AI Coach</div>
-        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">Looks at your logged lifts: weights, sets and how often you train each muscle.</div>
-        <div style="display:flex;gap:8px">
-          <button type="button" class="btn btn-secondary btn-sm" id="aiAnalyzeBtn" style="flex:1">Analyze my training</button>
-          <button type="button" class="btn btn-secondary btn-sm" id="aiWorkoutBtn" style="flex:1">Suggest a workout</button>
-        </div>
-        <div style="margin-top:12px">
-          <textarea id="askCoachInput" rows="2" maxlength="300" placeholder="Ask the coach, e.g. I only have 30 minutes, what should I drop?" aria-label="Ask the coach" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;background:var(--input-bg);color:var(--ink);resize:vertical"></textarea>
-          <div class="chip-row" style="gap:6px;margin-top:6px"><div class="chip ask-example" role="button" tabindex="0" style="font-size:12px;padding:6px 10px">I only have 30 minutes</div><div class="chip ask-example" role="button" tabindex="0" style="font-size:12px;padding:6px 10px">Swap my pressing, my shoulder feels cranky</div></div>
-          <button type="button" class="btn btn-secondary btn-sm" id="askCoachBtn" style="width:100%;margin-top:8px">Ask the Coach</button>
-          <div style="font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.4">Sent with your logged lifts only. Leave out names and health details. For pain or an injury, see a doctor or physical therapist.</div>
-        </div>
-        <div id="aiCoachOut" style="display:none;margin-top:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><span id="aiCoachMeta" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft)"></span><button type="button" id="aiCoachClear" aria-label="Clear" style="background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;padding:2px 6px">&#10005;</button></div>
-          <div id="aiCoachText" style="white-space:pre-wrap;font-size:14px;line-height:1.55"></div>
-        </div>
       </div>
 
       <div class="form-card" id="exerciseActivityCard">
@@ -3157,6 +3138,25 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
           <span id="activityHistoryChevron" style="font-size:11px;color:var(--ink-soft)">▶</span>
         </div>
         <div id="activityHistoryList" style="display:none"></div>
+      </div>
+
+      <div class="form-card" id="aiCoachCard">
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>AI Coach</span><span id="aiCoachChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">Looks at your logged lifts: weights, sets and how often you train each muscle.</div>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-secondary btn-sm" id="aiAnalyzeBtn" style="flex:1">Analyze my training</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="aiWorkoutBtn" style="flex:1">Suggest a workout</button>
+        </div>
+        <div style="margin-top:12px">
+          <textarea id="askCoachInput" rows="2" maxlength="300" placeholder="Ask the coach, e.g. I only have 30 minutes, what should I drop?" aria-label="Ask the coach" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:14px;background:var(--input-bg);color:var(--ink);resize:vertical"></textarea>
+          <div class="chip-row" style="gap:6px;margin-top:6px"><div class="chip ask-example" role="button" tabindex="0" style="font-size:12px;padding:6px 10px">I only have 30 minutes</div><div class="chip ask-example" role="button" tabindex="0" style="font-size:12px;padding:6px 10px">Swap my pressing, my shoulder feels cranky</div></div>
+          <button type="button" class="btn btn-secondary btn-sm" id="askCoachBtn" style="width:100%;margin-top:8px">Ask the Coach</button>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.4">Sent with your logged lifts only. Leave out names and health details. For pain or an injury, see a doctor or physical therapist.</div>
+        </div>
+        <div id="aiCoachOut" style="display:none;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><span id="aiCoachMeta" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft)"></span><button type="button" id="aiCoachClear" aria-label="Clear" style="background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;padding:2px 6px">&#10005;</button></div>
+          <div id="aiCoachText" style="white-space:pre-wrap;font-size:14px;line-height:1.55"></div>
+        </div>
       </div>
     </div>
 
@@ -17796,6 +17796,7 @@ try {
   // While the timer is running the card is full screen: tapping its title must not collapse it away.
   if (exCardTitle) exCardTitle.addEventListener('click', e => { if (e.target.closest('button')) return; /* the close button must still work */ if (document.getElementById('exerciseActivityCard').classList.contains('entry-popup-fullscreen')) e.stopImmediatePropagation(); }, true);
 } catch (err) { console.error('exerciseActivityCard collapsible setup failed:', err); }
+try { makeFoodCardCollapsible('aiCoachCard', 'aiCoachChevron', 'mounjaro-aicoach-expanded', true); } catch (err) { console.error('aiCoachCard collapsible setup failed:', err); }
 try { makeFoodCardCollapsible('recoveryCard', 'recoveryChevron', 'mounjaro-recovery-expanded', true); } catch (err) { console.error('recoveryCard collapsible setup failed:', err); }
 try { makeFoodCardCollapsible('workoutPlanCard', 'workoutPlanChevron', 'mounjaro-workoutplan-expanded', false); } catch (err) { console.error('workoutPlanCard collapsible setup failed:', err); }
 try { makeFoodCardCollapsible('measurementsCard', 'measurementsChevron', 'mounjaro-measurements-expanded', false); } catch (err) { console.error('measurementsCard collapsible setup failed:', err); }
