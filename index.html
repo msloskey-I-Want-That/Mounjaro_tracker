@@ -1495,6 +1495,27 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
   .timeline-row { flex-wrap: nowrap; }
   .field-row { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
 }
+#stretchPlayer { display: none; position: fixed; inset: 0; z-index: 1600; background: var(--bg); color: var(--ink); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+#stretchPlayer .rp-wrap { max-width: 520px; margin: 0 auto; padding: calc(env(safe-area-inset-top, 0px) + 14px) 18px calc(env(safe-area-inset-bottom, 0px) + 22px); min-height: 100%; display: flex; flex-direction: column; }
+.rp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rp-kind { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.rp-x { width: 40px; height: 40px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font-size: 16px; cursor: pointer; }
+.rp-bar { display: flex; gap: 3px; margin: 12px 0 4px; }
+.rp-seg { flex: 1; height: 5px; border-radius: 3px; background: var(--line); }
+.rp-seg.done { background: var(--in); } .rp-seg.now { background: var(--coral); }
+.rp-count { font-size: 12px; color: var(--ink-soft); margin-bottom: 14px; }
+.rp-mid { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; padding: 8px 0; }
+.rp-muscle { display: inline-block; padding: 4px 12px; border-radius: 999px; border: 1.5px solid var(--line); font-size: 12px; font-weight: 800; color: var(--ink-soft); }
+.rp-name { font-size: 26px; font-weight: 800; line-height: 1.15; }
+.rp-side { font-size: 15px; font-weight: 800; color: var(--coral); min-height: 20px; }
+.rp-how { font-size: 15px; line-height: 1.5; color: var(--ink-soft); max-width: 420px; }
+.rp-time { font-size: 84px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; margin-top: 6px; }
+.rp-unit { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.rp-ctl { display: flex; gap: 10px; margin-top: 12px; }
+.rp-ctl button { flex: 1; padding: 16px 0; border-radius: 14px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font-size: 15px; font-weight: 800; cursor: pointer; }
+.rp-ctl button.rp-main { flex: 1.6; background: var(--coral); border-color: var(--coral); color: #0d0d0f; }
+.rp-note { font-size: 11px; color: var(--ink-soft); text-align: center; margin-top: 12px; }
+.rec-chip-note { font-size: 12px; color: var(--ink-soft); }
 </style>
 </head>
 <body>
@@ -1603,6 +1624,19 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 <div id="exPicker" class="re-overlay" style="display:none"></div>
 <div id="routineManager" class="re-overlay" style="display:none"></div>
 <div id="routineEditor" class="re-overlay" style="display:none"></div>
+<div id="stretchPlayer" role="dialog" aria-modal="true" aria-label="Guided routine"><div class="rp-wrap">
+  <div class="rp-top"><span class="rp-kind" id="rpKind"></span><button type="button" class="rp-x" id="rpClose" aria-label="Close">&#10005;</button></div>
+  <div class="rp-bar" id="rpBar"></div><div class="rp-count" id="rpCount"></div>
+  <div class="rp-mid" id="rpMid">
+    <span class="rp-muscle" id="rpMuscle"></span><div class="rp-name" id="rpName"></div><div class="rp-side" id="rpSide"></div>
+    <div class="rp-how" id="rpHow"></div><div><div class="rp-time" id="rpTime">0</div><div class="rp-unit">seconds</div></div>
+  </div>
+  <div class="rp-mid" id="rpDone" style="display:none"><div style="font-size:44px">&#10003;</div><div class="rp-name" id="rpDoneTitle">Nice work</div><div class="rp-how" id="rpDoneSub"></div></div>
+  <div class="rp-ctl" id="rpCtl"><button type="button" id="rpBack">&#8249; Back</button><button type="button" class="rp-main" id="rpPause">Pause</button><button type="button" id="rpNext">Next &#8250;</button></div>
+  <div class="rp-ctl" id="rpDoneCtl" style="display:none"><button type="button" class="rp-main" id="rpFinishBtn">Done</button></div>
+  <div class="rp-note" id="rpNote"></div>
+</div></div>
+
 <div id="workoutFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="exerciseFullscreenBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="workoutSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:700"></div><div id="workoutSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:701;width:calc(100% - 48px);max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero);overflow:hidden"></div><div id="doctorSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:702"></div><div id="doctorSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:703;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="trainerSummaryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:708"></div><div id="trainerSummaryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:709;width:calc(100% - 32px);max-width:420px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="exerciseHistoryBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:704"></div><div id="exerciseHistoryModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:705;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div><div id="cardioTrendsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.5);z-index:706"></div><div id="cardioTrendsModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:707;width:calc(100% - 32px);max-width:400px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-hero)"></div>
 <div id="restTimerWrap" style="display:none;flex-direction:row;align-items:center;gap:8px;position:fixed;bottom:88px;right:14px;background:var(--card);border:1.5px solid var(--teal);border-radius:17px;padding:9px 11px 9px 15px;box-shadow:0 8px 26px rgba(0,0,0,0.28);z-index:601;text-align:center">
   <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.1">
@@ -2968,6 +3002,33 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
           <div class="prog-body" id="progressionResults"></div>
         </div>
       </div>
+      <div class="form-card" id="recoveryCard">
+        <div class="form-section-title">Stretch &amp; warm-up</div>
+        <div id="recSub" style="font-size:12px;color:var(--ink-soft);margin-bottom:10px"></div>
+        <div id="recNudge" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--coral);font-size:13px;line-height:1.45"></div>
+        <button type="button" class="btn btn-primary" id="recStretchBtn" style="width:100%;padding:13px;font-size:14px">Stretch what I trained</button>
+        <div id="recTarget" style="font-size:12px;color:var(--ink-soft);margin:6px 2px 12px"></div>
+        <div class="chip-row" id="recPresets">
+          <div class="chip" role="button" tabindex="0" data-rec="warmup">Warm-up</div>
+          <div class="chip" role="button" tabindex="0" data-rec="reset5">5-min reset</div>
+          <div class="chip" role="button" tabindex="0" data-rec="full">Full body</div>
+          <div class="chip" role="button" tabindex="0" data-rec="upper">Upper</div>
+          <div class="chip" role="button" tabindex="0" data-rec="lower">Lower</div>
+          <div class="chip" role="button" tabindex="0" data-rec="rest">Rest-day mobility</div>
+          <div class="chip" role="button" tabindex="0" data-rec="pick">Pick muscles</div>
+        </div>
+        <div id="recPicker" style="display:none;margin-top:10px">
+          <div class="chip-row" id="recPickChips"></div>
+          <button type="button" class="btn btn-secondary btn-sm" id="recPickGo" style="width:100%;margin-top:8px">Start with these</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px">
+          <span class="rec-chip-note">Hold</span>
+          <div class="chip-row" id="recHold" style="margin:0"><div class="chip" role="button" tabindex="0" data-hold="20">20s</div><div class="chip" role="button" tabindex="0" data-hold="30">30s</div><div class="chip" role="button" tabindex="0" data-hold="45">45s</div></div>
+          <div class="chip" role="button" tabindex="0" id="recFoamChip">Foam rolling: off</div>
+        </div>
+        <div style="font-size:11px;color:var(--ink-soft);margin-top:10px;line-height:1.4">Gentle holds, no bouncing. Stop if anything feels sharp or it is in a joint. If soreness lasts more than a few days, check with a professional.</div>
+      </div>
+
       <div class="form-card" id="aiCoachCard">
         <div class="form-section-title">AI Coach</div>
         <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">Looks at your logged lifts: weights, sets and how often you train each muscle.</div>
@@ -6228,6 +6289,7 @@ function startListening() {
       if (s.weighInDay != null)     weighInDay = String(s.weighInDay);
       if (s.proteinGoal)            userProteinGoal = (parseInt(s.proteinGoal) >= 30 && parseInt(s.proteinGoal) <= 300) ? parseInt(s.proteinGoal) : 100;
       if (s.workoutPlanMode)        workoutPlanMode = s.workoutPlanMode;
+      if (s.recovery) { try { recSetFromDoc(s.recovery); renderRecoveryCard(); } catch (err) { console.error(err); } }
       if (s.appMode || s.userName) { setAppModeLocal(s.appMode || appMode, s.userName != null ? s.userName : null); }
       if (Array.isArray(s.customRoutines)) customRoutines = s.customRoutines;
       if (typeof s.activeRoutineId === 'string') activeRoutineId = s.activeRoutineId;
@@ -6327,6 +6389,7 @@ async function deleteEntry(date) {
 
 // ── RENDER ALL ──
 function renderAll() {
+  try { renderRecoveryCard(); } catch (err) { /* card not built yet */ }
   updateHeader();
   updateStats();
   updateTimeline();
@@ -10740,6 +10803,267 @@ document.getElementById('saveAiKeyBtn').addEventListener('click', async () => {
   } catch (err) { msg.textContent = 'Saved, but could not reach Anthropic. Check your connection.'; msg.style.color = 'var(--coral)'; }
 });
 
+//  RECOVERY  guided stretch / warm-up / mobility routines built from the muscles she (or he) actually trained
+const STRETCH_LIB = {
+  Chest: [
+    { n: 'Doorway chest stretch', sided: true, how: 'Forearm on a door frame, elbow at shoulder height. Step forward until your chest opens. Keep your ribs down.' },
+    { n: 'Clasped-hands chest opener', how: 'Clasp your hands behind your back, straighten your arms and lift them gently as your chest opens.' }
+  ],
+  Shoulders: [
+    { n: 'Cross-body shoulder stretch', sided: true, how: 'Pull one arm across your chest with the other hand. Keep the shoulder down, away from your ear.' },
+    { n: 'Neck and shoulder tilt', sided: true, how: 'Sit tall and let one ear drop toward its shoulder. Keep the other shoulder relaxed and low.' }
+  ],
+  Triceps: [
+    { n: 'Overhead triceps stretch', sided: true, how: 'Reach one hand down your upper back. Use the other hand to ease that elbow up and back.' },
+    { n: 'Wall triceps stretch', sided: true, how: 'Bend your elbow above your head with the forearm on a wall. Lean in gently.' }
+  ],
+  Back: [
+    { n: "Child's pose", how: 'Knees wide, hips back toward your heels, arms long in front. Breathe into your back.' },
+    { n: 'Seated spinal twist', sided: true, how: 'Sit tall, cross one leg over, hug the knee and turn your chest toward it. Go gently, no forcing.' }
+  ],
+  'Rear Delts': [
+    { n: 'Thread the needle', sided: true, how: 'On hands and knees, slide one arm under your body, palm up. Let that shoulder and upper back rest down.' },
+    { n: 'Self-hug stretch', how: 'Wrap your arms around yourself and round your upper back, breathing into your shoulder blades.' }
+  ],
+  Biceps: [
+    { n: 'Wall biceps stretch', sided: true, how: 'Palm flat on a wall, fingers pointing back, arm straight. Slowly turn your body away.' },
+    { n: 'Palms-out reach', how: 'Interlace your fingers, turn your palms away and push your arms straight out in front.' }
+  ],
+  Forearms: [
+    { n: 'Wrist flexor stretch', sided: true, how: 'Arm out, palm up. Gently pull your fingers back with the other hand.' },
+    { n: 'Wrist extensor stretch', sided: true, how: 'Arm out, palm down. Gently pull the back of your hand toward you.' }
+  ],
+  Quads: [
+    { n: 'Standing quad stretch', sided: true, how: 'Hold a wall, pull one heel toward your glute, knees together, stand tall.' },
+    { n: 'Kneeling hip-flexor stretch', sided: true, how: 'Half-kneel, tuck your tailbone under and shift forward until the front of your hip and thigh stretch.' }
+  ],
+  Hamstrings: [
+    { n: 'Standing hamstring reach', sided: true, how: 'Heel on a low step, leg straight. Hinge from the hips with a flat back.' },
+    { n: 'Seated forward fold', how: 'Sit with legs straight. Hinge forward from the hips and reach toward your shins.' }
+  ],
+  Calves: [
+    { n: 'Wall calf stretch', sided: true, how: 'Hands on a wall, one foot back with the heel down. Lean forward until the calf stretches.' },
+    { n: 'Bent-knee calf stretch', sided: true, how: 'Same as the wall stretch, but soften the back knee while keeping the heel down.' }
+  ],
+  Core: [
+    { n: 'Sphinx stretch', how: 'Lie on your stomach, prop up on your forearms and open the front of your torso. Stop if your lower back pinches.' },
+    { n: 'Standing side bend', sided: true, how: 'Reach one arm overhead and lean to the other side, ribs facing forward.' }
+  ]
+};
+const WARMUP_LIB = {
+  Chest: { n: 'Arm swings', how: 'Swing your arms wide open, then across your chest. Loose and easy.' },
+  Shoulders: { n: 'Arm circles', how: 'Slow arm circles, forward then back, small to big.' },
+  Triceps: { n: 'Easy punch-outs', how: 'Light shadow punches, reaching fully, shoulders relaxed.' },
+  Back: { n: 'Cat-cow', how: 'On hands and knees, round your back up, then let it sink. Slow and smooth.' },
+  'Rear Delts': { n: 'Reverse arm sweeps', how: 'Sweep your arms from in front of you out wide behind you, squeezing your shoulder blades.' },
+  Biceps: { n: 'Empty-hand curls', how: 'Slow curls with no weight through the full range.' },
+  Forearms: { n: 'Wrist circles', how: 'Circle your wrists both ways, then open and close your hands.' },
+  Quads: { n: 'Bodyweight squats', how: 'Sit your hips back and down, chest up, stand tall. Easy range.' },
+  Hamstrings: { n: 'Leg swings', sided: true, how: 'Hold a wall and swing one leg forward and back, loose and controlled.' },
+  Calves: { n: 'Calf raises', how: 'Rise onto your toes, then lower slowly.' },
+  Core: { n: 'Easy torso twists', how: 'Stand tall and rotate gently side to side with relaxed arms.' }
+};
+const FOAM_LIB = {
+  Back: { n: 'Upper-back foam roll', how: 'Roller under your shoulder blades, hips up, roll slowly. Skip your lower back.' },
+  Quads: { n: 'Quad foam roll', how: 'Face down with the roller under your thighs. Roll slowly from hip to just above the knee.' },
+  Hamstrings: { n: 'Hamstring foam roll', how: 'Roller under the backs of your thighs. Roll slowly, avoid the back of the knee.' },
+  Calves: { n: 'Calf foam roll', how: 'Roller under your calves, lift your hips and roll slowly. Cross one leg over for more pressure.' }
+};
+const REC_PRESETS = {
+  reset5:  { label: '5-minute reset', kind: 'cooldown', muscles: ['Back', 'Chest', 'Quads', 'Hamstrings', 'Shoulders'], per: 1 },
+  full:    { label: 'Full body', kind: 'cooldown', muscles: MUSCLE_MAP_GROUPS.slice(), per: 1 },
+  upper:   { label: 'Upper body', kind: 'cooldown', muscles: ['Chest', 'Shoulders', 'Triceps', 'Back', 'Rear Delts', 'Biceps', 'Forearms'], per: 1 },
+  lower:   { label: 'Lower body', kind: 'cooldown', muscles: ['Quads', 'Hamstrings', 'Calves', 'Core', 'Back'], per: 1 },
+  rest:    { label: 'Rest-day mobility', kind: 'rest', muscles: ['Back', 'Hamstrings', 'Quads', 'Chest', 'Shoulders', 'Core'], per: 1 }
+};
+let recovery = { sessions: [], sore: {} }; // synced inside the settings doc
+let recHoldSec = (() => { try { const n = parseInt(localStorage.getItem('fit-hold'), 10); return [20, 30, 45].includes(n) ? n : 30; } catch (e) { return 30; } })();
+let recFoam = (() => { try { return localStorage.getItem('fit-foam') === '1'; } catch (e) { return false; } })();
+let recPicked = new Set(), recRun = null;
+
+function recSetFromDoc(r) { recovery = { sessions: Array.isArray(r && r.sessions) ? r.sessions : [], sore: (r && r.sore && typeof r.sore === 'object') ? r.sore : {} }; }
+async function saveRecovery() {
+  recovery.sessions = recovery.sessions.slice(-300);
+  const cut = lbAddDays(todayStr(), -120); Object.keys(recovery.sore).forEach(d => { if (d < cut) delete recovery.sore[d]; });
+  if (syncId) { try { await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { recovery }, { merge: true }); } catch (err) { console.error(err); } }
+}
+// muscles worked in the last N days (today counts), most sets first
+function recTrainedMuscles(days) {
+  const cut = lbAddDays(todayStr(), -(days - 1)), n = {};
+  entries.filter(e => e.date >= cut && e.ex).forEach(e => (e.ex || []).forEach(x => {
+    if (x.type !== 'Strength' || !x.sets || typeof x.sets !== 'object') return;
+    Object.keys(x.sets).forEach(name => { const g = muscleGroupFor(name); const c = (x.sets[name] || []).filter(s => s && !s.warmup).length; if (g && c) n[g] = (n[g] || 0) + c; });
+  }));
+  return Object.keys(n).sort((a, b) => n[b] - n[a]);
+}
+function recTargets() {
+  let list = recTrainedMuscles(2), reason = 'trained today or yesterday';
+  if (!list.length) { list = recTrainedMuscles(4); reason = 'trained in the last few days'; }
+  return { muscles: list.slice(0, 6), reason };
+}
+function recStepsFor(kind, muscles, per, hold) {
+  const stretch = [], foam = [], warm = [];
+  const add = (arr, m, it, type, sec) => {
+    const base = { type, muscle: m, name: it.n, how: it.how, sec };
+    if (it.sided) { arr.push(Object.assign({}, base, { side: 'Left side' }), Object.assign({}, base, { side: 'Right side' })); } else arr.push(base);
+  };
+  if (kind === 'warmup') {
+    add(warm, 'Whole body', { n: 'March in place', how: 'Get warm gently: march, swing your arms and loosen up.' }, 'warmup', 45);
+    muscles.slice(0, 7).forEach(m => { if (WARMUP_LIB[m]) add(warm, m, WARMUP_LIB[m], 'warmup', 30); });
+    return warm;
+  }
+  const secEach = kind === 'rest' ? Math.max(hold, 40) : hold;
+  muscles.forEach(m => {
+    (STRETCH_LIB[m] || []).slice(0, per || (muscles.length <= 3 ? 2 : 1)).forEach(it => add(stretch, m, it, 'stretch', secEach));
+    if (recFoam && FOAM_LIB[m]) add(foam, m, FOAM_LIB[m], 'foam', 45);
+  });
+  let steps = foam.concat(stretch), total = 0;
+  steps = steps.filter(s => { total += s.sec; return total <= 780; }); // never longer than 13 minutes
+  return steps;
+}
+function recBeep(final) {
+  (async () => {
+    try {
+      const ctx = await unlockAudioContext(); if (!ctx) return;
+      const tone = (f, off, dur) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, ctx.currentTime + off); g.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime + off + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + off + dur); o.connect(g); g.connect(ctx.destination); o.start(ctx.currentTime + off); o.stop(ctx.currentTime + off + dur + 0.02); };
+      if (final) { tone(523.25, 0, 0.14); tone(659.25, 0.12, 0.14); tone(783.99, 0.24, 0.24); } else { tone(660, 0, 0.12); tone(880, 0.14, 0.12); }
+    } catch (err) { /* audio unavailable: vibration and the screen still change */ }
+  })();
+  try { if (navigator.vibrate) navigator.vibrate(final ? [60, 40, 60] : 40); } catch (e) {}
+}
+function recSegs() { const bar = document.getElementById('rpBar'); bar.innerHTML = recRun.steps.map((s, i) => `<div class="rp-seg${i < recRun.i ? ' done' : i === recRun.i ? ' now' : ''}"></div>`).join(''); }
+function recPaint() {
+  if (!recRun) return;
+  const st = recRun.steps[recRun.i], total = recRun.steps.length;
+  document.getElementById('rpKind').textContent = recRun.label;
+  document.getElementById('rpCount').textContent = `Step ${recRun.i + 1} of ${total}`;
+  document.getElementById('rpMuscle').textContent = st.muscle;
+  document.getElementById('rpName').textContent = st.name;
+  document.getElementById('rpSide').textContent = st.side || '';
+  document.getElementById('rpHow').textContent = st.how;
+  document.getElementById('rpPause').textContent = recRun.paused ? 'Resume' : 'Pause';
+  document.getElementById('rpBack').disabled = recRun.i === 0;
+  document.getElementById('rpNext').innerHTML = recRun.i === total - 1 ? 'Finish' : 'Next &#8250;';
+  recSegs(); recPaintTime();
+}
+function recLeft() { return recRun.paused ? Math.ceil(recRun.remaining / 1000) : Math.max(0, Math.ceil((recRun.endsAt - Date.now()) / 1000)); }
+function recPaintTime() { if (recRun) document.getElementById('rpTime').textContent = recLeft(); }
+function recStartStep() {
+  const st = recRun.steps[recRun.i]; recRun.remaining = st.sec * 1000; recRun.paused = false; recRun.endsAt = Date.now() + recRun.remaining; recRun.stepStart = Date.now(); recPaint();
+}
+function recStep(delta, natural) {
+  if (!recRun) return;
+  const st = recRun.steps[recRun.i];
+  const heldMs = natural ? st.sec * 1000 : Math.max(0, st.sec * 1000 - (recRun.paused ? recRun.remaining : Math.max(0, recRun.endsAt - Date.now())));
+  if (delta > 0) { recRun.heldSec += heldMs / 1000; recRun.completed++; }
+  const ni = recRun.i + delta;
+  if (ni >= recRun.steps.length) { recFinish(); return; }
+  if (ni < 0) return;
+  recRun.i = ni; recStartStep();
+}
+function recTick() {
+  if (!recRun || recRun.paused || recRun.finished) return;
+  const left = recLeft(); recPaintTime();
+  if (left <= 0) { const last = recRun.i === recRun.steps.length - 1; recBeep(last); recStep(1, true); }
+}
+function recOpen(kind, muscles, label, per) {
+  const steps = recStepsFor(kind, muscles, per, recHoldSec);
+  if (!steps.length) return null;
+  recRun = { kind, label, steps, i: 0, heldSec: 0, completed: 0, startedAt: Date.now(), finished: false, muscles: muscles.slice() };
+  document.getElementById('rpMid').style.display = ''; document.getElementById('rpCtl').style.display = '';
+  document.getElementById('rpDone').style.display = 'none'; document.getElementById('rpDoneCtl').style.display = 'none';
+  document.getElementById('rpNote').textContent = 'Hold gently. Breathe. Nothing sharp, nothing in a joint.';
+  document.getElementById('stretchPlayer').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  unlockAudioContext();
+  recStartStep();
+  recRun.tick = setInterval(recTick, 200);
+  return recRun;
+}
+function recClose() {
+  if (!recRun) { document.getElementById('stretchPlayer').style.display = 'none'; return; }
+  clearInterval(recRun.tick);
+  const enough = !recRun.finished && recRun.completed >= Math.ceil(recRun.steps.length / 2);
+  if (enough) recLog(true);
+  recRun = null; document.getElementById('stretchPlayer').style.display = 'none'; document.body.style.overflow = '';
+  renderRecoveryCard();
+}
+function recLog(partial) {
+  const min = Math.max(1, Math.round(recRun.heldSec / 60));
+  recovery.sessions.push({ ts: Date.now(), date: todayStr(), kind: recRun.kind, min, n: recRun.completed, muscles: recRun.muscles.slice(0, 11), partial: !!partial || undefined });
+  saveRecovery();
+}
+function recFinish() {
+  if (!recRun || recRun.finished) return;
+  recRun.finished = true; clearInterval(recRun.tick); recLog(false); recBeep(true);
+  const min = Math.max(1, Math.round(recRun.heldSec / 60)), warm = recRun.kind === 'warmup';
+  document.getElementById('rpKind').textContent = recRun.label;
+  document.getElementById('rpMid').style.display = 'none'; document.getElementById('rpCtl').style.display = 'none';
+  document.getElementById('rpDone').style.display = ''; document.getElementById('rpDoneCtl').style.display = '';
+  document.getElementById('rpDoneTitle').textContent = warm ? 'Warmed up' : 'Nice work';
+  document.getElementById('rpDoneSub').textContent = `${recRun.completed} ${warm ? 'moves' : 'stretches'} \u00b7 about ${min} min.${warm ? ' Start your first lift light.' : ' Drink some water and take it easy.'}`;
+  document.getElementById('rpCount').textContent = 'Done'; recSegs();
+  document.querySelectorAll('#rpBar .rp-seg').forEach(s => { s.classList.remove('now'); s.classList.add('done'); });
+  if (typeof recAfterFinish === 'function') { try { recAfterFinish(warm); } catch (err) { console.error(err); } }
+}
+function recWhen(ts) { const d = Math.floor((Date.now() - ts) / 86400000); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`; }
+function recPlanMuscles() {
+  const names = [...document.querySelectorAll('#workoutPlanBody .workout-exercise-block')].map(b => b.dataset.exercise), seen = [];
+  names.forEach(n => { const g = muscleGroupFor(n); if (g && !seen.includes(g)) seen.push(g); });
+  return seen;
+}
+function recStartPreset(key) {
+  if (key === 'warmup') {
+    const m = recPlanMuscles(); const use = m.length ? m : ['Chest', 'Back', 'Quads', 'Shoulders'];
+    return recOpen('warmup', use, 'Warm-up');
+  }
+  if (key === 'trained') {
+    const t = recTargets();
+    if (t.muscles.length) return recOpen('cooldown', t.muscles, 'Cool-down stretch');
+    return recOpen('cooldown', REC_PRESETS.full.muscles, REC_PRESETS.full.label, 1);
+  }
+  const p = REC_PRESETS[key]; if (!p) return null;
+  return recOpen(p.kind, p.muscles, p.label, p.per);
+}
+function renderRecoveryCard() {
+  const card = document.getElementById('recoveryCard'); if (!card) return;
+  const week = recovery.sessions.filter(s => s.date >= lbAddDays(todayStr(), -6)), last = recovery.sessions[recovery.sessions.length - 1];
+  document.getElementById('recSub').textContent = last ? `${week.length} session${week.length === 1 ? '' : 's'} in the last 7 days \u00b7 last ${recWhen(last.ts)}` : 'No sessions yet. Five minutes after a workout is a good start.';
+  const t = recTargets(), mins = Math.max(2, Math.round(recStepsFor('cooldown', t.muscles, null, recHoldSec).reduce((a, s) => a + s.sec, 0) / 60));
+  document.getElementById('recTarget').textContent = t.muscles.length ? `${t.muscles.join(', ')} (${t.reason}) \u00b7 about ${mins} min` : 'No recent lifts logged, so this will be a full-body routine \u00b7 about 6 min';
+  document.getElementById('recFoamChip').textContent = `Foam rolling: ${recFoam ? 'on' : 'off'}`;
+  document.getElementById('recFoamChip').classList.toggle('on', recFoam);
+  document.querySelectorAll('#recHold .chip').forEach(c => c.classList.toggle('on', Number(c.dataset.hold) === recHoldSec));
+  const pc = document.getElementById('recPickChips');
+  pc.innerHTML = MUSCLE_MAP_GROUPS.map(g => `<div class="chip${recPicked.has(g) ? ' on' : ''}" role="button" tabindex="0" data-pick="${g}">${g}</div>`).join('');
+  pc.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => { const g = c.dataset.pick; if (recPicked.has(g)) recPicked.delete(g); else recPicked.add(g); renderRecoveryCard(); }));
+  if (typeof recRenderExtras === 'function') { try { recRenderExtras(); } catch (err) { console.error(err); } }
+}
+(function wireRecovery() {
+  const $r = id => document.getElementById(id);
+  const press = (el, fn) => { el.addEventListener('click', fn); el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } }); };
+  $r('recStretchBtn').addEventListener('click', () => recStartPreset('trained'));
+  document.querySelectorAll('#recPresets .chip').forEach(c => press(c, () => {
+    const k = c.dataset.rec;
+    if (k === 'pick') { const p = $r('recPicker'); p.style.display = p.style.display === 'none' ? '' : 'none'; return; }
+    recStartPreset(k);
+  }));
+  $r('recPickGo').addEventListener('click', () => { if (!recPicked.size) { $r('recTarget').textContent = 'Tap at least one muscle first.'; return; } recOpen('cooldown', MUSCLE_MAP_GROUPS.filter(g => recPicked.has(g)), 'Stretch'); });
+  document.querySelectorAll('#recHold .chip').forEach(c => press(c, () => { recHoldSec = Number(c.dataset.hold); try { localStorage.setItem('fit-hold', String(recHoldSec)); } catch (e) {} renderRecoveryCard(); }));
+  press($r('recFoamChip'), () => { recFoam = !recFoam; try { localStorage.setItem('fit-foam', recFoam ? '1' : '0'); } catch (e) {} renderRecoveryCard(); });
+  $r('rpClose').addEventListener('click', recClose);
+  $r('rpFinishBtn').addEventListener('click', recClose);
+  $r('rpPause').addEventListener('click', () => {
+    if (!recRun) return;
+    if (recRun.paused) { recRun.paused = false; recRun.endsAt = Date.now() + recRun.remaining; } else { recRun.remaining = Math.max(0, recRun.endsAt - Date.now()); recRun.paused = true; }
+    recPaint();
+  });
+  $r('rpNext').addEventListener('click', () => recStep(1, false));
+  $r('rpBack').addEventListener('click', () => recStep(-1, false));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && recRun) recClose(); });
+  renderRecoveryCard();
+})();
+
 let scanStream = null;
 let zxingReader = null;
 let scanActive = false;
@@ -11192,7 +11516,7 @@ function showWorkoutSummary(sets, minutes, totalWeight, prs, ctx) {
           ${[1, 2, 3, 4, 5].map(n => `<button type="button" class="effort-rating-btn" data-rating="${n}" style="flex:1;padding:10px 0;border:1.5px solid var(--line);border-radius:10px;background:var(--input-bg);color:var(--ink);font-weight:800;font-size:15px;cursor:pointer">${n}</button>`).join('')}
         </div>
       </div>
-      <button type="button" class="btn btn-primary" id="workoutSummaryDoneBtn" style="width:100%">Nice!</button>
+      <div style="display:flex;gap:8px"><button type="button" class="btn btn-secondary" id="workoutSummaryStretchBtn" style="flex:1">Stretch now</button><button type="button" class="btn btn-primary" id="workoutSummaryDoneBtn" style="flex:1">Nice!</button></div>
     </div>
   `;
   document.querySelectorAll('.effort-rating-btn').forEach(btn => {
@@ -11203,6 +11527,7 @@ function showWorkoutSummary(sets, minutes, totalWeight, prs, ctx) {
     });
   });
   document.getElementById('workoutSummaryDoneBtn').addEventListener('click', hideWorkoutSummary);
+  document.getElementById('workoutSummaryStretchBtn').addEventListener('click', () => { hideWorkoutSummary(); recStartPreset('trained'); });
   backdrop.addEventListener('click', hideWorkoutSummary, { once: true });
   backdrop.style.display = 'block';
   modal.style.display = 'block';
