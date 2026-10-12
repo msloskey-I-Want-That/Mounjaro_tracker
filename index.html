@@ -1630,6 +1630,13 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 <div id="routineManager" class="re-overlay" style="display:none"></div>
 <div id="routineEditor" class="re-overlay" style="display:none"></div>
 <div id="routineShare" class="re-overlay" style="display:none"></div>
+<div id="quickWalkView" role="dialog" aria-modal="true" aria-label="Timer" style="display:none;position:fixed;inset:0;z-index:1800;background:var(--bg,#14102a);color:var(--ink);flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom));text-align:center">
+  <div id="qwType" style="font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft)">Walk</div>
+  <div id="qwTime" style="font-family:var(--font-num);font-size:76px;font-weight:800;line-height:1">0:00</div>
+  <button type="button" class="btn btn-primary" id="qwStop" style="width:100%;max-width:320px;padding:20px;font-size:18px;font-weight:800;margin-top:8px">⏹ Stop &amp; Log</button>
+  <button type="button" class="btn btn-ghost btn-sm" id="qwHide">Hide (timer keeps running)</button>
+  <button type="button" class="link-btn" id="qwCancel" style="font-size:12px">Discard this one</button>
+</div>
 <div id="soreSheet" style="display:none;position:fixed;inset:0;z-index:1700;background:rgba(10,12,20,0.55)">
   <div class="sore-card" role="dialog" aria-modal="true" aria-label="How sore are you?">
     <div style="font-size:18px;font-weight:800;margin-bottom:4px">How sore are you?</div>
@@ -3024,6 +3031,12 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
         <div id="weekRecapGrid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center"></div>
         <div id="weekRecapMissed" style="font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.4"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="weekRecapShare" style="width:100%;margin-top:10px">Share my week</button>
+      </div>
+
+      <div class="full-only form-card" id="quickWalkCard">
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Quick start</span><span id="quickWalkChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">Heading out? One tap starts the timer. Stop &amp; Log saves it.</div>
+        <div id="quickWalkBody"></div>
       </div>
 
       <div class="form-card" id="workoutPlanCard">
@@ -11907,6 +11920,7 @@ function exTimerTick() {
 }
 
 function startExTimer() {
+  if (localStorage.getItem('mounjaro-ex-timer-quick') === '1' && localStorage.getItem('mounjaro-ex-timer-start')) { openQuickWalkView(); return; } // a quick-start timer is already running
   localStorage.setItem('mounjaro-ex-timer-start', String(Date.now()));
   localStorage.setItem('mounjaro-ex-timer-type', selectedExType()); setExerciseFullscreen(true);
   document.getElementById('exTimerStartBtn').style.display = 'none';
@@ -11950,7 +11964,9 @@ async function stopExTimer() {
 }
 
 function resumeExTimerIfRunning() {
-  if (!localStorage.getItem('mounjaro-ex-timer-start')) return; setExerciseFullscreen(true);
+  if (!localStorage.getItem('mounjaro-ex-timer-start')) return;
+  if (localStorage.getItem('mounjaro-ex-timer-quick') === '1') { quickWalkResume(); return; } // a quick start comes back as its simple view
+  setExerciseFullscreen(true);
   document.getElementById('exTimerStartBtn').style.display = 'none';
   document.getElementById('exTimerStopBtn').style.display = '';
   exTimerTick();
@@ -11959,6 +11975,57 @@ function resumeExTimerIfRunning() {
 
 document.getElementById('exTimerStartBtn').addEventListener('click', startExTimer);
 document.getElementById('exTimerStopBtn').addEventListener('click', stopExTimer); document.getElementById('exerciseFullscreenCloseBtn').addEventListener('click', () => setExerciseFullscreen(false)); document.getElementById('exTimerDisplay').addEventListener('click', () => setExerciseFullscreen(true)); document.getElementById('exerciseFullscreenBackdrop').addEventListener('click', () => setExerciseFullscreen(false));
+// ── QUICK START: one tap to start a timed walk (or dog walk, hike, bike) ──
+// Uses the same saved timer keys as the Exercise card's own timer, so it survives closing the app.
+const QW_TYPES = [['Walk', '🚶'], ['Dog Walk', '🐕'], ['Hiking', '🥾'], ['Bike', '🚴']];
+let qwInterval = null;
+function qwStart() { return parseInt(localStorage.getItem('mounjaro-ex-timer-start'), 10) || 0; }
+function qwRunning() { return localStorage.getItem('mounjaro-ex-timer-quick') === '1' && !!qwStart(); }
+function qwTick() {
+  const st = qwStart(); if (!st) return; const t = exTimerFormat(Date.now() - st);
+  const a = document.getElementById('qwTime'), b = document.getElementById('qwRunTime'); if (a) a.textContent = t; if (b) b.textContent = t;
+}
+function qwClearKeys() { ['mounjaro-ex-timer-start', 'mounjaro-ex-timer-type', 'mounjaro-ex-timer-quick'].forEach(k => localStorage.removeItem(k)); clearInterval(qwInterval); qwInterval = null; }
+function renderQuickWalk() {
+  const box = document.getElementById('quickWalkBody'); if (!box) return;
+  if (qwRunning()) {
+    const type = localStorage.getItem('mounjaro-ex-timer-type') || 'Walk';
+    box.innerHTML = `<button type="button" class="btn btn-primary" id="qwOpen" style="width:100%;padding:14px;font-weight:800;font-size:14px">${escapeHtml(type)} running · <span id="qwRunTime">0:00</span> · Open</button>`;
+    document.getElementById('qwOpen').addEventListener('click', openQuickWalkView);
+    if (!qwInterval) qwInterval = setInterval(qwTick, 1000); qwTick(); return;
+  }
+  box.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px">${QW_TYPES.map(([t, i]) => `<button type="button" class="btn btn-secondary qw-start" data-type="${t}" style="flex:1 1 calc(50% - 8px);min-width:0;padding:14px 8px;font-weight:800;font-size:14px">${i} ${t}</button>`).join('')}</div>`;
+  box.querySelectorAll('.qw-start').forEach(b => b.addEventListener('click', () => startQuickWalk(b.dataset.type)));
+}
+function openQuickWalkView() {
+  document.getElementById('qwType').textContent = localStorage.getItem('mounjaro-ex-timer-type') || 'Walk';
+  document.getElementById('quickWalkView').style.display = 'flex';
+  if (!qwInterval) qwInterval = setInterval(qwTick, 1000); qwTick();
+}
+function closeQuickWalkView() { document.getElementById('quickWalkView').style.display = 'none'; }
+function startQuickWalk(type) {
+  if (qwStart()) { if (qwRunning()) openQuickWalkView(); else setExerciseFullscreen(true); return; } // a timer is already running: show it, never start a second
+  localStorage.setItem('mounjaro-ex-timer-start', String(Date.now())); localStorage.setItem('mounjaro-ex-timer-type', type); localStorage.setItem('mounjaro-ex-timer-quick', '1');
+  renderQuickWalk(); openQuickWalkView();
+}
+function quickWalkResume() { renderQuickWalk(); openQuickWalkView(); }
+async function stopQuickWalk() {
+  const st = qwStart(), type = localStorage.getItem('mounjaro-ex-timer-type') || 'Walk';
+  qwClearKeys(); closeQuickWalkView(); renderQuickWalk();
+  if (!st) return;
+  const minutes = Math.max(1, Math.round((Date.now() - st) / 60000));
+  const logged = await logExercise(type, minutes, null);
+  showUndoToast(`Logged ${type}, ${minutes} min`, async () => { await writeEx(logged.date, exForDate(logged.date).filter(x => x.ts !== logged.ts)); });
+}
+function cancelQuickWalk() {
+  if (!confirm('Discard this one? Nothing will be logged.')) return;
+  qwClearKeys(); closeQuickWalkView(); renderQuickWalk();
+}
+document.getElementById('qwStop').addEventListener('click', stopQuickWalk);
+document.getElementById('qwHide').addEventListener('click', closeQuickWalkView);
+document.getElementById('qwCancel').addEventListener('click', cancelQuickWalk);
+try { makeFoodCardCollapsible('quickWalkCard', 'quickWalkChevron', 'mounjaro-quickwalk-expanded', true); } catch (err) { console.error('quickWalkCard collapsible setup failed:', err); }
+renderQuickWalk();
 // Each of these three is cosmetic/state-restoration only (resume an
 // active exercise timer, reposition some chips, consolidate Apple Health
 // tiles) — none of them should ever be able to block anything later in
