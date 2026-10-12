@@ -1516,6 +1516,8 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 .rp-ctl button.rp-main { flex: 1.6; background: var(--coral); border-color: var(--coral); color: #0d0d0f; }
 .rp-note { font-size: 11px; color: var(--ink-soft); text-align: center; margin-top: 12px; }
 .rec-chip-note { font-size: 12px; color: var(--ink-soft); }
+#soreSheet .sore-card { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88%; overflow-y: auto; background: var(--bg); color: var(--ink); border-top-left-radius: 22px; border-top-right-radius: 22px; padding: 20px 18px calc(env(safe-area-inset-bottom, 0px) + 20px); max-width: 560px; margin: 0 auto; box-shadow: 0 -10px 40px rgba(0,0,0,.35); }
+.chip.sore-1 { background: #F2C94C; border-color: #F2C94C; color: #1b1b1b; } .chip.sore-2 { background: #F2994A; border-color: #F2994A; color: #1b1b1b; } .chip.sore-3 { background: #E2574C; border-color: #E2574C; color: #fff; }
 </style>
 </head>
 <body>
@@ -1624,6 +1626,15 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 <div id="exPicker" class="re-overlay" style="display:none"></div>
 <div id="routineManager" class="re-overlay" style="display:none"></div>
 <div id="routineEditor" class="re-overlay" style="display:none"></div>
+<div id="soreSheet" style="display:none;position:fixed;inset:0;z-index:1700;background:rgba(10,12,20,0.55)">
+  <div class="sore-card" role="dialog" aria-modal="true" aria-label="How sore are you?">
+    <div style="font-size:18px;font-weight:800;margin-bottom:4px">How sore are you?</div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:12px;line-height:1.4">Tap a muscle: once for mild, twice for moderate, three times for very sore, a fourth time to clear. Your stretch routine and the AI Coach use this.</div>
+    <div class="chip-row" id="soreChips"></div>
+    <div style="display:flex;gap:8px;margin-top:14px"><button type="button" class="btn btn-ghost" id="soreClear" style="flex:0 0 auto">Clear</button><button type="button" class="btn btn-ghost" id="soreCancel" style="flex:1">Cancel</button><button type="button" class="btn btn-primary" id="soreSave" style="flex:1.4">Save</button></div>
+  </div>
+</div>
+
 <div id="stretchPlayer" role="dialog" aria-modal="true" aria-label="Guided routine"><div class="rp-wrap">
   <div class="rp-top"><span class="rp-kind" id="rpKind"></span><button type="button" class="rp-x" id="rpClose" aria-label="Close">&#10005;</button></div>
   <div class="rp-bar" id="rpBar"></div><div class="rp-count" id="rpCount"></div>
@@ -1633,7 +1644,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
   </div>
   <div class="rp-mid" id="rpDone" style="display:none"><div style="font-size:44px">&#10003;</div><div class="rp-name" id="rpDoneTitle">Nice work</div><div class="rp-how" id="rpDoneSub"></div></div>
   <div class="rp-ctl" id="rpCtl"><button type="button" id="rpBack">&#8249; Back</button><button type="button" class="rp-main" id="rpPause">Pause</button><button type="button" id="rpNext">Next &#8250;</button></div>
-  <div class="rp-ctl" id="rpDoneCtl" style="display:none"><button type="button" class="rp-main" id="rpFinishBtn">Done</button></div>
+  <div class="rp-ctl" id="rpDoneCtl" style="display:none"><button type="button" id="rpSoreBtn">How sore are you?</button><button type="button" class="rp-main" id="rpFinishBtn">Done</button></div>
   <div class="rp-note" id="rpNote"></div>
 </div></div>
 
@@ -3002,6 +3013,13 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
           <div class="prog-body" id="progressionResults"></div>
         </div>
       </div>
+      <div class="form-card" id="weekRecapCard">
+        <div class="form-section-title">This week</div>
+        <div id="weekRecapGrid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center"></div>
+        <div id="weekRecapMissed" style="font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.4"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="weekRecapShare" style="width:100%;margin-top:10px">Share my week</button>
+      </div>
+
       <div class="form-card" id="recoveryCard">
         <div class="form-section-title">Stretch &amp; warm-up</div>
         <div id="recSub" style="font-size:12px;color:var(--ink-soft);margin-bottom:10px"></div>
@@ -3021,6 +3039,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
           <div class="chip-row" id="recPickChips"></div>
           <button type="button" class="btn btn-secondary btn-sm" id="recPickGo" style="width:100%;margin-top:8px">Start with these</button>
         </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="recSoreBtn" style="width:100%;margin-top:10px;white-space:normal;line-height:1.35">How sore are you?</button>
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px">
           <span class="rec-chip-note">Hold</span>
           <div class="chip-row" id="recHold" style="margin:0"><div class="chip" role="button" tabindex="0" data-hold="20">20s</div><div class="chip" role="button" tabindex="0" data-hold="30">30s</div><div class="chip" role="button" tabindex="0" data-hold="45">45s</div></div>
@@ -5441,6 +5460,7 @@ const CHALLENGE_KINDS = {
   steps:    { icon: '👟', title: n => `Hit your step goal ${n} days`, unit: 'days', fn: (d, e) => !!(e && e.steps && parseInt(e.steps) >= stepGoalForDate(d)) },
   water:    { icon: '💧', title: n => `Drink 64 oz on ${n} days`, unit: 'days', fn: (d, e) => !!(e && e.water && parseFloat(e.water) >= 64) },
   logging:  { icon: '📝', title: n => `Log something ${n} days`, unit: 'days', fn: (d, e) => !!(e && (e.protein || e.steps || e.glucose || e.weight || (e.ex && e.ex.length))) },
+  stretch:  { icon: '🧘', title: n => `Stretch on ${n} days`, unit: 'days', fn: (d, e) => { try { return recovery.sessions.some(x => x.date === d); } catch (err) { return false; } } },
   weighin:  { icon: '⚖️', title: () => 'Log your weight', unit: 'weigh-in', fn: (d, e) => !!(e && e.weight) }
 };
 function entriesByDate() { const m = {}; entries.forEach(e => { m[e.date] = e; }); return m; }
@@ -5449,7 +5469,7 @@ function weeklyChallengePlan(ws, byDate) {
   const prev = [1, 2, 3, 4].map(i => lbAddDays(ws, -7 * i)), memo = {};
   const prevCounts = k => memo[k] || (memo[k] = prev.map(wk => challengeCount(k, wk, null, byDate)));
   const avgPrev = k => prevCounts(k).reduce((x, y) => x + y, 0) / 4, hasRecent = k => prevCounts(k).some(n => n > 0);
-  if (appMode === 'exercise') return [{ kind: 'workouts', target: Math.min(5, Math.max(2, Math.round(avgPrev('workouts')) || 3)) }]; // workouts-only: one lifting goal, no step/protein/weigh-in goals
+  if (appMode === 'exercise') return [{ kind: 'workouts', target: Math.min(5, Math.max(2, Math.round(avgPrev('workouts')) || 3)) }, { kind: 'stretch', target: 2 }]; // workouts-only: one lifting goal, no step/protein/weigh-in goals
   const kinds = [hasRecent('workouts') ? 'workouts' : 'steps', hasRecent('protein') ? 'protein' : 'logging'];
   const rot = ['water', 'steps', 'logging', 'weighin'].filter(k => !kinds.includes(k));
   kinds.push(rot[Math.floor(new Date(ws + 'T00:00:00').getTime() / (7 * 864e5)) % rot.length]);
@@ -5486,13 +5506,14 @@ function weeklyWinData() {
 // cheap fingerprint of the data the badges depend on, so the (heavier) date replay only reruns when something changed
 function badgeSignature() {
   let b = 0; entries.forEach(e => { b += (e.ex ? e.ex.length : 0) + (e.meals ? e.meals.length : 0) + (parseFloat(e.weight) || 0) + (parseFloat(e.steps) || 0) / 100 + (parseFloat(e.protein) || 0) + (parseFloat(e.water) || 0) + (e.injection ? 1 : 0); });
-  return `${entries.length}:${Math.round(b * 10)}:${userProteinGoal}:${baselineWeight}:${goalWeight}:${todayStr()}:${appMode}`;
+  let rn = 0; try { rn = recovery.sessions.length; } catch (err) { /* not loaded yet */ }
+  return `${entries.length}:${Math.round(b * 10)}:${userProteinGoal}:${baselineWeight}:${goalWeight}:${todayStr()}:${appMode}:${rn}`;
 }
 var _badgeDatesCache = { sig: null, dates: {} };
 function badgeEarnedDates() {
   const sig = badgeSignature();
   if (_badgeDatesCache.sig === sig) return _badgeDatesCache.dates;
-  const days = [...new Set(entries.map(e => e.date))].sort(), dates = {};
+  const days = [...new Set(entries.map(e => e.date).concat((() => { try { return recovery.sessions.map(x => x.date); } catch (err) { return []; } })()))].sort(), dates = {};
   if (days.length) {
     const memo = new Map();
     const at = i => { if (!memo.has(i)) { let st; try { st = new Set(allEarnedBadgeIds(days[i])); } catch (err) { st = new Set(); } memo.set(i, st); } return memo.get(i); };
@@ -5572,8 +5593,15 @@ function computeBadgeData(asOfDate) {
   try { fullBodyWeeks = fullBodyWeekCount(asOfDate); } catch (err) { console.error(err); }
   try { const pr = muscleProgress(asOfDate); musclesUp = MUSCLE_MAP_GROUPS.filter(g => pr[g].pct != null && pr[g].pct >= 1).length; } catch (err) { console.error(err); }
   try { weeklyWinCount = weeklyWinData().filter(w => w.wonDate && w.wonDate <= (asOfDate || todayStr())).length; } catch (err) { console.error(err); }
+  let stretchSessions = 0, stretchWeeks = 0;
+  try {
+    const cut = asOfDate || todayStr(), sess = (recovery.sessions || []).filter(x => x.date <= cut);
+    stretchSessions = sess.length;
+    const list = [...new Set(sess.map(x => lbWeekStart(x.date)))].sort(); let run = 0, prev = null;
+    list.forEach(wk => { run = (prev && lbAddDays(prev, 7) === wk) ? run + 1 : 1; if (run > stretchWeeks) stretchWeeks = run; prev = wk; });
+  } catch (err) { /* recovery data not loaded yet */ }
   return {
-    injectionWeeks, weighInWeeks, fullBodyWeeks, musclesUp, weeklyWinCount,
+    stretchSessions, stretchWeeks, injectionWeeks, weighInWeeks, fullBodyWeeks, musclesUp, weeklyWinCount,
     stepsStreak, proteinStreak, glucoseStreak, exerciseStreak, sleepStreak, waterStreak, loggingStreak,
     totalLost, goalLoss, totalWorkouts,
     strengthSessionCount, totalCareerVolume, maxSessionVolume, totalPRs,
@@ -5582,7 +5610,7 @@ function computeBadgeData(asOfDate) {
   };
 }
 
-const EXERCISE_MODE_BADGE_CATS = ['Workouts', 'Consistency', 'Challenges'], EXERCISE_MODE_MILESTONE_CATS = ['Workouts Logged', 'Personal Records'];
+const EXERCISE_MODE_BADGE_CATS = ['Workouts', 'Recovery', 'Consistency', 'Challenges'], EXERCISE_MODE_MILESTONE_CATS = ['Workouts Logged', 'Personal Records'];
 function buildBadgeCategories(d) { const all = buildBadgeCategoriesAll(d); return appMode === 'exercise' ? all.filter(c => EXERCISE_MODE_BADGE_CATS.includes(c.category)) : all; }
 function buildBadgeCategoriesAll(d) {
   const svg = (inner) => `<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em">${inner}</svg>`;
@@ -5623,6 +5651,15 @@ function buildBadgeCategoriesAll(d) {
       { id: 'streak_100', title: '100-Day Streak', desc: '100 days in a row logging something', tier: 100, value: d.loggingStreak },
       { id: 'combo_1', title: 'Combo Creator', desc: 'Save your first food combo', tier: 1, value: d.combosCreated },
       { id: 'combo_5', title: 'Combo Collector', desc: 'Save 5 food combos', tier: 5, value: d.combosCreated }
+    ]},
+    { category: 'Recovery', color: '#43D6A0', icon: svg('<path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>'), badges: [
+      { id: 'stretch_1', title: 'First Stretch', desc: 'Finish a stretch or warm-up routine', tier: 1, value: d.stretchSessions },
+      { id: 'stretch_5', title: 'Loosening Up', desc: 'Finish 5 stretch or warm-up routines', tier: 5, value: d.stretchSessions },
+      { id: 'stretch_15', title: 'Supple', desc: 'Finish 15 stretch or warm-up routines', tier: 15, value: d.stretchSessions },
+      { id: 'stretch_40', title: 'Recovery Pro', desc: 'Finish 40 stretch or warm-up routines', tier: 40, value: d.stretchSessions },
+      { id: 'stretchwk_2', title: 'Two-Week Stretch Streak', desc: 'Stretch in 2 weeks in a row', tier: 2, value: d.stretchWeeks },
+      { id: 'stretchwk_4', title: 'Four-Week Stretch Streak', desc: 'Stretch in 4 weeks in a row', tier: 4, value: d.stretchWeeks },
+      { id: 'stretchwk_8', title: 'Eight-Week Stretch Streak', desc: 'Stretch in 8 weeks in a row', tier: 8, value: d.stretchWeeks }
     ]},
     { category: 'Workouts', color: '#E2574C', icon: svg('<line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/>'), badges: [
       { id: 'strength_1', title: 'First Workout', desc: 'Log your first strength session', tier: 1, value: d.strengthSessionCount },
@@ -10756,7 +10793,9 @@ function strengthSummaryForAI(days) {
   });
   const muscleLine = MUSCLE_MAP_GROUPS.map(g => `${g} ${((mus[g] || 0) / weeks).toFixed(1)}`).join(', ');
   const recent = {}; entries.filter(e => e.date >= lbAddDays(today, -7) && e.ex).forEach(e => (e.ex || []).forEach(x => { if (x.type === 'Strength' && x.sets) Object.keys(x.sets).forEach(n => { const g = muscleGroupFor(n); if (g) recent[g] = true; }); }));
-  return { sessions: dates.size, text: `Strength training days in the last ${days} days: ${dates.size} (about ${(dates.size / weeks).toFixed(1)} per week).\nPer exercise (top set = heaviest working set; for timed exercises the second number is seconds):\n${lines.join('\n')}\nAverage working sets per muscle group per week: ${muscleLine}.\nMuscle groups trained in the last 7 days: ${Object.keys(recent).join(', ') || 'none'}.` };
+  const soreNow = recSoreRecent(14), soreLine = Object.keys(soreNow).length ? `\nReported muscle soreness in the last 14 days (worst level): ${Object.keys(soreNow).map(g => `${g} ${SORE_WORDS[soreNow[g]]}`).join(', ')}.` : '';
+  const stretchN = recovery.sessions.filter(x => x.date >= lbAddDays(today, -27)).length;
+  return { sessions: dates.size, text: `Strength training days in the last ${days} days: ${dates.size} (about ${(dates.size / weeks).toFixed(1)} per week).\nPer exercise (top set = heaviest working set; for timed exercises the second number is seconds):\n${lines.join('\n')}\nAverage working sets per muscle group per week: ${muscleLine}.\nMuscle groups trained in the last 7 days: ${Object.keys(recent).join(', ') || 'none'}.${soreLine}\nStretch or warm-up sessions in the last 4 weeks: ${stretchN}.` };
 }
 function aiCoachSave() { try { if (aiCoachState) localStorage.setItem(AICOACH_KEY, JSON.stringify(aiCoachState)); else localStorage.removeItem(AICOACH_KEY); } catch (err) { /* storage unavailable */ } }
 function aiCoachShow(msg, meta) {
@@ -10777,7 +10816,7 @@ async function runAiCoach(kind) {
   const base = `You are a friendly, practical strength coach. Here is a person's logged strength training (weights in pounds).\n${plan ? `Their routine: ${plan}\n` : ''}\n${sum.text}\n\n`;
   const ask = kind === 'workout'
     ? `Design the single best next workout for them, about 45 minutes, using gym machines and dumbbells. Favor muscle groups with the fewest recent sets and the ones not trained in the last 7 days. List 5 to 7 exercises, one per line, as: Exercise - sets x reps - suggested starting weight in lb (based on their recent top sets; if there is no history for an exercise say "pick a light weight"). Then add one short line on why this order. Plain text, no markdown, no medical advice, under 180 words.`
-    : `Analyze their training. Give: (1) what is going well, 2 short bullets; (2) what is stalled or neglected: muscle groups with few sets and lifts that have not progressed; (3) three specific changes for the next two weeks with real numbers in lb. Only use the data above, do not invent anything. Plain text, no markdown, no medical advice, under 220 words.`;
+    : `Analyze their training. Give: (1) what is going well, 2 short bullets; (2) what is stalled or neglected: muscle groups with few sets and lifts that have not progressed; (3) three specific changes for the next two weeks with real numbers in lb. Only use the data above, do not invent anything. If soreness is reported, factor it in (for example, lighter volume for sore muscles); if they rarely stretch, you may suggest the app's stretch routines. Plain text, no markdown, no medical advice, under 220 words.`;
   try {
     const result = await callClaudeText(base + ask, 600);
     if (!result.ok) { aiCoachShow(`Failed (HTTP ${result.status}). Check your Anthropic API key in Settings, under AI Coach.`, ''); return; }
@@ -10895,11 +10934,6 @@ function recTrainedMuscles(days) {
     Object.keys(x.sets).forEach(name => { const g = muscleGroupFor(name); const c = (x.sets[name] || []).filter(s => s && !s.warmup).length; if (g && c) n[g] = (n[g] || 0) + c; });
   }));
   return Object.keys(n).sort((a, b) => n[b] - n[a]);
-}
-function recTargets() {
-  let list = recTrainedMuscles(2), reason = 'trained today or yesterday';
-  if (!list.length) { list = recTrainedMuscles(4); reason = 'trained in the last few days'; }
-  return { muscles: list.slice(0, 6), reason };
 }
 function recStepsFor(kind, muscles, per, hold) {
   const stretch = [], foam = [], warm = [];
@@ -11063,6 +11097,94 @@ function renderRecoveryCard() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && recRun) recClose(); });
   renderRecoveryCard();
 })();
+
+//  SORENESS check-in, rest-day nudge, and recovery facts for the AI Coach
+const SORE_WORDS = ['', 'mild', 'moderate', 'very sore'];
+let soreDraft = {};
+function recSoreRecent(days) { // { muscle: highest level } over the last N days, today included
+  const cut = lbAddDays(todayStr(), -(days - 1)), out = {};
+  Object.keys(recovery.sore || {}).forEach(d => { if (d >= cut && d <= todayStr()) Object.keys(recovery.sore[d] || {}).forEach(g => { const v = Number(recovery.sore[d][g]) || 0; if (v > (out[g] || 0)) out[g] = v; }); });
+  return out;
+}
+function recTrainedOn(date) {
+  const set = new Set(), e = entries.find(x => x.date === date);
+  if (e) (e.ex || []).forEach(x => { if (x.type === 'Strength' && x.sets && typeof x.sets === 'object') Object.keys(x.sets).forEach(n => { const g = muscleGroupFor(n); if (g && (x.sets[n] || []).some(s => s && !s.warmup)) set.add(g); }); });
+  return [...set];
+}
+function recNudgeText() {
+  const sore = recSoreRecent(2), very = Object.keys(sore).filter(g => sore[g] >= 3);
+  if (very.length) return `${very.join(' and ')} ${very.length > 1 ? 'are' : 'is'} very sore. Go easy on ${very.length > 1 ? 'them' : 'it'} today: a rest-day stretch is a good fit. If it is sharp, or soreness lasts more than a few days, check with a professional.`;
+  const y = recTrainedOn(lbAddDays(todayStr(), -1)), t = recTrainedOn(todayStr()), both = t.filter(g => y.includes(g));
+  if (both.length) return `${both.join(', ')} ${both.length > 1 ? 'were' : 'was'} worked two days in a row. Consider a rest day for ${both.length > 1 ? 'them' : 'it'}, or a gentle stretch.`;
+  return '';
+}
+function recTargets() {
+  let list = recTrainedMuscles(2), reason = 'trained today or yesterday';
+  if (!list.length) { list = recTrainedMuscles(4); reason = 'trained in the last few days'; }
+  const sore = recSoreRecent(3), soreList = Object.keys(sore).filter(g => sore[g] >= 1).sort((a, b) => sore[b] - sore[a]);
+  if (soreList.length) return { muscles: soreList.concat(list.filter(g => !soreList.includes(g))).slice(0, 6), reason: list.length ? 'sore or trained recently' : 'sore recently' };
+  return { muscles: list.slice(0, 6), reason };
+}
+function soreRender() {
+  const box = document.getElementById('soreChips');
+  box.innerHTML = MUSCLE_MAP_GROUPS.map(g => { const l = soreDraft[g] || 0; return `<div class="chip${l ? ' sore-' + l : ''}" role="button" tabindex="0" data-sore="${g}">${g}${l ? ' \u00b7 ' + SORE_WORDS[l] : ''}</div>`; }).join('');
+  box.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => { const g = c.dataset.sore, l = ((soreDraft[g] || 0) + 1) % 4; if (l) soreDraft[g] = l; else delete soreDraft[g]; soreRender(); }));
+}
+function soreOpen() { soreDraft = Object.assign({}, recovery.sore[todayStr()] || {}); soreRender(); document.getElementById('soreSheet').style.display = 'block'; }
+function soreClose() { document.getElementById('soreSheet').style.display = 'none'; }
+async function soreSave() {
+  if (Object.keys(soreDraft).length) recovery.sore[todayStr()] = Object.assign({}, soreDraft); else delete recovery.sore[todayStr()];
+  soreClose(); renderRecoveryCard(); await saveRecovery();
+}
+function recRenderExtras() {
+  try { renderWeekRecap(); } catch (err) { console.error(err); }
+  const nudge = document.getElementById('recNudge'), txt = recNudgeText();
+  nudge.style.display = txt ? '' : 'none'; nudge.textContent = txt;
+  const today = recovery.sore[todayStr()], keys = today ? Object.keys(today) : [];
+  document.getElementById('recSoreBtn').textContent = keys.length ? `Soreness today: ${keys.map(g => `${g} (${SORE_WORDS[today[g]]})`).join(', ')}. Update` : 'How sore are you?';
+}
+function recAfterFinish(warm) { document.getElementById('rpSoreBtn').style.display = warm ? 'none' : ''; }
+(function wireSoreness() {
+  const $r = id => document.getElementById(id);
+  $r('recSoreBtn').addEventListener('click', soreOpen);
+  $r('rpSoreBtn').addEventListener('click', soreOpen);
+  $r('soreSave').addEventListener('click', soreSave);
+  $r('soreCancel').addEventListener('click', soreClose);
+  $r('soreClear').addEventListener('click', () => { soreDraft = {}; soreRender(); });
+  $r('soreSheet').addEventListener('click', e => { if (e.target === $r('soreSheet')) soreClose(); });
+  renderRecoveryCard();
+})();
+
+//  WEEKLY RECAP  this week's lifting and recovery at a glance, shareable
+function weekRecapData() {
+  const today = todayStr(), ws = lbWeekStart(today), sets = {}; let days = 0, setN = 0, vol = 0;
+  entries.filter(e => e.date >= ws && e.date <= today).forEach(e => {
+    let had = false;
+    (e.ex || []).forEach(x => {
+      if (x.type !== 'Strength' || !x.sets || typeof x.sets !== 'object') return;
+      had = true; vol += totalSessionWeight(x.sets);
+      Object.keys(x.sets).forEach(n => { const c = (x.sets[n] || []).filter(s => s && !s.warmup).length; setN += c; const g = muscleGroupFor(n); if (g) sets[g] = (sets[g] || 0) + c; });
+    });
+    if (had) days++;
+  });
+  const hit = MUSCLE_MAP_GROUPS.filter(g => sets[g] > 0), missed = MUSCLE_MAP_GROUPS.filter(g => !(sets[g] > 0));
+  const stretch = recovery.sessions.filter(s => s.date >= ws && s.date <= today).length;
+  return { ws, days, sets: setN, vol, hit: hit.length, missed, stretch };
+}
+function weekRecapText(d) {
+  return `My week: ${d.days} workout${d.days === 1 ? '' : 's'} \u00b7 ${d.sets} sets \u00b7 ${d.vol.toLocaleString('en-US')} lb lifted \u00b7 ${d.hit} of ${MUSCLE_MAP_GROUPS.length} muscle groups \u00b7 stretched ${d.stretch} time${d.stretch === 1 ? '' : 's'}.${d.hit && d.missed.length ? ` Still to hit: ${d.missed.join(', ')}.` : ''}`;
+}
+function renderWeekRecap() {
+  const grid = document.getElementById('weekRecapGrid'); if (!grid) return;
+  const d = weekRecapData(), cell = (n, l) => `<div style="padding:10px 4px;border-radius:12px;border:1.5px solid var(--line)"><div style="font-size:22px;font-weight:800">${n}</div><div style="font-size:11px;color:var(--ink-soft);font-weight:700">${l}</div></div>`;
+  grid.innerHTML = cell(d.days, 'workouts') + cell(d.sets, 'sets') + cell(d.vol.toLocaleString('en-US'), 'lb lifted') + cell(`${d.hit}/${MUSCLE_MAP_GROUPS.length}`, 'muscle groups') + cell(d.stretch, 'stretch sessions') + cell(d.hit ? Math.round(d.sets / Math.max(1, d.days)) : 0, 'sets per workout');
+  document.getElementById('weekRecapMissed').textContent = d.days ? (d.missed.length ? `Not trained yet this week: ${d.missed.join(', ')}` : 'Every muscle group trained this week.') : 'No workouts yet this week.';
+}
+document.getElementById('weekRecapShare').addEventListener('click', async () => {
+  const text = weekRecapText(weekRecapData()), msg = document.getElementById('weekRecapMissed');
+  try { if (navigator.share) { await navigator.share({ text }); return; } } catch (err) { if (err && err.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(text); msg.textContent = 'Copied. Paste it anywhere to share.'; } catch (err) { msg.textContent = text; }
+});
 
 let scanStream = null;
 let zxingReader = null;
