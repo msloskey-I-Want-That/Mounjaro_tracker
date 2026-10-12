@@ -1033,6 +1033,9 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
   font-family:var(--font-num); font-size: 12px; font-weight: 700;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
+.coach-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.coach-chip { flex: 1 1 100%; min-width: 0; text-align: left; font-size: 12px; font-weight: 700; padding: 8px 10px; border-radius: 10px; border: 1.5px dashed var(--line); background: transparent; color: var(--coral); cursor: pointer; line-height: 1.3; }
+.coach-chip.warmup-chip { color: var(--ink-soft); }
 .set-number-toggle.warmup { background: rgba(255,111,165,0.18); color: var(--coral); font-weight: 800; }
 .set-prev { flex: 1; min-width: 0; font-size: 11px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pr-proximity-hint { font-size: 11px; font-weight: 800; white-space: nowrap; flex-shrink: 0; color: var(--ink-soft); }
@@ -10795,7 +10798,7 @@ function strengthSummaryForAI(days) {
   const recent = {}; entries.filter(e => e.date >= lbAddDays(today, -7) && e.ex).forEach(e => (e.ex || []).forEach(x => { if (x.type === 'Strength' && x.sets) Object.keys(x.sets).forEach(n => { const g = muscleGroupFor(n); if (g) recent[g] = true; }); }));
   const soreNow = recSoreRecent(14), soreLine = Object.keys(soreNow).length ? `\nReported muscle soreness in the last 14 days (worst level): ${Object.keys(soreNow).map(g => `${g} ${SORE_WORDS[soreNow[g]]}`).join(', ')}.` : '';
   const stretchN = recovery.sessions.filter(x => x.date >= lbAddDays(today, -27)).length;
-  return { sessions: dates.size, text: `Strength training days in the last ${days} days: ${dates.size} (about ${(dates.size / weeks).toFixed(1)} per week).\nPer exercise (top set = heaviest working set; for timed exercises the second number is seconds):\n${lines.join('\n')}\nAverage working sets per muscle group per week: ${muscleLine}.\nMuscle groups trained in the last 7 days: ${Object.keys(recent).join(', ') || 'none'}.${soreLine}\nStretch or warm-up sessions in the last 4 weeks: ${stretchN}.` };
+  return { sessions: dates.size, text: `Strength training days in the last ${days} days: ${dates.size} (about ${(dates.size / weeks).toFixed(1)} per week).\nPer exercise (top set = heaviest working set; for timed exercises the second number is seconds):\n${lines.join('\n')}\nAverage working sets per muscle group per week: ${muscleLine}.\nMuscle groups trained in the last 7 days: ${Object.keys(recent).join(', ') || 'none'}.${soreLine}\nStretch or warm-up sessions in the last 4 weeks: ${stretchN}.${trainingFlagsForAI()}` };
 }
 function aiCoachSave() { try { if (aiCoachState) localStorage.setItem(AICOACH_KEY, JSON.stringify(aiCoachState)); else localStorage.removeItem(AICOACH_KEY); } catch (err) { /* storage unavailable */ } }
 function aiCoachShow(msg, meta) {
@@ -12600,7 +12603,8 @@ function parseSetCount(setsStr) {
 function getOrInitSetState(exerciseName, setCount, setsTarget) {
   if (!workoutSessionState[exerciseName]) {
     const prev = previousSetsFor(exerciseName);
-    const suggestion = setsTarget ? suggestedSetValues(exerciseName, setsTarget) : null;
+    const rawSuggestion = setsTarget ? suggestedSetValues(exerciseName, setsTarget) : null;
+    const suggestion = rawSuggestion && rawSuggestion.holding ? rawSuggestion : null; // a weight increase is only OFFERED (tappable chip), never pre-filled
     // Use whichever is larger: the exercise's target set count, or however
     // many sets were actually logged last time. Otherwise, someone who
     // consistently does an extra set beyond the plan's stated target (a
@@ -13011,6 +13015,149 @@ function plateauHintFor(exerciseName) {
   const fourSessionsAgo = maxWeights[maxWeights.length - 1];
   if (mostRecent > fourSessionsAgo) return null; // net progress over that span — not a plateau
   return `⏸ Stuck at ${mostRecent} lb for ${sessions.length} sessions — try more reps, or a small jump next time.`;
+}
+
+// ── Stage 1: smarter lifting ─────────────────────────────────────────
+// 1) A tappable "next step" suggestion. Boxes pre-fill with last time's
+// numbers; if EVERY working set hit the top of the rep range, a chip offers
+// the next small jump. Timed exercises get a seconds target. Never forced.
+function timedTargetRange(setsStr) {
+  const m = String(setsStr || '').match(/(\d+)(?:\s*[–-]\s*(\d+))?\s*sec/i);
+  if (!m) return null;
+  const min = parseInt(m[1], 10), max = m[2] ? parseInt(m[2], 10) : min;
+  return { min, max };
+}
+function lastTimedSetsFor(exerciseName) {
+  const prev = previousSetsFor(exerciseName);
+  const t = (prev || []).filter(x => x && x.timed && x.secs > 0);
+  return t.length ? t : null;
+}
+function lastEffortFor(exerciseName) {
+  const sorted = entries.filter(e => e.ex && e.ex.length).slice().sort((a, b) => b.date.localeCompare(a.date));
+  for (const e of sorted) if (e.ex.some(x => x.type === 'Strength' && x.sets && x.sets[exerciseName])) return dayEffortRating(e);
+  return null;
+}
+function nextStepFor(exerciseName, setsTarget) {
+  try {
+    const mode = exerciseMode(exerciseName);
+    if (mode === 'timed' || mode === 'timedLoaded') {
+      const range = timedTargetRange(setsTarget); if (!range) return null;
+      const last = lastTimedSetsFor(exerciseName);
+      let secs = range.min, why = `Aim for ${range.min}s a set`;
+      if (last) {
+        const best = Math.max(...last.map(x => x.secs));
+        if (last.every(x => x.secs >= range.max)) { secs = best + 5; why = `Every set reached ${range.max}s last time. Try ${secs}s`; }
+        else { secs = Math.min(Math.max(best, range.min), range.max); why = `Last best ${best}s. Aim for ${secs}s a set`; }
+      }
+      return { kind: 'secs', secs, text: `${why} · tap to use` };
+    }
+    if (mode !== 'weighted') return null;
+    const range = parseRepRange(setsTarget); if (!range) return null;
+    const sessions = recentWorkingSetsFor(exerciseName, 1); if (!sessions.length) return null;
+    const last = sessions[0], lastWeight = Math.max(...last.map(x => x.weight || 0));
+    if (!lastWeight || !last.every(x => x.reps >= range.max)) return null; // otherwise: repeat the weight (already pre-filled)
+    if (lastEffortFor(exerciseName) === 5 || detectDeloadNeeded()) return null; // reasons to hold, not push
+    const weight = lastWeight + (lastWeight >= 100 ? 10 : 5);
+    return { kind: 'weight', weight, reps: range.min, text: `Every set hit ${range.max}+ reps at ${lastWeight} lb. Try ${weight} lb × ${range.min} · tap to use` };
+  } catch (err) { return null; }
+}
+function nextStepApplied(exerciseName, step) {
+  const sets = (workoutSessionState[exerciseName] || []).filter(x => !x.done && !x.warmup);
+  if (!sets.length) return true;
+  return sets.every(x => step.kind === 'secs' ? Number(x.reps) === step.secs : (Number(x.weight) === step.weight && Number(x.reps) === step.reps));
+}
+function applyNextStep(exerciseName, setsTarget) {
+  const step = nextStepFor(exerciseName, setsTarget); if (!step) return;
+  (workoutSessionState[exerciseName] || []).forEach(x => {
+    if (x.done || x.warmup) return;
+    if (step.kind === 'secs') x.reps = step.secs; else { x.weight = step.weight; x.reps = step.reps; }
+  });
+  renderWorkoutPlan();
+}
+
+// 2) Warm-up ramp: about 50% x 8, 70% x 5, 85% x 3 of the working weight,
+// rounded to 5 lb. Light weights, timed holds and bodyweight moves skip it.
+const WARMUP_MIN_LB = 60;
+function warmupRampFor(workWeight) {
+  const w = parseFloat(workWeight); if (!(w >= WARMUP_MIN_LB)) return [];
+  const steps = w >= 100 ? [[0.5, 8], [0.7, 5], [0.85, 3]] : [[0.5, 8], [0.75, 4]];
+  const out = [];
+  steps.forEach(([pct, reps]) => { const x = Math.round(w * pct / 5) * 5; if (x > 0 && x < w && (!out.length || x > out[out.length - 1].weight)) out.push({ weight: x, reps }); });
+  return out;
+}
+function warmupOfferFor(exerciseName) {
+  if (exerciseMode(exerciseName) !== 'weighted') return null;
+  const sets = workoutSessionState[exerciseName] || [];
+  if (!sets.length || sets.some(x => x.warmup || x.done)) return null;
+  const ramp = warmupRampFor(sets[0].weight); if (!ramp.length) return null;
+  return { ramp, text: `Warm-up: ${ramp.map(r => r.weight + '×' + r.reps).join(' · ')} · tap to add` };
+}
+function addWarmupSets(exerciseName) {
+  const offer = warmupOfferFor(exerciseName); if (!offer) return;
+  workoutSessionState[exerciseName] = offer.ramp.map(r => ({ weight: r.weight, reps: r.reps, done: false, warmup: true })).concat(workoutSessionState[exerciseName]);
+  renderWorkoutPlan();
+}
+function prevSetAligned(setState, prevSets, i) { // with warm-up rows on top, match "last time" by kind (warm-up to warm-up)
+  if (!prevSets) return undefined;
+  if (!setState.some(q => q.warmup)) return prevSets[i];
+  const wantWarm = !!setState[i].warmup; let j = 0;
+  for (let k = 0; k < i; k++) if (!!setState[k].warmup === wantWarm) j++;
+  return prevSets.filter(q => !!q.warmup === wantWarm)[j];
+}
+
+// 3) Plateau + hard-streak alerts -> one "lighter week" suggestion.
+function liftPlateaus() {
+  const today = todayStr(), per = {};
+  entries.forEach(e => {
+    const ago = daysBetweenDateStrs(e.date, today); if (!(ago >= 0 && ago <= 84)) return;
+    (e.ex || []).forEach(x => {
+      if (x.type !== 'Strength' || !x.sets || typeof x.sets !== 'object') return;
+      Object.keys(x.sets).forEach(name => {
+        const work = (x.sets[name] || []).filter(isWeightedWorkingSet); if (!work.length) return;
+        const e1 = Math.max(...work.map(q => estimatedOneRepMax(q.weight, q.reps) || q.weight));
+        (per[name] = per[name] || []).push({ ago, e1, top: Math.max(...work.map(q => q.weight)) });
+      });
+    });
+  });
+  const out = [];
+  Object.keys(per).forEach(name => {
+    const recent = per[name].filter(q => q.ago < 21), prior = per[name].filter(q => q.ago >= 21);
+    if (recent.length < 3 || !prior.length) return;
+    const recentBest = Math.max(...recent.map(q => q.e1)), priorBest = Math.max(...prior.map(q => q.e1));
+    if (recentBest <= priorBest + 0.5) out.push({ name, top: Math.max(...recent.map(q => q.top)), n: recent.length });
+  });
+  return out.sort((a, b) => b.n - a.n).slice(0, 3);
+}
+function hardWeekStreak() { // consecutive complete weeks (newest first) with 3+ sessions and no drop in volume
+  const weeks = weeklyVolumeHistory(14).slice(1);
+  let n = 0;
+  for (let i = 0; i < weeks.length; i++) {
+    const trailing = weeks.slice(i + 1, i + 4), avg = trailing.length ? trailing.reduce((t, w) => t + w.volume, 0) / trailing.length : 0;
+    const light = weeks[i].sessions < 3 || (trailing.length >= 2 && avg > 0 && weeks[i].volume < avg * 0.75);
+    if (light) break; n++;
+  }
+  return n;
+}
+const ALERT_SNOOZE_KEY = 'fit-alert-snooze';
+function trainingFlags() {
+  const plateaus = liftPlateaus(), streak = hardWeekStreak(), old = detectDeloadNeeded();
+  return { plateaus, streak: streak >= 6 ? streak : 0, old };
+}
+function trainingAlertText() {
+  const f = trainingFlags(); if (!f.plateaus.length && !f.streak && !f.old) return null;
+  const parts = [];
+  if (f.old) parts.push(f.old.weeksSinceDeload == null ? 'No lighter (deload) week in your tracked history yet' : `It has been ${f.old.weeksSinceDeload}+ weeks since your last lighter week`);
+  if (f.plateaus.length) parts.push(`${f.plateaus.map(p => p.name).join(', ')} ${f.plateaus.length === 1 ? 'has' : 'have'} not gone up in 3+ weeks`);
+  if (f.streak && !f.old) parts.push(`${f.streak} hard weeks in a row`);
+  return parts.join('. ') + '. A lighter week (same exercises, about 60% of your usual weight) can help. It is only a suggestion.';
+}
+function trainingFlagsForAI() { // workout facts only
+  try {
+    const f = trainingFlags(), bits = [];
+    if (f.plateaus.length) bits.push(`Lifts with no new best in 3+ weeks: ${f.plateaus.map(p => `${p.name} (top ${p.top} lb)`).join(', ')}.`);
+    if (f.streak) bits.push(`Hard training weeks in a row: ${f.streak}.`);
+    return bits.length ? '\n' + bits.join(' ') : '';
+  } catch (err) { return ''; }
 }
 
 // In-line progression hint shown right on the Workout Plan card — no AI
@@ -13881,6 +14028,9 @@ function wireWorkoutPlanEvents() {
   document.querySelectorAll('.set-remove-btn').forEach(btn => {
     btn.addEventListener('click', () => removeWorkoutSet(btn.dataset.exercise, Number(btn.dataset.setIdx)));
   });
+  document.querySelectorAll('.next-step-chip').forEach(btn => btn.addEventListener('click', () => applyNextStep(btn.dataset.exercise, btn.dataset.sets)));
+  document.querySelectorAll('.warmup-chip').forEach(btn => btn.addEventListener('click', () => addWarmupSets(btn.dataset.exercise)));
+  document.querySelectorAll('.alert-snooze-btn').forEach(btn => btn.addEventListener('click', () => { try { localStorage.setItem(ALERT_SNOOZE_KEY, lbAddDays(todayStr(), 7)); } catch (e) {} const n = document.getElementById('twDeload'); if (n) n.remove(); }));
   document.querySelectorAll('.add-set-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const exName = btn.dataset.exercise;
@@ -15520,8 +15670,10 @@ function renderWorkoutPlan() {
       const setCount = parseSetCount(ex.sets);
       const setState = getOrInitSetState(ex.name, setCount, ex.sets);
       const prevSets = previousSetsFor(ex.name);
-      const hint = progressionHintFor(ex.name, ex.sets);
-      const plateau = hint ? null : plateauHintFor(ex.name);
+      const nextStep = nextStepFor(ex.name, ex.sets);
+      const showStep = !!nextStep && !nextStepApplied(ex.name, nextStep);
+      const warmOffer = warmupOfferFor(ex.name);
+      const plateau = nextStep ? null : plateauHintFor(ex.name);
       const doneCount = setState.filter(s => s.done).length;
       const allDone = setState.length > 0 && doneCount === setState.length;
       const accent = workoutAccentColor(exIndex);
@@ -15610,10 +15762,10 @@ function renderWorkoutPlan() {
         <div class="exercise-note-wrap" data-exercise="${ex.name}" style="display:${workoutNotesState[ex.name] ? '' : 'none'};margin-bottom:8px">
           <textarea class="exercise-note-input" data-exercise="${ex.name}" placeholder="e.g. left shoulder felt off today" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;background:var(--input-bg);color:var(--ink);resize:vertical">${escapeHtml(workoutNotesState[ex.name] || '')}</textarea>
         </div>
-        ${hint ? `<div style="font-size:12px;color:var(--coral);font-weight:700;margin-bottom:8px">${hint}</div>` : ''}
+        ${(showStep || warmOffer) ? `<div class="coach-chips">${showStep ? `<button type="button" class="coach-chip next-step-chip" data-exercise="${ex.name}" data-sets="${ex.sets}">⬆ ${nextStep.text}</button>` : ''}${warmOffer ? `<button type="button" class="coach-chip warmup-chip" data-exercise="${ex.name}">🔥 ${warmOffer.text}</button>` : ''}</div>` : ''}
         ${plateau ? `<div style="font-size:12px;color:#FFB020;font-weight:700;margin-bottom:8px">${plateau}</div>` : ''}
         <div class="set-rows-container" data-exercise-name="${ex.name}">
-          ${setState.map((s, i) => renderSetRowHtml(ex.name, i, s, prevSets && prevSets[i], accent)).join('')}
+          ${setState.map((s, i) => renderSetRowHtml(ex.name, i, s, prevSetAligned(setState, prevSets, i), accent)).join('')}
         </div>
         <div style="display:flex;gap:8px"><button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${ex.name}" style="flex:1;min-width:0;margin-top:2px;border-style:dashed;font-size:12px;padding:9px">+ Add set</button>${skipControl}</div>
         </div>
@@ -19094,8 +19246,10 @@ function weekLiftDays() {
 }
 function deloadNoteHtml() {
   try {
-    const d = detectDeloadNeeded(); if (!d) return '';
-    return `<div class="tw-note" id="twDeload">📉 ${d.weeksSinceDeload == null ? 'No lighter (deload) week in your tracked history yet' : `It has been ${d.weeksSinceDeload}+ weeks since your last lighter week`}</div>`;
+    const txt = trainingAlertText(); if (!txt) return '';
+    let snoozed = false; try { snoozed = (localStorage.getItem(ALERT_SNOOZE_KEY) || '') >= todayStr(); } catch (e) {}
+    if (snoozed) return '';
+    return `<div class="tw-note" id="twDeload">📉 ${escapeHtml(txt)} <button type="button" class="alert-snooze-btn" style="background:none;border:none;color:var(--ink-soft);text-decoration:underline;font-size:11px;padding:2px 4px;cursor:pointer">Not now</button></div>`;
   } catch (err) { return ''; }
 }
 function renderTodayCard() {
