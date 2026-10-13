@@ -15386,12 +15386,26 @@ function lbTabRecords() {
   return `<div class="lb-h">Records <span>the best any of you has done</span></div>${recRows}
     <div class="lb-h">Wins <span>weeks and months won</span></div>${winRows || '<div class="lb-note">Nobody has won a week yet.</div>'}`;
 }
+function lbMembersHtml() { // everyone else in the group, each removable (e.g. an old account someone no longer uses)
+  const others = (lbMembers || []).filter(m => m.id !== lbConfig.memberId);
+  if (!others.length) return '';
+  return `<div class="lb-h">Members</div>${others.map(m => `<div class="lb-actions" style="margin-top:4px;align-items:center"><div style="flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(String(m.name || 'Someone'))}</div><button type="button" class="btn btn-ghost btn-sm" data-lb="remove" data-id="${escapeHtml(String(m.id))}" aria-label="Remove ${escapeHtml(String(m.name || 'Someone'))} from the group" style="flex:0 0 auto;color:var(--coral)">Remove</button></div>`).join('')}<div class="lb-note">Remove an old or unused account. Their numbers leave the board. If that account is still open on someone's phone, it comes back the next time it syncs.</div>`;
+}
+async function lbRemoveMember(id) {
+  if (!lbConfig || !id || id === lbConfig.memberId) return;
+  const m = (lbMembers || []).find(x => x.id === id); if (!m) return;
+  if (!confirm(`Remove ${m.name || 'this member'} from the group? Their numbers leave the board.`)) return;
+  try { await deleteDoc(lbMemberRef(lbConfig.code, id)); } catch (err) { console.error(err); lbSheetErr = 'Could not remove them. Check your connection and try again.'; renderLbSheet(); return; }
+  lbMembers = lbMembers.filter(x => x.id !== id); lbSheetErr = '';
+  renderLbSheet(); renderLeaderboard();
+}
 function lbTabGroup() {
   return `<div class="lb-h">Your group</div><div class="lb-code">${escapeHtml(lbShowCode(lbConfig.code))}</div>
     <div class="lb-actions"><button type="button" class="btn btn-secondary btn-sm" data-lb="copy">${lbJustCopied ? 'Copied ✓' : 'Copy code'}</button><button type="button" class="btn btn-secondary btn-sm" data-lb="share-toggle">${lbConfig.sharing ? 'Pause sharing' : 'Resume sharing'}</button></div>
     <div class="lb-h">Stretch days</div>
     <div class="lb-actions" style="margin-top:4px"><button type="button" class="btn btn-secondary btn-sm" data-lb="stretch-toggle">${lbConfig.shareStretch ? 'Sharing my stretch days: on' : 'Sharing my stretch days: off'}</button></div>
     <div class="lb-note">Optional. Shares only how many days you stretched this week. It never changes anyone's points.</div>
+    ${lbMembersHtml()}
     <div class="lb-h">Your name</div>
     <div class="lb-actions" style="margin-top:4px"><input id="lbRename" class="re-input" maxlength="16" autocomplete="off" value="${escapeHtml(lbConfig.name)}" aria-label="Your name"><button type="button" class="btn btn-secondary btn-sm" data-lb="rename" style="flex:0 0 90px">Save</button></div>
     <button type="button" class="re-delete-routine" data-lb="leave" style="margin-top:14px">Leave this group</button>
@@ -15493,6 +15507,7 @@ function onLbClick(e) {
   else if (a === 'copy') lbCopyCode();
   else if (a === 'board') { lbSheetMode = 'board'; renderLbSheet(); }
   else if (a === 'leave') lbLeave();
+  else if (a === 'remove') lbRemoveMember(b.dataset.id);
   else if (a === 'share-toggle') lbToggleSharing();
   else if (a === 'stretch-toggle') lbToggleStretch();
   else if (a === 'tab') { lbTab = b.dataset.tab; lbSheetErr = ''; renderLbSheet(); }
