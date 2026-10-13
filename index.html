@@ -1638,6 +1638,14 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 <div id="routineEditor" class="re-overlay" style="display:none"></div>
 <div id="routineShare" class="re-overlay" style="display:none"></div>
 <div id="gymPassSheet" class="re-overlay" style="display:none"></div>
+<div id="gymPassView" role="dialog" aria-modal="true" aria-label="Gym pass" style="display:none;position:fixed;inset:0;z-index:1900;background:#fff;color:#111;flex-direction:column;align-items:center;padding:max(12px,env(safe-area-inset-top)) 12px max(14px,env(safe-area-inset-bottom));overflow:auto">
+  <img id="gymPassImgEl" alt="Gym pass" style="width:100%;max-width:520px;height:auto;margin:auto 0 0">
+  <div style="font-size:12px;color:#555;text-align:center;margin:10px 0">Turn your screen brightness up for the scanner.</div>
+  <div style="display:flex;gap:10px;width:100%;max-width:520px;margin-bottom:auto">
+    <button type="button" id="gymPassAppBtn" style="flex:1;min-width:0;padding:12px;border-radius:12px;border:1.5px solid #bbb;background:#fff;color:#111;font-weight:800;font-size:14px;display:none">Open gym app</button>
+    <button type="button" id="gymPassCloseBtn" style="flex:1;min-width:0;padding:12px;border-radius:12px;border:none;background:#111;color:#fff;font-weight:800;font-size:14px">Close</button>
+  </div>
+</div>
 <div id="quickWalkView" role="dialog" aria-modal="true" aria-label="Timer" style="display:none;position:fixed;inset:0;z-index:1800;background:var(--bg,#14102a);color:var(--ink);flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom));text-align:center">
   <div id="qwType" style="font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft)">Walk</div>
   <div id="qwTime" style="font-family:var(--font-num);font-size:76px;font-weight:800;line-height:1">0:00</div>
@@ -12034,7 +12042,39 @@ function gymLinkOk(v) { // a normal app/web link; never script-ish schemes
   const m = t.match(/^([a-z][a-z0-9+.-]*):/i); if (!m) return false;
   return !/^(javascript|data|vbscript|file|blob|about)$/i.test(m[1]) && /^[a-z][a-z0-9+.-]*:\/\/\S+$/i.test(t);
 }
+// The pass image itself (optional): kept ONLY in this phone's browser storage. Never written to the synced database,
+// never part of a backup or export, and wiped when the account on this device changes.
+const GYM_PASS_KEY = 'fit-gym-pass-img', GYM_PASS_MAX_BYTES = 2 * 1024 * 1024;
+function gymPassImg() { try { const v = localStorage.getItem(GYM_PASS_KEY) || ''; return /^data:image\/(png|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(v) ? v : ''; } catch (e) { return ''; } }
+function gymSavePassImage(dataUrl) { // -> '' on success, otherwise a plain error message
+  if (typeof dataUrl !== 'string' || !/^data:image\/(png|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(dataUrl)) return 'Use a PNG or JPEG screenshot of your pass.';
+  if (dataUrl.length > GYM_PASS_MAX_BYTES * 1.37) return 'That image is too large. Crop the screenshot to just the pass and try again.';
+  try { localStorage.setItem(GYM_PASS_KEY, dataUrl); } catch (e) { return 'This phone has no room to save it. Crop the screenshot smaller and try again.'; }
+  return '';
+}
+function gymReadPassFile(file) { // image file -> data URL, checked before saving
+  return new Promise(resolve => {
+    if (!file) { resolve({ error: 'No picture chosen.' }); return; }
+    if (!/^image\/(png|jpeg)$/.test(file.type)) { resolve({ error: 'Use a PNG or JPEG screenshot of your pass.' }); return; }
+    if (file.size > GYM_PASS_MAX_BYTES) { resolve({ error: 'That image is too large. Crop the screenshot to just the pass and try again.' }); return; }
+    const r = new FileReader(); r.onload = () => resolve({ dataUrl: String(r.result) }); r.onerror = () => resolve({ error: 'Could not read that picture.' }); r.readAsDataURL(file);
+  });
+}
+let gymWake = null;
+function showGymPass() {
+  const img = gymPassImg(); if (!img) return;
+  document.getElementById('gymPassImgEl').src = img;
+  let ready = false; try { ready = localStorage.getItem('fit-gym-ready') === '1'; } catch (e) {}
+  document.getElementById('gymPassAppBtn').style.display = ready ? '' : 'none';
+  document.getElementById('gymPassView').style.display = 'flex';
+  try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(l => { gymWake = l; }).catch(() => {}); } catch (e) { /* best effort */ }
+}
+function closeGymPassView() {
+  document.getElementById('gymPassView').style.display = 'none'; document.getElementById('gymPassImgEl').removeAttribute('src');
+  try { if (gymWake) { gymWake.release(); gymWake = null; } } catch (e) { /* ignore */ }
+}
 function openGymPass() {
+  if (gymPassImg()) { showGymPass(); return; } // your saved pass comes first
   let ready = false; try { ready = localStorage.getItem('fit-gym-ready') === '1'; } catch (e) {}
   if (!ready) { openGymSheet(); return; } // first time: show the one-minute setup
   gymGo(gymLink());
@@ -12051,7 +12091,20 @@ function openGymSheet() {
     <input class="re-input" id="gymLinkInput" type="url" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(GYM_DEFAULT_LINK)}" value="${escapeHtml(saved)}">
     <div class="re-hint" id="gymLinkErr" style="color:var(--coral);font-weight:700" hidden>That is not a usable link. It should look like name://something or https://…</div>
     <div class="rm-actions" style="margin-top:10px"><button type="button" class="btn btn-secondary btn-sm" data-gp="save">Save link</button><button type="button" class="btn btn-ghost btn-sm" data-gp="close">Cancel</button></div>
-    <div class="re-hint" style="margin-top:12px">Your pass number and code are never copied into this app.</div></div></div>`;
+    <div class="re-hint" style="margin-top:16px"><b>Or show your pass right in this app (optional)</b></div>
+    <div class="re-hint">Add a screenshot of your pass. It is saved on this phone only. It is never sent to the shared database, never in a backup, and it is wiped if you switch accounts here. Your phone's lock screen is its protection, so only add it if you are comfortable with that.</div>
+    <div class="re-hint" id="gymPassMsg" ${gymPassImg() ? '' : 'hidden'}>✓ A pass image is saved on this phone.</div>
+    <div class="re-hint" id="gymPassErr" style="color:var(--coral);font-weight:700" hidden></div>
+    <input type="file" id="gymPassFile" accept="image/png,image/jpeg" style="display:none">
+    <div class="rm-actions" style="margin-top:8px"><button type="button" class="btn btn-secondary btn-sm" data-gp="pick">${gymPassImg() ? 'Replace pass image' : 'Add my pass image'}</button>${gymPassImg() ? '<button type="button" class="btn btn-ghost btn-sm" data-gp="remove-pass" style="color:var(--coral)">Remove it</button>' : ''}</div>
+    <div class="re-hint" style="margin-top:12px">Your member number is never typed or stored as text here.</div></div></div>`;
+  const fi = document.getElementById('gymPassFile');
+  fi.addEventListener('change', async () => {
+    const res = await gymReadPassFile(fi.files && fi.files[0]), err = document.getElementById('gymPassErr');
+    const msg = res.error || gymSavePassImage(res.dataUrl);
+    if (msg) { err.textContent = msg; err.hidden = false; return; }
+    openGymSheet(); const m = document.getElementById('gymPassMsg'); if (m) m.hidden = false;
+  });
   el.style.display = 'flex';
 }
 function closeGymSheet() { const el = document.getElementById('gymPassSheet'); if (el) el.style.display = 'none'; }
@@ -12064,9 +12117,13 @@ function gymSaveLink() {
 (function wireGymPass() {
   const btn = document.getElementById('gymPassBtn'), edit = document.getElementById('gymPassEditBtn'), sheet = document.getElementById('gymPassSheet'); if (!btn) return;
   btn.addEventListener('click', openGymPass); edit.addEventListener('click', openGymSheet);
+  document.getElementById('gymPassCloseBtn').addEventListener('click', closeGymPassView);
+  document.getElementById('gymPassAppBtn').addEventListener('click', () => { closeGymPassView(); gymGo(gymLink()); });
   sheet.addEventListener('click', e => {
     const b = e.target.closest('[data-gp]'); if (!b) return; const a = b.dataset.gp;
     if (a === 'close') closeGymSheet();
+    else if (a === 'pick') { const f = document.getElementById('gymPassFile'); if (f) f.click(); }
+    else if (a === 'remove-pass') { try { localStorage.removeItem(GYM_PASS_KEY); } catch (e2) {} openGymSheet(); }
     else if (a === 'save') { if (gymSaveLink()) { try { localStorage.setItem('fit-gym-ready', '1'); } catch (e2) {} closeGymSheet(); } }
     else if (a === 'go') { if (!gymSaveLink()) return; try { localStorage.setItem('fit-gym-ready', '1'); } catch (e2) {} closeGymSheet(); gymGo(gymLink()); }
   });
