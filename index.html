@@ -1637,6 +1637,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 <div id="routineManager" class="re-overlay" style="display:none"></div>
 <div id="routineEditor" class="re-overlay" style="display:none"></div>
 <div id="routineShare" class="re-overlay" style="display:none"></div>
+<div id="gymPassSheet" class="re-overlay" style="display:none"></div>
 <div id="quickWalkView" role="dialog" aria-modal="true" aria-label="Timer" style="display:none;position:fixed;inset:0;z-index:1800;background:var(--bg,#14102a);color:var(--ink);flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom));text-align:center">
   <div id="qwType" style="font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft)">Walk</div>
   <div id="qwTime" style="font-family:var(--font-num);font-size:76px;font-weight:800;line-height:1">0:00</div>
@@ -3035,6 +3036,10 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 
       <div class="form-card" id="weekRecapCard">
         <div class="form-section-title">This week</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button type="button" class="btn btn-secondary" id="gymPassBtn" style="flex:1;min-width:0;padding:12px 10px;font-weight:800">🏷️ Open gym pass</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="gymPassEditBtn" aria-label="Gym pass link settings" style="flex:0 0 44px;padding:0">⚙</button>
+        </div>
         <div id="weekRecapGrid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center"></div>
         <div id="weekRecapMissed" style="font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.4"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="weekRecapShare" style="width:100%;margin-top:10px">Share my week</button>
@@ -6277,7 +6282,7 @@ function scheduledDose(daysIn) {
 // ── SYNC ID SETUP ──
 // Local items that belong to the DEVICE (API keys, rest-alert setup) survive an account change; everything else is the
 // previous person's and must not follow the device into a different account.
-const DEVICE_LOCAL_KEYS = ['mounjaro-device-keys', 'mounjaro-ntfy-topic', 'mounjaro-ntfy-on', 'mounjaro-ntfy-last'];
+const DEVICE_LOCAL_KEYS = ['fit-gym-link', 'fit-gym-ready', 'mounjaro-device-keys', 'mounjaro-ntfy-topic', 'mounjaro-ntfy-on', 'mounjaro-ntfy-last'];
 function wipeAccountLocalState() {
   try { Object.keys(localStorage).filter(k => (k.startsWith('mounjaro-') || k.startsWith('fit-')) && !DEVICE_LOCAL_KEYS.includes(k)).forEach(k => localStorage.removeItem(k)); } catch (err) { /* storage unavailable */ }
 }
@@ -12018,6 +12023,56 @@ function resumeExTimerIfRunning() {
 
 document.getElementById('exTimerStartBtn').addEventListener('click', startExTimer);
 document.getElementById('exTimerStopBtn').addEventListener('click', stopExTimer); document.getElementById('exerciseFullscreenCloseBtn').addEventListener('click', () => setExerciseFullscreen(false)); document.getElementById('exTimerDisplay').addEventListener('click', () => setExerciseFullscreen(true)); document.getElementById('exerciseFullscreenBackdrop').addEventListener('click', () => setExerciseFullscreen(false));
+// ── OPEN GYM PASS ───────────────────────────────────────────────────────
+// The gym's own app holds the pass, and it publishes no link for opening it from another app. So this button runs a
+// tiny iPhone Shortcut (made once, named "Gym Pass") whose only action is Open App. Nothing about the pass itself is
+// ever stored here. The link lives on this device only.
+const GYM_DEFAULT_LINK = 'shortcuts://run-shortcut?name=Gym%20Pass';
+function gymLink() { try { return localStorage.getItem('fit-gym-link') || GYM_DEFAULT_LINK; } catch (e) { return GYM_DEFAULT_LINK; } }
+function gymLinkOk(v) { // a normal app/web link; never script-ish schemes
+  const t = String(v || '').trim(); if (!t || t.length > 300) return false;
+  const m = t.match(/^([a-z][a-z0-9+.-]*):/i); if (!m) return false;
+  return !/^(javascript|data|vbscript|file|blob|about)$/i.test(m[1]) && /^[a-z][a-z0-9+.-]*:\/\/\S+$/i.test(t);
+}
+function openGymPass() {
+  let ready = false; try { ready = localStorage.getItem('fit-gym-ready') === '1'; } catch (e) {}
+  if (!ready) { openGymSheet(); return; } // first time: show the one-minute setup
+  gymGo(gymLink());
+}
+function gymGo(url) { if (window.__navHook) return window.__navHook(url); window.location.href = url; } // the hook exists only so tests can observe it
+function openGymSheet() {
+  const el = document.getElementById('gymPassSheet'); if (!el) return;
+  let saved = ''; try { saved = localStorage.getItem('fit-gym-link') || ''; } catch (e) {}
+  el.innerHTML = `<div class="re-sheet" role="dialog" aria-modal="true" aria-label="Gym pass" style="height:auto;max-height:92vh"><div class="re-top"><div class="re-title">Open gym pass</div><button type="button" class="re-x" data-gp="close" aria-label="Close">✕</button></div><div class="re-body">
+    <div class="re-hint">One-time setup (about a minute). The gym's app keeps your pass, so this button just opens that app for you:</div>
+    <div class="re-hint"><b>1.</b> Open the <b>Shortcuts</b> app and tap <b>+</b>.<br><b>2.</b> Tap <b>Add Action</b>, search <b>Open App</b>, and pick it.<br><b>3.</b> Tap <b>App</b> and choose <b>Planet Fitness</b>.<br><b>4.</b> Name the shortcut exactly <b>Gym Pass</b> and tap Done.</div>
+    <div class="rm-actions" style="margin:10px 0"><button type="button" class="btn btn-primary btn-sm" data-gp="go">I made it, open it now</button></div>
+    <div class="re-hint" style="margin-top:14px">Using a different link? Paste it here (optional). Leave blank to use the Shortcut above.</div>
+    <input class="re-input" id="gymLinkInput" type="url" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(GYM_DEFAULT_LINK)}" value="${escapeHtml(saved)}">
+    <div class="re-hint" id="gymLinkErr" style="color:var(--coral);font-weight:700" hidden>That is not a usable link. It should look like name://something or https://…</div>
+    <div class="rm-actions" style="margin-top:10px"><button type="button" class="btn btn-secondary btn-sm" data-gp="save">Save link</button><button type="button" class="btn btn-ghost btn-sm" data-gp="close">Cancel</button></div>
+    <div class="re-hint" style="margin-top:12px">Your pass number and code are never copied into this app.</div></div></div>`;
+  el.style.display = 'flex';
+}
+function closeGymSheet() { const el = document.getElementById('gymPassSheet'); if (el) el.style.display = 'none'; }
+function gymSaveLink() {
+  const v = (document.getElementById('gymLinkInput').value || '').trim(), err = document.getElementById('gymLinkErr');
+  if (v && !gymLinkOk(v)) { err.hidden = false; return false; }
+  err.hidden = true; try { if (v) localStorage.setItem('fit-gym-link', v); else localStorage.removeItem('fit-gym-link'); } catch (e) {}
+  return true;
+}
+(function wireGymPass() {
+  const btn = document.getElementById('gymPassBtn'), edit = document.getElementById('gymPassEditBtn'), sheet = document.getElementById('gymPassSheet'); if (!btn) return;
+  btn.addEventListener('click', openGymPass); edit.addEventListener('click', openGymSheet);
+  sheet.addEventListener('click', e => {
+    const b = e.target.closest('[data-gp]'); if (!b) return; const a = b.dataset.gp;
+    if (a === 'close') closeGymSheet();
+    else if (a === 'save') { if (gymSaveLink()) { try { localStorage.setItem('fit-gym-ready', '1'); } catch (e2) {} closeGymSheet(); } }
+    else if (a === 'go') { if (!gymSaveLink()) return; try { localStorage.setItem('fit-gym-ready', '1'); } catch (e2) {} closeGymSheet(); gymGo(gymLink()); }
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheet.style.display !== 'none') closeGymSheet(); });
+})();
+
 // ── QUICK START: one tap to start a timed walk (or dog walk, hike, bike) ──
 // Uses the same saved timer keys as the Exercise card's own timer, so it survives closing the app.
 const QW_TYPES = [['Walk', '🚶'], ['Dog Walk', '🐕'], ['Hiking', '🥾'], ['Bike', '🚴']];
