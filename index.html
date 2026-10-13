@@ -6275,6 +6275,13 @@ function scheduledDose(daysIn) {
 }
 
 // ── SYNC ID SETUP ──
+// Local items that belong to the DEVICE (API keys, rest-alert setup) survive an account change; everything else is the
+// previous person's and must not follow the device into a different account.
+const DEVICE_LOCAL_KEYS = ['mounjaro-device-keys', 'mounjaro-ntfy-topic', 'mounjaro-ntfy-on', 'mounjaro-ntfy-last'];
+function wipeAccountLocalState() {
+  try { Object.keys(localStorage).filter(k => (k.startsWith('mounjaro-') || k.startsWith('fit-')) && !DEVICE_LOCAL_KEYS.includes(k)).forEach(k => localStorage.removeItem(k)); } catch (err) { /* storage unavailable */ }
+}
+function reloadApp() { if (window.__reloadHook) return window.__reloadHook(); location.reload(); } // the hook exists only so tests can observe it
 function initSyncId() {
   if (urlProvidedSyncId) {
     try { localStorage.setItem('mounjaro-sync-id', urlProvidedSyncId); } catch (err) { /* localStorage unavailable — falls through to the normal check below */ }
@@ -6308,6 +6315,8 @@ function showSyncModal(isNew) {
         if (!(bw >= 50 && bw <= 700) || !(gw >= 50 && gw <= 700)) { errEl.style.display = ''; return; }
         errEl.style.display = 'none'; startWeights = { baselineWeight: bw, goalWeight: gw };
       }
+      const hadId = !!localStorage.getItem('mounjaro-sync-id'); // switching on a device that already had an account
+      if (hadId) { wipeAccountLocalState(); try { if (unsub) unsub(); } catch (e) { /* ignore */ } }
       localStorage.setItem('mounjaro-sync-id', newId);
       syncId = newId;
       modal.classList.add('hidden');
@@ -6316,7 +6325,8 @@ function showSyncModal(isNew) {
       const startFields = { appMode, userName: userDisplayName };
       if (appMode === 'exercise' || appMode === 'fitness') { workoutPlanMode = 'custom'; startFields.workoutPlanMode = 'custom'; } // they build their own routine, not the A/B split
       if (startWeights) { baselineWeight = startWeights.baselineWeight; goalWeight = startWeights.goalWeight; Object.assign(startFields, startWeights); }
-      setDoc(doc(db, 'trackers', newId, 'meta', 'settings'), startFields, { merge: true }).catch(err => console.error(err));
+      const wrote = setDoc(doc(db, 'trackers', newId, 'meta', 'settings'), startFields, { merge: true }).catch(err => console.error(err));
+      if (hadId) Promise.race([wrote, new Promise(r => setTimeout(r, 3000))]).then(reloadApp); // reload so none of the previous account's settings stay in memory
     };
     document.getElementById('copySyncIdBtn').onclick = () => {
       navigator.clipboard?.writeText(newId).then(() => {
@@ -6339,19 +6349,18 @@ document.getElementById('showExistingBtn').onclick = () => {
   document.getElementById('modalSub').textContent = 'Paste the Sync ID from your other device to access your data.';
 };
 
-document.getElementById('backToNewBtn').onclick = () => {
-  document.getElementById('modalNewSection').style.display = '';
-  document.getElementById('modalExistingSection').style.display = 'none';
-  document.getElementById('modalTitle').textContent = 'Welcome';
-  document.getElementById('modalSub').textContent = 'Your Sync ID lets you access your data on any device. Save it somewhere safe.';
-};
+document.getElementById('backToNewBtn').onclick = () => showSyncModal(true); // builds a fresh ID and wires the buttons (the old code only un-hid the sheet, leaving "Generating..." and a dead button)
 
 document.getElementById('useExistingBtn').onclick = () => {
   const val = document.getElementById('existingIdInput').value.trim();
   if (!val) { alert('Please enter a Sync ID'); return; }
+  const hadId = !!localStorage.getItem('mounjaro-sync-id');
+  if (hadId && val === localStorage.getItem('mounjaro-sync-id')) { document.getElementById('syncModal').classList.add('hidden'); return; } // already on this account
+  if (hadId) wipeAccountLocalState();
   localStorage.setItem('mounjaro-sync-id', val);
   syncId = val;
   document.getElementById('syncModal').classList.add('hidden');
+  if (hadId) { reloadApp(); return; } // a clean start, so nothing from the previous account stays in memory
   if (unsub) unsub();
   startListening();
 };
