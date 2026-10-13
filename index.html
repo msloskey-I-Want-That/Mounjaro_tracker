@@ -915,6 +915,7 @@ body {
   user-select: none;
   transition: all 0.15s;
 }
+body.mode-fitness .med-only, body.mode-fitness #injBanner, body.mode-fitness #printBtn, body.mode-fitness .inj-wrap, body.mode-fitness #quickDoseField, body.mode-fitness #doseDayBanner, body.mode-fitness #injSiteWrap, body.mode-fitness #logSubtabRow, body.mode-fitness #logSub-meds, body.mode-fitness #logSub-results { display: none !important; }
 body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data-view="food"], body.mode-exercise .full-only, body.mode-exercise #injBanner, body.mode-exercise #printBtn, body.mode-exercise #todayCard, body.mode-exercise #quickLogBtn, body.mode-exercise #quickLogFoodSection { display: none !important; }
 .chip.on { background: var(--teal); border-color: var(--teal); color: white; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 /* My Routine editor + library picker */
@@ -1555,7 +1556,13 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
       <input class="modal-input" id="welcomeName" placeholder="Your first name" autocomplete="given-name" maxlength="24" style="margin-bottom:10px">
       <div class="chip-row" id="welcomeModeRow" style="margin-bottom:12px">
         <div class="chip welcome-mode-chip on" data-mode-choice="full">Everything</div>
+        <div class="chip welcome-mode-chip" data-mode-choice="fitness">Food &amp; fitness</div>
         <div class="chip welcome-mode-chip" data-mode-choice="exercise">Workouts only</div>
+      </div>
+      <div id="welcomeWeightFields" style="display:none;margin-bottom:12px">
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:6px">Your own numbers (lb), so nothing starts with someone else's.</div>
+        <div style="display:flex;gap:8px"><input class="modal-input" id="welcomeStartWeight" type="number" inputmode="decimal" placeholder="Starting weight" style="flex:1;min-width:0;margin-bottom:0"><input class="modal-input" id="welcomeGoalWeight" type="number" inputmode="decimal" placeholder="Goal weight" style="flex:1;min-width:0;margin-bottom:0"></div>
+        <div id="welcomeWeightErr" style="display:none;color:var(--coral);font-size:12px;font-weight:700;margin-top:6px">Enter both weights (50 to 700 lb) to continue.</div>
       </div>
       <div class="sync-id-display" id="newSyncIdDisplay">Generating…</div>
       <button class="btn btn-secondary" style="margin-bottom:10px" id="copySyncIdBtn"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg> Copy Sync ID</button>
@@ -2231,7 +2238,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
               <div class="chip site-chip" data-site="R Arm">R Arm</div>
             </div>
           </div>
-          <div class="field-row">
+          <div class="field-row med-only">
             <div class="field">
               <label for="fGlucose">Fasting glucose (mg/dL)</label>
               <input type="number" id="fGlucose" inputmode="numeric" placeholder="e.g. 128">
@@ -3490,13 +3497,15 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
           <div class="settings-row">
             <div>
               <div class="settings-row-label">What do you use this for?</div>
-              <div class="settings-row-sub">Workouts only hides the Log and Food tabs and the health cards. You can switch back any time.</div>
+              <div class="settings-row-sub">Food &amp; fitness drops medication and treatment screens. Workouts only also hides the Log and Food tabs. You can switch any time.</div>
             </div>
           </div>
           <div class="chip-row" id="appModeRow" style="padding: 4px 0 8px">
             <div class="chip mode-chip" data-mode-choice="full">Everything</div>
+            <div class="chip mode-chip" data-mode-choice="fitness">Food &amp; fitness</div>
             <div class="chip mode-chip" data-mode-choice="exercise">Workouts only</div>
           </div>
+          <div class="settings-row-sub" id="appModeFitnessNote" style="display:none;padding:0 0 8px">Food &amp; fitness has no medication or treatment screens. Set your own starting weight and goal weight in Profile &amp; Goals below, because until you do the app shows its default numbers.</div>
         </div>
       </div>
 
@@ -3614,7 +3623,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
         </div>
       </div>
 
-      <div class="settings-section full-only">
+      <div class="settings-section full-only med-only">
         <div class="settings-title">Doctor Visit</div>
         <div class="settings-card">
           <div class="settings-row">
@@ -3656,7 +3665,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
         </div>
       </div>
 
-      <div class="settings-section full-only">
+      <div class="settings-section full-only med-only">
         <div class="settings-title">Print</div>
         <div class="settings-card">
           <div class="settings-row">
@@ -4399,7 +4408,7 @@ let fatSecretTokenExp     = 0;       // epoch ms when fatSecretAccessToken expir
 const KEY_FIELDS = ['usdaKey', 'spoonacularKey', 'fatSecretClientId', 'fatSecretClientSecret', 'anthropicKey'];
 const DEVICE_KEYS_STORE = 'mounjaro-device-keys';
 loadDeviceKeys();                    // the keys above come from this device's own storage
-let appMode = (() => { try { return localStorage.getItem('fit-app-mode') === 'exercise' ? 'exercise' : 'full'; } catch (e) { return 'full'; } })(); // 'full' | 'exercise' (workouts only: no Log or Food tabs, health cards hidden)
+let appMode = (() => { try { const m = localStorage.getItem('fit-app-mode'); return m === 'exercise' || m === 'fitness' ? m : 'full'; } catch (e) { return 'full'; } })(); // 'full' | 'exercise' (workouts only: no Log or Food tabs, health cards hidden)
 let userDisplayName = (() => { try { return localStorage.getItem('fit-user-name') || ''; } catch (e) { return ''; } })();
 let themeOverride       = '';        // '' = auto, or 'light' / 'dark'
 let pinnedFavorites     = [];        // user-starred foods, synced to Firestore, always shown
@@ -4526,7 +4535,8 @@ try { renderPaletteRow(); } catch (err) { console.error('renderPaletteRow failed
 // ── DASHBOARD LAYOUT (drag-and-drop card reordering + show/hide) ──
 let dashboardOrder = []; // array of data-card-key values, in the user's chosen order
 const EXERCISE_MODE_STAT_KEYS = new Set(['exercise', 'workoutVolume', 'planDay', 'weeklyGoal']); // the only Home stat cards shown in workouts-only mode
-function cardModeHidden(key) { return appMode === 'exercise' && !EXERCISE_MODE_STAT_KEYS.has(key); }
+const FITNESS_HIDDEN_KEYS = new Set(['day', 'dose', 'glucose', 'glucose2hr', 'labs', 'meds', 'milestoneProgress', 'milestoneRoadmap']); // treatment and medication cards
+function cardModeHidden(key) { return (appMode === 'exercise' && !EXERCISE_MODE_STAT_KEYS.has(key)) || (appMode === 'fitness' && FITNESS_HIDDEN_KEYS.has(key)); }
 let weeklyGoal = 3, weeklyGoalStretch = false; // 'N workouts a week' ring on Home; synced in the settings doc
 let hiddenCards = [];    // array of data-card-key values currently hidden from Home
 let dashSortable = null;
@@ -5679,7 +5689,8 @@ function computeBadgeData(asOfDate) {
 }
 
 const EXERCISE_MODE_BADGE_CATS = ['Workouts', 'Recovery', 'Consistency', 'Challenges'], EXERCISE_MODE_MILESTONE_CATS = ['Workouts Logged', 'Personal Records'];
-function buildBadgeCategories(d) { const all = buildBadgeCategoriesAll(d); return appMode === 'exercise' ? all.filter(c => EXERCISE_MODE_BADGE_CATS.includes(c.category)) : all; }
+const FITNESS_HIDDEN_CATS = ['Treatment Day', 'Treatment', 'Blood Sugar'];
+function buildBadgeCategories(d) { const all = buildBadgeCategoriesAll(d); return appMode === 'exercise' ? all.filter(c => EXERCISE_MODE_BADGE_CATS.includes(c.category)) : appMode === 'fitness' ? all.filter(c => !FITNESS_HIDDEN_CATS.includes(c.category)) : all; }
 function buildBadgeCategoriesAll(d) {
   const svg = (inner) => `<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em">${inner}</svg>`;
   const cats = [
@@ -5904,7 +5915,7 @@ function computeMilestonesReached() {
 // is what actually closes the gap where a milestone celebration
 // disappears forever once dismissed. Shows both earned AND upcoming
 // tiers, the same "browse anytime" shape badges already have.
-function buildMilestoneCategories() { const all = buildMilestoneCategoriesAll(); return appMode === 'exercise' ? all.filter(c => EXERCISE_MODE_MILESTONE_CATS.includes(c.category)) : all; }
+function buildMilestoneCategories() { const all = buildMilestoneCategoriesAll(); return appMode === 'exercise' ? all.filter(c => EXERCISE_MODE_MILESTONE_CATS.includes(c.category)) : appMode === 'fitness' ? all.filter(c => !FITNESS_HIDDEN_CATS.includes(c.category)) : all; }
 function buildMilestoneCategoriesAll() {
   const svg = (inner) => `<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em">${inner}</svg>`;
   const treatmentDay = daysSinceStart() + 1;
@@ -6287,17 +6298,24 @@ function showSyncModal(isNew) {
     document.getElementById('modalExistingSection').style.display = 'none';
     document.getElementById('modalTitle').textContent = 'Welcome';
     document.getElementById('modalSub').textContent = 'Your Sync ID lets you access your data on any device. Save it somewhere safe — you\'ll need it to connect other devices.';
-    document.querySelectorAll('.welcome-mode-chip').forEach(c => { c.onclick = () => document.querySelectorAll('.welcome-mode-chip').forEach(o => o.classList.toggle('on', o === c)); });
+    document.querySelectorAll('.welcome-mode-chip').forEach(c => { c.onclick = () => { document.querySelectorAll('.welcome-mode-chip').forEach(o => o.classList.toggle('on', o === c)); document.getElementById('welcomeWeightFields').style.display = c.dataset.modeChoice === 'fitness' ? '' : 'none'; }; });
     document.getElementById('useNewIdBtn').onclick = () => {
       const chosenMode = (document.querySelector('.welcome-mode-chip.on') || {}).dataset?.modeChoice || 'full';
       const chosenName = (document.getElementById('welcomeName').value || '').trim();
+      let startWeights = null;
+      if (chosenMode === 'fitness') { // their own numbers, never the app's defaults
+        const bw = parseFloat(document.getElementById('welcomeStartWeight').value), gw = parseFloat(document.getElementById('welcomeGoalWeight').value), errEl = document.getElementById('welcomeWeightErr');
+        if (!(bw >= 50 && bw <= 700) || !(gw >= 50 && gw <= 700)) { errEl.style.display = ''; return; }
+        errEl.style.display = 'none'; startWeights = { baselineWeight: bw, goalWeight: gw };
+      }
       localStorage.setItem('mounjaro-sync-id', newId);
       syncId = newId;
       modal.classList.add('hidden');
       setAppModeLocal(chosenMode, chosenName);
       startListening();
       const startFields = { appMode, userName: userDisplayName };
-      if (appMode === 'exercise') { workoutPlanMode = 'custom'; startFields.workoutPlanMode = 'custom'; } // she builds her own routine, not the A/B split
+      if (appMode === 'exercise' || appMode === 'fitness') { workoutPlanMode = 'custom'; startFields.workoutPlanMode = 'custom'; } // they build their own routine, not the A/B split
+      if (startWeights) { baselineWeight = startWeights.baselineWeight; goalWeight = startWeights.goalWeight; Object.assign(startFields, startWeights); }
       setDoc(doc(db, 'trackers', newId, 'meta', 'settings'), startFields, { merge: true }).catch(err => console.error(err));
     };
     document.getElementById('copySyncIdBtn').onclick = () => {
@@ -6530,6 +6548,7 @@ function updateHeader() {
     sub.textContent = `Treatment day ${diff + 1}`;
   }
   if (appMode === 'exercise' && sub) sub.textContent = userDisplayName ? `${userDisplayName}'s workouts` : 'Workout tracker';
+  if (appMode === 'fitness' && sub) sub.textContent = userDisplayName ? `${userDisplayName}'s tracker` : 'Food & fitness tracker';
 }
 
 // ── STATS ──
@@ -8125,10 +8144,11 @@ function latestTextFor(id) { const ser = chartSeries(id); if (!ser) return null;
 function applyChartSections() {
   if (!chartSectionsReady) return;
   let emptyN = 0;
-  const exMode = appMode === 'exercise', exChartOk = x => !exMode || x.id === 'volumeChart' || x.id === 'weightProgressChart' || x.id === 'e1rmChart';
+  const exMode = appMode === 'exercise', fitMode = appMode === 'fitness', exChartOk0 = x => !exMode || x.id === 'volumeChart' || x.id === 'weightProgressChart' || x.id === 'e1rmChart';
   CHART_SECTIONS.forEach(sec => {
+    const exChartOk = x => exChartOk0(x) && !(fitMode && (['Treatment', 'Labs'].includes(sec.name) || x.id === 'glucoseChart')); // food & fitness: no treatment, lab or glucose charts
     const open = chartSecIsOpen(sec); let withData = 0;
-    const modeHidden = exMode && !sec.cards.some(x => exChartOk(x));
+    const modeHidden = (exMode || fitMode) && !sec.cards.some(x => exChartOk(x));
     sec.cards.forEach(x => {
       if (!exChartOk(x)) { x.card.classList.add('cs-skip'); return; }
       const empty = !!x.id && !chartSeries(x.id);
@@ -9094,6 +9114,9 @@ const navItems = document.querySelectorAll('.nav-item');
 
 function applyAppMode() {
   document.body.classList.toggle('mode-exercise', appMode === 'exercise');
+  document.body.classList.toggle('mode-fitness', appMode === 'fitness');
+  { const fn = document.getElementById('appModeFitnessNote'); if (fn) fn.style.display = appMode === 'fitness' ? '' : 'none'; }
+  if (appMode === 'fitness') { try { const dc = document.querySelector('#logSubtabRow [data-logsub="daily"]'); if (dc && !dc.classList.contains('on')) dc.click(); } catch (e) {} } // Medications and Results are hidden, so the Log tab shows the daily log
   try { const ph = document.querySelector('#printHeader strong'); if (ph && appMode === 'exercise') ph.textContent = (userDisplayName ? userDisplayName + ' - ' : '') + 'Workout Log'; } catch (e) {}
   document.querySelectorAll('#appModeRow .mode-chip').forEach(c => c.classList.toggle('on', c.dataset.modeChoice === appMode));
   try { applyCardVisibility(); } catch (e) {}
@@ -9105,7 +9128,7 @@ function applyAppMode() {
   if (appMode === 'exercise' && active && (active.id === 'view-log' || active.id === 'view-food')) showView('dashboard');
 }
 function setAppModeLocal(mode, name) {
-  appMode = mode === 'exercise' ? 'exercise' : 'full';
+  appMode = mode === 'exercise' ? 'exercise' : mode === 'fitness' ? 'fitness' : 'full'; // 'fitness' = food + workouts + weight, no medication
   try { localStorage.setItem('fit-app-mode', appMode); } catch (e) {}
   if (name != null) { userDisplayName = String(name).trim().slice(0, 24); try { localStorage.setItem('fit-user-name', userDisplayName); } catch (e) {} }
   applyAppMode();
@@ -17067,6 +17090,7 @@ function rollingMean(pairs, windowDays) {
 
 // ── INJECTION + WEIGH-IN DUE BANNER ──
 function updateInjBanner() {
+  if (appMode === 'fitness') { const b0 = document.getElementById('injBanner'); if (b0) b0.style.display = 'none'; return; }
   const banner = document.getElementById('injBanner');
   banner.className = 'inj-banner';
   banner.onclick = null;
@@ -19557,6 +19581,7 @@ function computeDueTodayItems() {
 // ── TODAY CARD ── one glance: what is done today, and how the week is going.
 // Descriptive only: counts and numbers, never advice.
 function todayDoseStatus() {
+  if (appMode === 'fitness') return null; // no medication in this mode
   const diff = daysSinceStart();
   if (diff < 0) return null;
   const cycleStart = new Date(TREATMENT_START);
