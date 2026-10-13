@@ -3940,6 +3940,17 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
   </main>
 </div>
 
+<script>
+// If the main script cannot start (usually something blocking Google's Firebase files), say so
+// instead of leaving "Generating..." on screen forever. window.__trackerBooted is set at the very end of the main script.
+function trackerBootCheck() {
+  if (window.__trackerBooted) return;
+  var el = document.getElementById('newSyncIdDisplay'); if (!el) return;
+  el.style.fontSize = '13px'; el.style.lineHeight = '1.4';
+  el.textContent = 'The app could not finish loading, so no Sync ID can be made yet. This is usually an ad blocker, browser extension or network filter blocking Google\'s Firebase files (www.gstatic.com). Try a private window with extensions off, a different browser, or a different network, then reload.';
+}
+setTimeout(trackerBootCheck, 10000);
+</script>
 <script type="module">
 // Safety net: hideLoading() (defined below) normally only runs once
 // Firestore's realtime listener actually responds. If that listener never
@@ -6271,7 +6282,7 @@ function showSyncModal(isNew) {
   modal.classList.remove('hidden');
   if (isNew) {
     const newId = genUUID();
-    document.getElementById('newSyncIdDisplay').textContent = newId;
+    { const nd = document.getElementById('newSyncIdDisplay'); nd.style.fontSize = ''; nd.style.lineHeight = ''; nd.textContent = newId; }
     document.getElementById('modalNewSection').style.display = '';
     document.getElementById('modalExistingSection').style.display = 'none';
     document.getElementById('modalTitle').textContent = 'Welcome';
@@ -20442,6 +20453,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 // ── BOOT ──
 try { if (typeof Chart !== 'undefined') { Chart.defaults.font.family = CHART_FONT_TEXT; Chart.defaults.font.weight = '600'; } } catch (err) { console.error('Chart font defaults failed:', err); }
 try { todayDefault(); } catch (err) { console.error('todayDefault failed:', err); }
+window.__trackerBooted = true;
 initSyncId();
 // Failsafe: never leave the loading screen up more than 6s
 setTimeout(hideLoading, 6000);
