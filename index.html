@@ -1037,6 +1037,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 .coach-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .coach-chip { flex: 1 1 100%; min-width: 0; text-align: left; font-size: 12px; font-weight: 700; padding: 8px 10px; border-radius: 10px; border: 1.5px dashed var(--line); background: transparent; color: var(--coral); cursor: pointer; line-height: 1.3; }
 .coach-chip.warmup-chip { color: var(--ink-soft); }
+.wp-empty, .gt-empty { display: none !important; }
 .routine-use-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .routine-add-chip { border-style: dashed; color: var(--teal); font-weight: 800; }
 .routine-add-chip.disabled { opacity: 0.5; }
@@ -1641,6 +1642,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 <div id="routineEditor" class="re-overlay" style="display:none"></div>
 <div id="routineShare" class="re-overlay" style="display:none"></div>
 <div id="gymPassSheet" class="re-overlay" style="display:none"></div>
+<div id="doctorEmailSheet" class="re-overlay" style="display:none"></div>
 <div id="gymPassView" role="dialog" aria-modal="true" aria-label="Gym pass" style="display:none;position:fixed;inset:0;z-index:1900;background:#fff;color:#111;flex-direction:column;align-items:center;padding:max(12px,env(safe-area-inset-top)) 12px max(14px,env(safe-area-inset-bottom));overflow:auto">
   <img id="gymPassImgEl" alt="Gym pass" style="width:100%;max-width:520px;height:auto;margin:auto 0 0">
   <div style="font-size:12px;color:#555;text-align:center;margin:10px 0">Turn your screen brightness up for the scanner.</div>
@@ -2137,6 +2139,17 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
         </div>
       </div>
 
+      <div class="timeline-card home-extra-card" data-card-key="weightPlateau" id="weightPlateauCard">
+        <div class="timeline-title">Weight check</div>
+        <div id="wpText" style="font-size:14px;line-height:1.5"></div>
+        <div style="margin-top:8px"><button type="button" class="btn btn-ghost btn-sm" id="wpSnoozeBtn">Not now</button></div>
+      </div>
+
+      <div class="timeline-card home-extra-card" data-card-key="glucoseTrend" id="glucoseTrendCard">
+        <div class="timeline-title">Fasting glucose</div>
+        <div id="gtBody"></div>
+      </div>
+
       <div class="timeline-card home-extra-card" data-card-key="weeklyGoal" id="goalCard">
         <div class="timeline-title">Weekly goal</div>
         <div style="display:flex;align-items:center;gap:14px">
@@ -2153,6 +2166,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
               <button type="button" class="btn btn-ghost btn-sm" id="goalPlus" aria-label="More workouts a week" style="flex:0 0 40px;padding:6px 0">+</button>
             </div>
             <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--ink-soft)"><input type="checkbox" id="goalStretch"> Count stretch days too</label>
+            <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--ink-soft)"><input type="checkbox" id="goalGym" checked> Count gym check-ins too</label>
           </div>
         </div>
       </div>
@@ -3051,6 +3065,10 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
           <button type="button" class="btn btn-secondary" id="gymPassBtn" style="flex:1;min-width:0;padding:12px 10px;font-weight:800">🏷️ Open gym pass</button>
           <button type="button" class="btn btn-ghost btn-sm" id="gymPassEditBtn" aria-label="Gym pass link settings" style="flex:0 0 44px;padding:0">⚙</button>
         </div>
+        <div style="display:flex;gap:8px;align-items:center;margin:-4px 0 12px">
+          <button type="button" class="btn btn-ghost btn-sm" id="gymCheckinBtn" style="flex:1;min-width:0;padding:10px;font-weight:800">📍 Check in at the gym</button>
+          <div id="gymCheckinCount" style="flex:0 0 auto;font-size:12px;color:var(--ink-soft)"></div>
+        </div>
         <div id="weekRecapGrid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center"></div>
         <div id="weekRecapMissed" style="font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.4"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="weekRecapShare" style="width:100%;margin-top:10px">Share my week</button>
@@ -3648,6 +3666,13 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
               <div class="settings-row-sub">A clean one-page printout — weight, meds, labs, glucose, activity</div>
             </div>
             <button class="btn btn-ghost btn-sm" id="doctorSummaryBtn">View</button>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Doctor Email</div>
+              <div class="settings-row-sub">Builds an update from your logged numbers. You review it, then copy it or open it in Mail</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="doctorEmailBtn">Draft</button>
           </div>
           <div class="settings-row">
             <div>
@@ -4551,9 +4576,9 @@ try { renderPaletteRow(); } catch (err) { console.error('renderPaletteRow failed
 // ── DASHBOARD LAYOUT (drag-and-drop card reordering + show/hide) ──
 let dashboardOrder = []; // array of data-card-key values, in the user's chosen order
 const EXERCISE_MODE_STAT_KEYS = new Set(['exercise', 'workoutVolume', 'planDay', 'weeklyGoal']); // the only Home stat cards shown in workouts-only mode
-const FITNESS_HIDDEN_KEYS = new Set(['day', 'dose', 'glucose', 'glucose2hr', 'labs', 'meds', 'milestoneProgress', 'milestoneRoadmap']); // treatment and medication cards
+const FITNESS_HIDDEN_KEYS = new Set(['day', 'dose', 'glucose', 'glucose2hr', 'glucoseTrend', 'labs', 'meds', 'milestoneProgress', 'milestoneRoadmap']); // treatment and medication cards
 function cardModeHidden(key) { return (appMode === 'exercise' && !EXERCISE_MODE_STAT_KEYS.has(key)) || (appMode === 'fitness' && FITNESS_HIDDEN_KEYS.has(key)); }
-let weeklyGoal = 3, weeklyGoalStretch = false; // 'N workouts a week' ring on Home; synced in the settings doc
+let weeklyGoal = 3, weeklyGoalStretch = false, weeklyGoalGym = true, gymVisits = [], meterSwitchDate = ''; // 'N workouts a week' ring on Home; synced in the settings doc
 let hiddenCards = [];    // array of data-card-key values currently hidden from Home
 let dashSortable = null;
 
@@ -4592,6 +4617,8 @@ const CARD_CATALOG = {
 CARD_CATALOG.milestoneProgress = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><path d="M4 22V4"/><path d="M4 4h12l-2 4 2 4H4"/></svg>', label: 'Milestone Progress' };
 CARD_CATALOG.todaySummary = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>', label: 'Today' };
 CARD_CATALOG.weeklyGoal = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>', label: 'Weekly goal' };
+CARD_CATALOG.weightPlateau = { icon: '', label: 'Weight check' };
+CARD_CATALOG.glucoseTrend = { icon: '', label: 'Fasting glucose' };
 CARD_CATALOG.milestoneRoadmap = { icon: '<svg width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>', label: 'Milestone Roadmap' };
 
 // ── HOME SECTIONS ── the stat cards grouped under headers that open and close; cards with no data fold into one row.
@@ -6445,7 +6472,7 @@ function startListening() {
       lbConfig = (s.leaderboard && s.leaderboard.code && s.leaderboard.memberId) ? s.leaderboard : null;
       lbSubscribe(); lbSchedulePublish(); renderLeaderboard();
       stepGoalOverride = s.stepGoal != null ? parseInt(s.stepGoal) || 0 : 0;
-      if (s.weeklyGoal != null) weeklyGoal = Math.min(7, Math.max(1, parseInt(s.weeklyGoal) || 3)); weeklyGoalStretch = !!s.weeklyGoalStretch; try { renderGoalRing(); } catch (err) { /* card not ready yet */ }
+      if (s.weeklyGoal != null) weeklyGoal = Math.min(7, Math.max(1, parseInt(s.weeklyGoal) || 3)); weeklyGoalStretch = !!s.weeklyGoalStretch; weeklyGoalGym = s.weeklyGoalGym !== false; gymVisits = Array.isArray(s.gymVisits) ? s.gymVisits.filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)).slice(-400) : []; meterSwitchDate = typeof s.meterSwitchDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s.meterSwitchDate) ? s.meterSwitchDate : ''; try { renderGoalRing(); renderGymCheckin(); renderWeightPlateau(); renderGlucoseTrend(); } catch (err) { /* cards not ready yet */ }
       if (s.theme != null) themeOverride = s.theme;
       pinnedFavorites = Array.isArray(s.favoriteFoods) ? s.favoriteFoods : [];
       pinnedRecipes = Array.isArray(s.recipes) ? s.recipes : [];
@@ -6710,6 +6737,7 @@ function updateStats() {
   try { renderDueToday(); } catch (err) { console.error('Due Today render failed:', err); }
   try { renderTodayCard(); } catch (err) { console.error('Today card render failed:', err); }
   try { renderGoalRing(); } catch (err) { console.error('Goal ring render failed:', err); }
+  try { renderGymCheckin(); renderWeightPlateau(); renderGlucoseTrend(); } catch (err) { console.error('Trend cards render failed:', err); }
   try { renderQuickLogFood(); } catch (err) { console.error('Quick Log Food render failed:', err); }
 
   // Computed once here rather than per stat card below — each call
@@ -10402,7 +10430,7 @@ document.getElementById('aiAskBtn').addEventListener('click', async () => {
   if (!data.length) { box.innerHTML = 'No logged data yet to answer from.'; return; }
   box.innerHTML = 'Thinking…';
   try {
-    const promptText = `Here is up to 120 days of a person's self-tracked GLP-1 (Mounjaro/tirzepatide) treatment data, as JSON (missing fields just weren't logged that day, not necessarily zero):\n\n${JSON.stringify(data)}\n\n${AI_DATA_LEGEND}\n\nThe person's question: "${question}"\n\nAnswer using only what's actually in the data above. If the data can't answer the question, say so plainly rather than guessing. Keep the answer conversational and to the point — a few sentences at most.\n\n${AI_SAFETY_INSTRUCTIONS}`;
+    const promptText = `Here is up to 120 days of a person's self-tracked GLP-1 (Mounjaro/tirzepatide) treatment data, as JSON (missing fields just weren't logged that day, not necessarily zero):\n\n${JSON.stringify(data)}\n\n${healthFactsText()}\n\n${AI_DATA_LEGEND}\n\nThe person's question: "${question}"\n\nAnswer using only what's actually in the data above. If the data can't answer the question, say so plainly rather than guessing. Keep the answer conversational and to the point — a few sentences at most.\n\n${AI_SAFETY_INSTRUCTIONS}`;
     const result = await callClaudeText(promptText, 400);
     if (!result.ok) { box.innerHTML = `Failed — HTTP ${result.status}. Check your Anthropic API key in Settings.`; return; }
     // Show what the answer was based on, so missing data is visible instead of silently producing a wrong answer.
@@ -12034,6 +12062,167 @@ function resumeExTimerIfRunning() {
 
 document.getElementById('exTimerStartBtn').addEventListener('click', startExTimer);
 document.getElementById('exTimerStopBtn').addEventListener('click', stopExTimer); document.getElementById('exerciseFullscreenCloseBtn').addEventListener('click', () => setExerciseFullscreen(false)); document.getElementById('exTimerDisplay').addEventListener('click', () => setExerciseFullscreen(true)); document.getElementById('exerciseFullscreenBackdrop').addEventListener('click', () => setExerciseFullscreen(false));
+// ── TRENDS: weight plateau, glucose card, doctor email, gym check-ins ──────────
+// All the numbers here are calculated in code (never by the AI), so a total can never be mis-subtracted.
+const meanOf = a => a.reduce((t, v) => t + v, 0) / a.length;
+const r1 = v => Math.round(v * 10) / 10;
+function weightSeries() { return entries.filter(e => e.date && parseFloat(e.weight) > 0).map(e => ({ date: e.date, w: parseFloat(e.weight) })).sort((a, b) => a.date.localeCompare(b.date)); }
+function weightTrend(asOf) {
+  const today = asOf || todayStr(), s = weightSeries().filter(p => p.date <= today);
+  if (s.length < 2) return null;
+  const first = s[0], current = s[s.length - 1];
+  const avgs = s.map(p => { const win = s.filter(q => q.date <= p.date && daysBetweenDateStrs(q.date, p.date) < 7); return { date: p.date, avg: meanOf(win.map(q => q.w)), n: win.length }; }).filter(a => a.n >= 2);
+  if (!avgs.length) return null;
+  let best = avgs[0]; avgs.forEach(a => { if (a.avg < best.avg - 0.05) best = a; }); // a tie is not a new low
+  const last7 = s.filter(p => daysBetweenDateStrs(p.date, today) < 7), curAvg = last7.length ? meanOf(last7.map(p => p.w)) : current.w;
+  const recent = s.filter(p => daysBetweenDateStrs(p.date, today) <= 21).length, daysSinceBest = daysBetweenDateStrs(best.date, today), lost = first.w - best.avg;
+  const stalled = goalWeight < baselineWeight && daysSinceBest >= 21 && recent >= 4 && lost >= 3; // only for a weight-loss goal, after real progress, with enough recent weigh-ins
+  return { first, current, best, curAvg, daysSinceBest, weeksSinceBest: Math.floor(daysSinceBest / 7), lost, recent, stalled };
+}
+const WEIGHT_SNOOZE_KEY = 'fit-weight-alert-snooze';
+function weightPlateauText() {
+  const t = weightTrend(); if (!t || !t.stalled) return null;
+  return `Your weight has not hit a new low (7-day average) in ${t.weeksSinceBest} weeks. Your best was ${r1(t.best.avg)} lb around ${fmtDate(t.best.date)}, and this past week averaged ${r1(t.curAvg)} lb. ` + (appMode === 'fitness' ? 'Plateaus are common. Steady food and workout logging is the best way to see what is changing.' : 'Plateaus are common. Worth telling your doctor. Your visit summary and email draft now include it.');
+}
+function renderWeightPlateau() {
+  const card = document.getElementById('weightPlateauCard'); if (!card) return;
+  const txt = weightPlateauText(); let snoozed = false; try { snoozed = (localStorage.getItem(WEIGHT_SNOOZE_KEY) || '') >= todayStr(); } catch (e) {}
+  card.classList.toggle('wp-empty', !txt || snoozed); if (txt) document.getElementById('wpText').textContent = txt;
+}
+function glucoseSummary(asOf) {
+  const today = asOf || todayStr(), all = entries.filter(e => e.date && parseFloat(e.glucose) > 0 && e.date <= today).map(e => ({ date: e.date, g: parseFloat(e.glucose) })).sort((a, b) => a.date.localeCompare(b.date));
+  if (!all.length) return null;
+  const within = (a, b) => all.filter(p => { const d = daysBetweenDateStrs(p.date, today); return d >= a && d < b; });
+  const l7 = within(0, 7), l14 = within(0, 14), l30 = within(0, 30), p14 = within(14, 28), avg = a => (a.length ? meanOf(a.map(p => p.g)) : null);
+  let meter = null;
+  if (meterSwitchDate && meterSwitchDate <= today) {
+    const before = all.filter(p => p.date < meterSwitchDate && daysBetweenDateStrs(p.date, meterSwitchDate) <= 14), after = all.filter(p => p.date >= meterSwitchDate).slice(-14);
+    meter = { date: meterSwitchDate, before, after, beforeAvg: avg(before), afterAvg: avg(after) };
+  }
+  return { all, first: all[0], last: all[all.length - 1], l30, avg7: avg(l7), n7: l7.length, avg14: avg(l14), n14: l14.length, above14: l14.filter(p => p.g >= GLUCOSE_TARGET).length, avgPrev14: avg(p14), nPrev14: p14.length, meter };
+}
+function glucoseSparkline(gs) {
+  const today = todayStr(), W = 300, H = 90, pad = 8, pts = gs.l30.map(p => ({ x: 29 - daysBetweenDateStrs(p.date, today), g: p.g }));
+  const lo = Math.min(GLUCOSE_TARGET - 10, ...pts.map(p => p.g)), hi = Math.max(GLUCOSE_TARGET + 10, ...pts.map(p => p.g));
+  const X = d => pad + (d / 29) * (W - 2 * pad), Y = g => H - pad - ((g - lo) / (hi - lo)) * (H - 2 * pad);
+  let marker = ''; if (gs.meter) { const d = 29 - daysBetweenDateStrs(gs.meter.date, today); if (d >= 0 && d <= 29) marker = `<line x1="${X(d)}" y1="4" x2="${X(d)}" y2="${H - 4}" stroke="var(--coral)" stroke-width="1.5" stroke-dasharray="3 3"/><text x="${Math.min(X(d) + 3, W - 52)}" y="12" font-size="9" fill="var(--coral)">new meter</text>`; }
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Fasting glucose, last 30 days" style="display:block"><line x1="${pad}" y1="${Y(GLUCOSE_TARGET)}" x2="${W - pad}" y2="${Y(GLUCOSE_TARGET)}" stroke="var(--ink-soft)" stroke-width="1" stroke-dasharray="4 3"/><text x="${W - pad}" y="${Y(GLUCOSE_TARGET) - 3}" text-anchor="end" font-size="9" fill="var(--ink-soft)">target ${GLUCOSE_TARGET}</text>${marker}<polyline fill="none" stroke="var(--teal)" stroke-width="2" points="${pts.map(p => `${X(p.x)},${Y(p.g)}`).join(' ')}"/>${pts.map(p => `<circle cx="${X(p.x)}" cy="${Y(p.g)}" r="2.5" fill="${p.g >= GLUCOSE_TARGET ? 'var(--coral)' : 'var(--teal)'}"/>`).join('')}</svg>`;
+}
+let gtMarking = false;
+function renderGlucoseTrend() {
+  const card = document.getElementById('glucoseTrendCard'), body = document.getElementById('gtBody'); if (!card || !body) return;
+  const gs = glucoseSummary(); card.classList.toggle('gt-empty', !gs); if (!gs) { body.innerHTML = ''; return; }
+  const m = gs.meter, f = v => Math.round(v);
+  body.innerHTML = `<div style="font-size:14px;line-height:1.5"><b>Last: ${gs.last.g}</b> mg/dL on ${fmtDate(gs.last.date)}${gs.avg7 != null ? ` · 7-day average <b>${f(gs.avg7)}</b>` : ''}</div>
+    <div style="font-size:13px;color:var(--ink-soft);margin:2px 0 8px"><b style="color:${gs.above14 ? 'var(--coral)' : 'var(--teal)'}">${gs.above14} of ${gs.n14}</b> readings in the last 14 days were at or above ${GLUCOSE_TARGET}${gs.n14 >= 3 && gs.nPrev14 >= 3 ? `. The 14 days before averaged ${f(gs.avgPrev14)}, these 14 average ${f(gs.avg14)}.` : '.'}</div>
+    ${glucoseSparkline(gs)}
+    ${m ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:6px">New meter marked ${fmtDate(m.date)}.${m.beforeAvg != null && m.afterAvg != null ? ` Before: average ${f(m.beforeAvg)} (${m.before.length} readings). Since: average ${f(m.afterAvg)} (${m.after.length}). A new meter can read a little differently.` : ' Not enough readings on both sides yet to compare.'} <button type="button" class="routine-edit-link" data-gt="clear">Remove marker</button></div>`
+      : gtMarking ? `<div style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="date" id="gtMeterDate" max="${todayStr()}" value="${todayStr()}" style="flex:1;min-width:0"><button type="button" class="btn btn-secondary btn-sm" data-gt="save">Save</button><button type="button" class="btn btn-ghost btn-sm" data-gt="cancel">Cancel</button></div>`
+      : `<div style="margin-top:8px"><button type="button" class="routine-edit-link" data-gt="mark">Started a new meter? Mark the day</button></div>`}`;
+}
+async function saveMeterDate(v) { meterSwitchDate = v; gtMarking = false; renderGlucoseTrend(); if (syncId) { try { await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { meterSwitchDate: v }, { merge: true }); } catch (err) { console.error(err); } } }
+function healthFactsText() { // exact, code-calculated numbers handed to the AI so it never does the arithmetic itself
+  try {
+    const t = weightTrend(), g = glucoseSummary(), L = [];
+    if (t) { L.push(`Weight: first logged ${r1(t.first.w)} lb on ${t.first.date}; latest ${r1(t.current.w)} lb on ${t.current.date}; change from first to latest = ${r1(t.first.w - t.current.w)} lb ${t.first.w - t.current.w >= 0 ? 'lost' : 'gained'}; best 7-day average ${r1(t.best.avg)} lb on ${t.best.date}; days since that best = ${t.daysSinceBest}.`); if (t.stalled) L.push(`Weight loss has stalled: no new low 7-day average for ${t.weeksSinceBest} weeks.`); }
+    if (g) { L.push(`Fasting glucose: first ${g.first.g} on ${g.first.date}; latest ${g.last.g} on ${g.last.date}; ${g.n14} readings in the last 14 days averaging ${g.avg14 == null ? 'n/a' : Math.round(g.avg14)}, ${g.above14} of them at or above ${GLUCOSE_TARGET}.${g.nPrev14 ? ` The 14 days before averaged ${Math.round(g.avgPrev14)} (${g.nPrev14} readings).` : ''}${g.meter ? ` A new meter was started on ${g.meter.date}.` : ''}`); }
+    return L.length ? `Facts the app calculated exactly (use these numbers as given and do not redo the arithmetic): ${L.join(' ')}` : '';
+  } catch (err) { return ''; }
+}
+function ymdOf(d) { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; }
+function buildDoctorEmail(o) {
+  const today = todayStr(), name = (() => { try { return (localStorage.getItem('fit-doctor-name') || '').trim(); } catch (e) { return ''; } })();
+  const startYmd = ymdOf(TREATMENT_START), months = Math.max(1, Math.round(daysBetweenDateStrs(startYmd, today) / 30.4));
+  const wt = weightTrend(), gs = glucoseSummary(), doses = computeDoseEscalationTimeline(), cur = doses.length ? doses[doses.length - 1] : null;
+  const P = [`${name ? name : 'Hello'},`];
+  let intro = `I wanted to send you an update on my first ${months} month${months === 1 ? '' : 's'} of treatment. I started on ${fmtDateFull(startYmd)} and I log my weight, doses, fasting glucose, food and workouts every day.`;
+  if (cur) intro += ` I'm currently on ${cur.dose} mg (since ${fmtDate(cur.startDate)}).`;
+  if (doses.length > 1) intro += ` Before that I was on ${doses.slice(0, -1).map(d => `${d.dose} mg from ${fmtDate(d.startDate)}`).join(', then ')}.`;
+  P.push(intro);
+  if (wt) {
+    const loss = wt.first.w - wt.current.w;
+    let w = `First, my weight. I started at ${r1(wt.first.w)} lbs on ${fmtDate(wt.first.date)} and I'm at ${r1(wt.current.w)} lbs now, ${loss >= 0 ? 'down' : 'up'} ${r1(Math.abs(loss))} lbs.`;
+    if (wt.stalled) w += ` My weight loss has stalled: my 7-day average has not hit a new low in about ${wt.weeksSinceBest} weeks. My best was ${r1(wt.best.avg)} lbs around ${fmtDate(wt.best.date)}, and this past week averaged ${r1(wt.curAvg)} lbs.`;
+    P.push(w);
+  } else P.push("First, my weight. I don't have enough weigh-ins logged yet to show a trend.");
+  if (gs) {
+    const f = v => Math.round(v);
+    let g = `Second, my fasting glucose. My first reading was ${gs.first.g} on ${fmtDate(gs.first.date)}. Over the last 14 days it has averaged ${gs.avg14 == null ? 'no data' : f(gs.avg14)} across ${gs.n14} readings, with ${gs.above14} of them at or above my target of ${GLUCOSE_TARGET}.`;
+    if (gs.n14 >= 3 && gs.nPrev14 >= 3) g += ` The 14 days before that averaged ${f(gs.avgPrev14)}, so it is ${gs.avg14 > gs.avgPrev14 + 3 ? 'trending up' : gs.avg14 < gs.avgPrev14 - 3 ? 'trending down' : 'about the same'}.`;
+    if (gs.meter) g += ` I started using a new meter on ${fmtDate(gs.meter.date)}, so readings before and after may differ slightly${gs.meter.beforeAvg != null && gs.meter.afterAvg != null ? ` (averaging ${f(gs.meter.beforeAvg)} before and ${f(gs.meter.afterAvg)} since)` : ''}.`;
+    P.push(g);
+  } else P.push("Second, my fasting glucose. I haven't logged any readings recently.");
+  const cut = lbAddDays(today, -30), tagDays = {};
+  entries.filter(e => e.date >= cut && e.date <= today && e.tags && e.tags.length).forEach(e => e.tags.forEach(t => { tagDays[t] = (tagDays[t] || 0) + 1; }));
+  const tags = Object.entries(tagDays).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([t, n]) => `${t} (${n} day${n === 1 ? '' : 's'})`);
+  P.push(`Third, how I've been feeling. ${tags.length ? `In the last 30 days I logged: ${tags.join(', ')}.` : "I haven't logged any side effects in the last 30 days."} I've done ${workoutsInLastDays(30)} workouts in the last 30 days.`);
+  const labsA = labs.filter(l => l.a1c != null && l.a1c !== '').sort((a, b) => a.date.localeCompare(b.date)), lastA1c = labsA.length ? labsA[labsA.length - 1] : null, Q = [];
+  if (o.dose) Q.push(`Should we increase my dose${cur ? ` from ${cur.dose} mg` : ''}, or stay where I am for now?`);
+  if (o.a1c) Q.push(`Should I get my A1C tested?${lastA1c ? ` My last one was ${lastA1c.a1c}% on ${fmtDate(lastA1c.date)}.` : ''}`);
+  if (o.plateau) Q.push('Is this plateau expected at this stage, or should we change something?');
+  if (o.visit) Q.push('Would you like to see me sooner than my next scheduled visit?');
+  if (Q.length) P.push(`Last, I have ${Q.length === 1 ? 'a question' : Q.length + ' questions'} for you. ${Q.join(' ')}`);
+  P.push("I can send my full logged readings if that's helpful.");
+  P.push(`Thanks,${userDisplayName ? '\n' + userDisplayName : ''}`);
+  return { subject: `Update on my first ${months} month${months === 1 ? '' : 's'} of treatment`, body: P.join('\n\n') };
+}
+let docEmailOpts = { dose: true, a1c: true, plateau: false, visit: false }, docEmailEdited = false, docEmailCopied = false;
+function openDoctorEmail() {
+  const wt = weightTrend(); docEmailOpts.plateau = !!(wt && wt.stalled); docEmailEdited = false; docEmailCopied = false;
+  renderDoctorEmail(); document.getElementById('doctorEmailSheet').style.display = 'flex';
+}
+function closeDoctorEmail() { document.getElementById('doctorEmailSheet').style.display = 'none'; }
+function renderDoctorEmail(keepText) {
+  const el = document.getElementById('doctorEmailSheet'); if (!el) return;
+  const prev = keepText ? (document.getElementById('deText') || {}).value : null, em = buildDoctorEmail(docEmailOpts);
+  let dn = '', dm = ''; try { dn = localStorage.getItem('fit-doctor-name') || ''; dm = localStorage.getItem('fit-doctor-email') || ''; } catch (e) {}
+  const chk = (k, label) => `<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0"><input type="checkbox" data-de-q="${k}" ${docEmailOpts[k] ? 'checked' : ''}> ${label}</label>`;
+  el.innerHTML = `<div class="re-sheet" role="dialog" aria-modal="true" aria-label="Doctor email" style="height:auto;max-height:94vh"><div class="re-top"><div class="re-title">Doctor email</div><button type="button" class="re-x" data-de="close" aria-label="Close">✕</button></div><div class="re-body">
+    <div class="re-hint">Built from your logged numbers. Read it over and fix anything before you send. Nothing is sent from the app.</div>
+    <div style="display:flex;gap:8px;margin:8px 0"><input class="re-input" id="deName" placeholder="Doctor's name (e.g. Dr. White)" value="${escapeHtml(dn)}" style="flex:1;min-width:0;margin:0"><input class="re-input" id="deEmail" type="email" inputmode="email" autocapitalize="off" placeholder="Doctor's email" value="${escapeHtml(dm)}" style="flex:1;min-width:0;margin:0"></div>
+    <div class="re-hint" style="margin-bottom:2px"><b>Questions to include</b></div>
+    ${chk('dose', 'Ask about my dose')}${chk('a1c', 'Ask about an A1C test')}${chk('plateau', 'Ask about the weight plateau')}${chk('visit', 'Ask whether to come in sooner')}
+    <textarea id="deText" class="re-input" rows="14" style="font-size:13px;line-height:1.45;margin-top:8px">${escapeHtml(prev != null ? prev : em.body)}</textarea>
+    <div class="rm-actions" style="margin-top:10px"><button type="button" class="btn btn-primary btn-sm" data-de="copy">${docEmailCopied ? 'Copied ✓' : 'Copy email'}</button><button type="button" class="btn btn-secondary btn-sm" data-de="mail">Open in Mail</button><button type="button" class="btn btn-ghost btn-sm" data-de="close">Close</button></div>
+    <div class="re-hint" style="margin-top:8px">Tip: attach your Visit Summary (Settings, Doctor Visit, View, Print / Save as PDF).</div></div></div>`;
+  document.getElementById('deText').addEventListener('input', () => { docEmailEdited = true; });
+}
+(function wireTrends() {
+  const sheet = document.getElementById('doctorEmailSheet'); if (!sheet) return;
+  sheet.addEventListener('click', async e => {
+    const b = e.target.closest('[data-de]'); if (!b) return; const a = b.dataset.de, ta = document.getElementById('deText');
+    if (a === 'close') closeDoctorEmail();
+    else if (a === 'copy') { try { await navigator.clipboard.writeText(ta.value); } catch (err) { ta.select(); try { document.execCommand('copy'); } catch (e2) { /* the text is selected: long-press to copy */ } } docEmailCopied = true; renderDoctorEmail(true); }
+    else if (a === 'mail') { const to = (document.getElementById('deEmail').value || '').trim(), subj = buildDoctorEmail(docEmailOpts).subject; gymGo(`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(ta.value)}`); }
+  });
+  sheet.addEventListener('change', e => {
+    const q = e.target.closest('[data-de-q]');
+    if (q) { docEmailOpts[q.dataset.deQ] = q.checked; renderDoctorEmail(docEmailEdited); return; }
+    try { if (e.target.id === 'deName') localStorage.setItem('fit-doctor-name', e.target.value.trim()); if (e.target.id === 'deEmail') localStorage.setItem('fit-doctor-email', e.target.value.trim()); } catch (err) { /* ignore */ }
+    if (e.target.id === 'deName' && !docEmailEdited) renderDoctorEmail(false);
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheet.style.display !== 'none') closeDoctorEmail(); });
+  document.getElementById('wpSnoozeBtn').addEventListener('click', () => { try { localStorage.setItem(WEIGHT_SNOOZE_KEY, lbAddDays(todayStr(), 7)); } catch (e) {} renderWeightPlateau(); });
+  document.getElementById('glucoseTrendCard').addEventListener('click', e => {
+    const b = e.target.closest('[data-gt]'); if (!b) return; const a = b.dataset.gt;
+    if (a === 'mark') { gtMarking = true; renderGlucoseTrend(); } else if (a === 'cancel') { gtMarking = false; renderGlucoseTrend(); }
+    else if (a === 'save') { const v = (document.getElementById('gtMeterDate') || {}).value || ''; if (/^\d{4}-\d{2}-\d{2}$/.test(v) && v <= todayStr()) saveMeterDate(v); }
+    else if (a === 'clear') saveMeterDate('');
+  });
+  document.getElementById('gymCheckinBtn').addEventListener('click', toggleGymCheckin);
+})();
+function gymVisitsThisWeek() { const today = todayStr(), ws = lbWeekStart(today); return new Set(gymVisits.filter(d => d >= ws && d <= today)).size; }
+function renderGymCheckin() {
+  const b = document.getElementById('gymCheckinBtn'); if (!b) return; const done = gymVisits.includes(todayStr());
+  b.textContent = done ? '✓ Checked in today · tap to undo' : '📍 Check in at the gym'; b.classList.toggle('btn-secondary', done); b.classList.toggle('btn-ghost', !done);
+  const n = gymVisitsThisWeek(); document.getElementById('gymCheckinCount').textContent = `${n} visit${n === 1 ? '' : 's'} this week`;
+}
+async function toggleGymCheckin() {
+  const t = todayStr(); gymVisits = gymVisits.includes(t) ? gymVisits.filter(d => d !== t) : gymVisits.concat(t).slice(-400);
+  renderGymCheckin(); try { renderGoalRing(); } catch (err) { /* ignore */ }
+  if (syncId) { try { await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { gymVisits }, { merge: true }); } catch (err) { console.error(err); } }
+}
+
 // ── OPEN GYM PASS ───────────────────────────────────────────────────────
 // The gym's own app holds the pass, and it publishes no link for opening it from another app. So this button runs a
 // tiny iPhone Shortcut (made once, named "Gym Pass") whose only action is Open App. Nothing about the pass itself is
@@ -19733,6 +19922,7 @@ function goalDaysSoFar() { // days this calendar week with a lift (plus a stretc
   const today = todayStr(), ws = lbWeekStart(today), days = new Set();
   entries.forEach(e => { if (e.date >= ws && e.date <= today && (e.ex || []).some(x => x.type === 'Strength')) days.add(e.date); });
   if (weeklyGoalStretch) recovery.sessions.forEach(x => { if (x.date >= ws && x.date <= today) days.add(x.date); });
+  if (weeklyGoalGym) gymVisits.forEach(d => { if (d >= ws && d <= today) days.add(d); });
   return days.size;
 }
 function renderGoalRing() {
@@ -19742,6 +19932,7 @@ function renderGoalRing() {
   document.getElementById('goalRingText').textContent = `${Math.min(n, 99)}/${weeklyGoal}`;
   document.getElementById('goalNum').textContent = `${weeklyGoal} a week`;
   document.getElementById('goalStretch').checked = weeklyGoalStretch;
+  document.getElementById('goalGym').checked = weeklyGoalGym;
   const left = weeklyGoal - n, daysLeft = 7 - ((new Date(lbParse(todayStr())).getDay() + 6) % 7);
   document.getElementById('goalMsg').textContent = left <= 0 ? 'Goal reached this week. Nice work.' : left === 1 ? '1 more to hit your goal' : `${left} more to hit your goal`;
   if (left > 0 && left > daysLeft) document.getElementById('goalMsg').textContent += ' (a stretch this week, no pressure)';
@@ -19750,11 +19941,12 @@ function renderGoalRing() {
 async function saveWeeklyGoal() {
   renderGoalRing();
   if (!syncId) return;
-  try { await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { weeklyGoal, weeklyGoalStretch }, { merge: true }); } catch (err) { console.error(err); }
+  try { await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { weeklyGoal, weeklyGoalStretch, weeklyGoalGym }, { merge: true }); } catch (err) { console.error(err); }
 }
 document.getElementById('goalMinus').addEventListener('click', () => { weeklyGoal = Math.max(1, weeklyGoal - 1); saveWeeklyGoal(); });
 document.getElementById('goalPlus').addEventListener('click', () => { weeklyGoal = Math.min(7, weeklyGoal + 1); saveWeeklyGoal(); });
 document.getElementById('goalStretch').addEventListener('change', e => { weeklyGoalStretch = !!e.target.checked; saveWeeklyGoal(); });
+document.getElementById('goalGym').addEventListener('change', e => { weeklyGoalGym = !!e.target.checked; saveWeeklyGoal(); });
 function homeHour() { return (typeof window !== 'undefined' && window.__homeHour != null) ? window.__homeHour : new Date().getHours(); }
 // One definition of "workouts this week" for all of Home: calendar week so far, days with a lifting session.
 function weekLiftDays() {
@@ -20005,6 +20197,7 @@ function showDoctorSummary() {
   const workouts30 = workoutsInLastDays(30);
   const streak = currentLoggingStreak();
   const medsList = medications.map(m => `${m.name} — ${m.dose}${m.frequency ? ', ' + m.frequency : ''}`);
+  const wtT = weightTrend(); const visitPlateauLine = wtT && wtT.stalled ? `<br>No new low (7-day average) in <strong>${wtT.weeksSinceBest} weeks</strong> (best ${r1(wtT.best.avg)} lbs around ${fmtDate(wtT.best.date)})` : '';
 
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -20017,7 +20210,7 @@ function showDoctorSummary() {
         <div style="font-size:14px;line-height:1.6;color:var(--ink)">
           Current: <strong>${currentWeight.toFixed(1)} lbs</strong><br>
           Baseline: ${baselineWeight} lbs · Goal: ${goalWeight} lbs<br>
-          Total change: <strong style="color:${totalLost >= 0 ? 'var(--in)' : 'var(--out)'}">${totalLost >= 0 ? '-' : '+'}${Math.abs(totalLost).toFixed(1)} lbs</strong> (${Math.round(pctToGoal)}% of goal)
+          Total change: <strong style="color:${totalLost >= 0 ? 'var(--in)' : 'var(--out)'}">${totalLost >= 0 ? '-' : '+'}${Math.abs(totalLost).toFixed(1)} lbs</strong> (${Math.round(pctToGoal)}% of goal)${visitPlateauLine}
         </div>
       </div>
       ${medsList.length ? `
@@ -20046,6 +20239,7 @@ function showDoctorSummary() {
       </div>
       <div style="display:flex;gap:8px">
         <button type="button" class="btn btn-primary" id="doctorSummaryPrintBtn" style="flex:1">Print / Save as PDF</button>
+        <button type="button" class="btn btn-ghost" id="doctorSummaryEmailBtn">Draft email</button>
         <button type="button" class="btn btn-ghost" id="doctorSummaryCloseBtn">Close</button>
       </div>
     </div>
@@ -20055,6 +20249,7 @@ function showDoctorSummary() {
     window.print();
   });
   document.getElementById('doctorSummaryCloseBtn').addEventListener('click', hideDoctorSummary);
+  document.getElementById('doctorSummaryEmailBtn').addEventListener('click', () => { hideDoctorSummary(); openDoctorEmail(); });
   backdrop.addEventListener('click', hideDoctorSummary, { once: true });
   backdrop.style.display = 'block';
   modal.style.display = 'block';
@@ -20068,6 +20263,7 @@ function hideDoctorSummary() {
 }
 window.addEventListener('afterprint', () => document.body.classList.remove('printing-doctor-summary'));
 document.getElementById('doctorSummaryBtn')?.addEventListener('click', showDoctorSummary);
+document.getElementById('doctorEmailBtn')?.addEventListener('click', () => openDoctorEmail());
 
 function showTrainerSummary() {
   const modal = document.getElementById('trainerSummaryModal');
