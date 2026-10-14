@@ -1037,6 +1037,9 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 .coach-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .coach-chip { flex: 1 1 100%; min-width: 0; text-align: left; font-size: 12px; font-weight: 700; padding: 8px 10px; border-radius: 10px; border: 1.5px dashed var(--line); background: transparent; color: var(--coral); cursor: pointer; line-height: 1.3; }
 .coach-chip.warmup-chip { color: var(--ink-soft); }
+.routine-use-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.routine-add-chip { border-style: dashed; color: var(--teal); font-weight: 800; }
+.routine-add-chip.disabled { opacity: 0.5; }
 .set-number-toggle.warmup { background: rgba(255,111,165,0.18); color: var(--coral); font-weight: 800; }
 .set-prev { flex: 1; min-width: 0; font-size: 11px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pr-proximity-hint { font-size: 11px; font-weight: 800; white-space: nowrap; flex-shrink: 0; color: var(--ink-soft); }
@@ -15690,7 +15693,14 @@ function adoptKeysFromBackup(settings) { // returns the settings WITHOUT any key
   return s;
 }
 
+// A row of the person's routines right under "Workout Plan": tap one to switch, or tap ＋ Add routine to build another.
+function routineStripHtml() {
+  const full = customRoutines.length >= RE_MAX_ROUTINES;
+  return `<div class="chip-row routine-strip" style="margin-bottom:6px">${customRoutines.map(r => `<div class="chip routine-use-chip${r.id === activeRoutineId ? ' on' : ''}" role="button" tabindex="0" data-routine-use="${r.id}" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>`).join('')}<div class="chip routine-add-chip${full ? ' disabled' : ''}" role="button" tabindex="0" data-routine-new="1"${full ? ' aria-disabled="true"' : ''}>＋ Add routine</div></div><div class="routine-add-msg" style="display:none;font-size:12px;color:var(--coral);font-weight:700;margin:0 0 10px">You already have ${RE_MAX_ROUTINES} routines. Open My routines below and delete one to add another.</div>`;
+}
 function wireRoutineButtons(root) {
+  (root || document).querySelectorAll('.routine-use-chip').forEach(c => { const go = () => { if (c.dataset.routineUse !== activeRoutineId) useRoutine(c.dataset.routineUse); }; c.addEventListener('click', go); c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }); });
+  (root || document).querySelectorAll('.routine-add-chip').forEach(c => { const go = () => { if (customRoutines.length >= RE_MAX_ROUTINES) { const m = c.closest('.routine-strip').nextElementSibling; if (m) m.style.display = ''; return; } openRoutineEditor('new'); }; c.addEventListener('click', go); c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }); });
   (root || document).querySelectorAll('.routine-edit-btn').forEach(b => b.addEventListener('click', () => { if (typeof openRoutineEditor === 'function') openRoutineEditor(); }));
   (root || document).querySelectorAll('.routine-manage-btn').forEach(b => b.addEventListener('click', () => { if (typeof openRoutineManager === 'function') openRoutineManager(); }));
 }
@@ -15966,6 +15976,7 @@ function renderWorkoutPlan() {
     const routine = activeRoutine();
     if ((!routine || !routine.days.length) && customRoutines.length) {
       box.innerHTML = `
+        ${routineStripHtml()}
         <div class="routine-empty">
           <div style="font-weight:800;margin-bottom:6px">Choose a routine</div>
           <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">You have ${customRoutines.length} saved. Pick the one to use.</div>
@@ -16008,6 +16019,7 @@ function renderWorkoutPlan() {
       }
     }
     headerHtml = `
+      ${routineStripHtml()}
       ${feelingCheckHtml}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">${escapeHtml(day.name)}</div>
