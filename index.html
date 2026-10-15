@@ -916,7 +916,7 @@ body {
   transition: all 0.15s;
 }
 body.mode-fitness .med-only, body.mode-fitness #injBanner, body.mode-fitness #printBtn, body.mode-fitness .inj-wrap, body.mode-fitness #quickDoseField, body.mode-fitness #doseDayBanner, body.mode-fitness #injSiteWrap, body.mode-fitness #logSubtabRow, body.mode-fitness #logSub-meds, body.mode-fitness #logSub-results { display: none !important; }
-body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data-view="food"], body.mode-exercise .full-only, body.mode-exercise #injBanner, body.mode-exercise #printBtn, body.mode-exercise #todayCard, body.mode-exercise #quickLogBtn, body.mode-exercise #quickLogFoodSection { display: none !important; }
+body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data-view="food"], body.mode-exercise .full-only, body.mode-exercise #injBanner, body.mode-exercise #printBtn, body.mode-exercise #todayCard, body.mode-exercise #quickLogBtn { display: none !important; }
 .chip.on { background: var(--teal); border-color: var(--teal); color: white; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 /* My Routine editor + library picker */
 .re-overlay { position: fixed; inset: 0; z-index: 1200; background: rgba(4,7,18,0.74); display: flex; align-items: flex-end; justify-content: center; }
@@ -1789,11 +1789,6 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
           <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="4.5" y="7" width="1.5" height="10" rx="0.5"/><rect x="18" y="7" width="1.5" height="10" rx="0.5"/></svg>
           <span style="font-size:11px;font-weight:700">Start Workout</span>
         </button>
-      </div>
-
-      <div class="full-only" id="quickLogFoodSection" style="display:none;margin-bottom:14px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-soft);margin-bottom:6px">Quick Log</div>
-        <div id="quickLogFoodRow" style="display:flex;gap:8px;overflow-x:auto"></div>
       </div>
 
       <div class="form-card home-extra-card" id="todayCard" data-card-key="todaySummary" style="margin-bottom:14px;display:none">
@@ -6694,9 +6689,9 @@ function computeWeightGoalETA(weightEntries) {
 }
 
 // Most frequently logged food descriptions in the last 30 days, with
-// their most recent macro values — surfaces genuine daily habits for
-// instant one-tap logging directly from Home, without requiring anyone
-// to have proactively favorited anything first. Requires at least 3
+// their most recent macro values — surfaces genuine daily habits in the
+// food picker without requiring anyone to have proactively favorited
+// anything first. Requires at least 3
 // occurrences so this reflects a real, repeated pattern rather than a
 // one-off meal that happened to get logged.
 function topFrequentFoods(limit) {
@@ -6718,28 +6713,6 @@ function topFrequentFoods(limit) {
     .map(c => c.latest);
 }
 
-function renderQuickLogFood() {
-  const section = document.getElementById('quickLogFoodSection');
-  const row = document.getElementById('quickLogFoodRow');
-  if (!section || !row) return;
-  const items = topFrequentFoods(6);
-  if (!items.length) { section.style.display = 'none'; return; }
-  section.style.display = '';
-  row.innerHTML = items.map((item, i) => `
-    <button type="button" class="btn btn-secondary btn-sm quick-log-food-btn" data-idx="${i}" style="flex-shrink:0;white-space:nowrap">${escapeHtml(item.desc)}</button>
-  `).join('');
-  row.querySelectorAll('.quick-log-food-btn').forEach(btn => {
-    btn.addEventListener('click', () => quickLogFrequentFood(items[Number(btn.dataset.idx)]));
-  });
-}
-
-async function quickLogFrequentFood(item) {
-  const date = todayStr();
-  const mt = defaultMealType();
-  const meal = { desc: item.desc, mt, protein: item.protein, cal: item.cal, carbs: item.carbs, fat: item.fat, ts: Date.now() };
-  await writeMeals(date, [...mealsForDate(date), meal]);
-}
-
 function updateStats() {
   const diff = daysSinceStart();
 
@@ -6747,7 +6720,6 @@ function updateStats() {
   try { renderTodayCard(); } catch (err) { console.error('Today card render failed:', err); }
   try { renderGoalRing(); } catch (err) { console.error('Goal ring render failed:', err); }
   try { renderGymCheckin(); renderWeightPlateau(); renderGlucoseTrend(); } catch (err) { console.error('Trend cards render failed:', err); }
-  try { renderQuickLogFood(); } catch (err) { console.error('Quick Log Food render failed:', err); }
 
   // Computed once here rather than per stat card below — each call
   // scans full history for several different streaks (see
