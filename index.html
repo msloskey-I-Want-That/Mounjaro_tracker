@@ -2133,16 +2133,6 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
       </div>
       <div id="addCardMenu" style="display:none"></div>
 
-      <div class="full-only med-only timeline-card" id="doseTimelineCard">
-        <div class="timeline-title">Dose Timeline</div>
-        <div class="timeline-row" id="timelineRow">
-          <div class="timeline-phase" id="tp1"><div class="ph-dose">2.5mg</div><div>Wk 1–4</div></div>
-          <div class="timeline-phase" id="tp2"><div class="ph-dose">5mg</div><div>Wk 5–8</div></div>
-          <div class="timeline-phase" id="tp3"><div class="ph-dose">10mg</div><div>Wk 9–12</div></div>
-          <div class="timeline-phase" id="tp4"><div class="ph-dose">15mg</div><div>Wk 13+</div></div>
-        </div>
-      </div>
-
       <div class="timeline-card home-extra-card" data-card-key="weightPlateau" id="weightPlateauCard">
         <div class="timeline-title">Weight check</div>
         <div id="wpText" style="font-size:14px;line-height:1.5"></div>
@@ -6572,7 +6562,6 @@ function renderAll() {
   try { renderRecoveryCard(); } catch (err) { /* card not built yet */ }
   updateHeader();
   updateStats();
-  updateTimeline();
   updateInjBanner();
   updateMilestone();
   renderMilestones();
@@ -7025,24 +7014,6 @@ function updateStats() {
 
   try { applyStatSections(); } catch (err) { console.error('Home sections failed:', err); }
   try { renderAchievementCelebrations(badgeCatsForHints); } catch (err) { console.error('Achievement celebration failed:', err); }
-}
-
-// ── TIMELINE ──
-function updateTimeline() {
-  const diff  = daysSinceStart();
-  const week  = diff < 0 ? 0 : Math.floor(diff / 7) + 1;
-  const phases = [
-    { id:'tp1', weeks:'1–4',  start:1,  end:4  },
-    { id:'tp2', weeks:'5–8',  start:5,  end:8  },
-    { id:'tp3', weeks:'9–12', start:9,  end:12 },
-    { id:'tp4', weeks:'13+',  start:13, end:999 }
-  ];
-  phases.forEach(p => {
-    const el = document.getElementById(p.id);
-    el.classList.remove('done','current');
-    if (week > p.end) el.classList.add('done');
-    else if (week >= p.start) el.classList.add('current');
-  });
 }
 
 // ── HISTORY ──
