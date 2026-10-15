@@ -1352,6 +1352,15 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 .variation-caption { font-size: 11px; font-weight: 700; color: var(--ink); margin: -3px 0 8px; }
 .set-field input::-webkit-outer-spin-button, .set-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .set-field input { -moz-appearance: textfield; appearance: textfield; }
+.ss-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #B79BE0; margin: 4px 4px 6px; }
+[data-theme="light"] .ss-tag { color: #6B4C94; }
+.workout-exercise-block.ss-a, .workout-exercise-block.ss-b { border-left: 6px solid #B79BE0 !important; }
+[data-theme="light"] .workout-exercise-block.ss-a, [data-theme="light"] .workout-exercise-block.ss-b { border-left-color: #7A5C9E !important; }
+.workout-exercise-block.ss-a { margin-bottom: 0 !important; border-bottom-left-radius: 4px !important; border-bottom-right-radius: 4px !important; }
+.workout-exercise-block.ss-b { margin-top: -2px; border-top-left-radius: 4px !important; border-top-right-radius: 4px !important; }
+.set-row.set-next-up { box-shadow: 0 0 0 2px #B79BE0; border-radius: 12px; }
+.set-next-badge { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; color: #B79BE0; margin-left: 6px; white-space: nowrap; }
+[data-theme="light"] .set-next-badge { color: #6B4C94; }
 .superset-label { color: #B79BE0; border-color: #7A5C9E; }
 .swap-label { color: #37C6FF; border-color: #37C6FF; }
 [data-theme="light"] .superset-label { color: #6B4C94; border-color: #7A5C9E; }
@@ -13069,6 +13078,27 @@ let exerciseOrderOverride = {}; // { planKey: [exerciseName, ...] } — synced s
 let supersetPairs = {}; // { planKey: { exName: partnerExName, partnerExName: exName } } — bidirectional, so either side of a pair looks the other up the same way
 let exerciseRestOverride = {}; // { exerciseName: seconds } — a rest duration adjusted via the +15/-15 timer buttons, remembered per exercise going forward; synced same as the fields above
 
+// A superset pair is shown as ONE unit: the partner is pulled up right behind its mate (render-time only, nothing is re-saved).
+function groupSupersetPartners(plan, planKey) {
+  const byName = new Map(plan.map(e => [e.name, e])), out = [], placed = new Set();
+  plan.forEach(ex => {
+    if (placed.has(ex.name)) return; out.push(ex); placed.add(ex.name);
+    const pn = supersetPartnerFor(planKey, ex.name);
+    if (pn && byName.has(pn) && !placed.has(pn)) { out.push(byName.get(pn)); placed.add(pn); }
+  });
+  return out;
+}
+// Which set of this exercise is "up next" in the A, B, A, B rhythm? -1 if it is not this exercise's turn (or no superset in progress).
+function supersetNextUp(planKey, exName, isFirst) {
+  const pn = supersetPartnerFor(planKey, exName); if (!pn) return -1;
+  const mine = workoutSessionState[exName], theirs = workoutSessionState[pn]; if (!mine || !theirs) return -1;
+  const doneMine = mine.filter(x => x.done).length, doneTheirs = theirs.filter(x => x.done).length;
+  if (doneMine + doneTheirs === 0) return -1; // not started yet: nothing to point at
+  const myIdx = mine.findIndex(x => !x.done), theirIdx = theirs.findIndex(x => !x.done);
+  if (myIdx === -1) return -1; if (theirIdx === -1) return myIdx;
+  const myTurn = doneMine < doneTheirs || (doneMine === doneTheirs && isFirst);
+  return myTurn ? myIdx : -1;
+}
 function supersetPartnerFor(planKey, exerciseName) {
   const dayPairs = supersetPairs[planKey];
   return dayPairs ? (dayPairs[exerciseName] || null) : null;
@@ -14194,7 +14224,7 @@ function toggleSetStopwatch(exerciseName, idx) {
   try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) {}
 }
 
-function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
+function renderSetRowHtml(exerciseName, idx, setData, prevData, accent, nextUp) {
   const mode = exerciseMode(exerciseName), hasWeight = mode === 'weighted' || mode === 'timedLoaded', isTimed = mode === 'timed' || mode === 'timedLoaded';
   const prevText = prevData ? `last ${fmtPrevSet(prevData)}${prevData.warmup ? ' (W)' : ''}` : 'no history yet';
   const numberDisplay = setData.warmup ? 'W' : (idx + 1);
@@ -14202,10 +14232,11 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent) {
   const isPR = !!(setData.done && setData.prBadge);
   const flash = isPR && lastPRSetKey === `${exerciseName}:${idx}`;
   return `
-    <div class="set-row${setData.done ? ' done' : ''}${hasWeight ? '' : ' no-weight'}${isPR ? ' set-pr' : ''}${flash ? ' set-pr-flash' : ''}" data-exercise="${exerciseName}" data-set-idx="${idx}" style="--accent:${accent || '#5CE6C0'}">
+    <div class="set-row${setData.done ? ' done' : ''}${hasWeight ? '' : ' no-weight'}${isPR ? ' set-pr' : ''}${flash ? ' set-pr-flash' : ''}${nextUp ? ' set-next-up' : ''}" data-exercise="${exerciseName}" data-set-idx="${idx}" style="--accent:${accent || '#5CE6C0'}">
       <div class="set-row-top">
         <button type="button" class="set-number-toggle${setData.warmup ? ' warmup' : ''}" title="Tap to mark as a warm-up set">${numberDisplay}</button>
         <span class="set-prev">${prevText}</span>
+        ${nextUp ? '<span class="set-next-badge">⚡ UP NEXT</span>' : ''}
         ${setData.warmup ? '' : '<span class="pr-proximity-hint" style="display:none"></span>'}
         ${isPR ? '<span class="set-pr-badge">🏆 NEW PR</span>' : ''}
         ${isTimed && !setData.done ? (() => { const run = setStopwatch && setStopwatch.exercise === exerciseName && setStopwatch.idx === idx; return `<button type="button" class="set-timer-btn${run ? ' running' : ''}" aria-label="${run ? 'Stop timer' : 'Start timer'}" title="${run ? 'Stop timer' : 'Start timer'}">${run ? '■ Stop' : '▶ Start'}</button>`; })() : ''}
@@ -14469,7 +14500,7 @@ function wireWorkoutPlanEvents() {
         // whichever exercise is currently zoomed in pops back out to the
         // full list automatically — showing what's done and what's left,
         // rather than guessing which exercise to jump to next.
-        if (zoomedExercise === exName && workoutSessionState[exName].every(s => s.done)) {
+        if ((zoomedExercise === exName || (partner && zoomedExercise === partner)) && [exName, partner].filter(Boolean).every(n => !workoutSessionState[n] || workoutSessionState[n].every(s => s.done))) {
           zoomedExercise = null; reorderingExercises = false;
         }
       } else {
@@ -16308,11 +16339,14 @@ function renderWorkoutPlan() {
   const skippedToday = plan.filter(ex => todaysSkips[ex.name]);
   if (skippedToday.length) plan = plan.filter(ex => !todaysSkips[ex.name]);
 
+  plan = groupSupersetPartners(plan, currentPlanKey());
   const isZoomed = zoomedExercise && plan.some(ex => ex.name === zoomedExercise);
-  const visiblePlan = isZoomed ? plan.filter(ex => ex.name === zoomedExercise) : plan;
+  // Zooming into one half of a superset brings its partner along: the two are one unit.
+  const zoomGroup = isZoomed ? (() => { const pn = supersetPartnerFor(currentPlanKey(), zoomedExercise); return pn && plan.some(ex => ex.name === pn) ? [zoomedExercise, pn] : [zoomedExercise]; })() : [];
+  const visiblePlan = isZoomed ? plan.filter(ex => zoomGroup.includes(ex.name)) : plan;
   const nextExercise = isZoomed ? (() => {
-    const currentIdx = plan.findIndex(ex => ex.name === zoomedExercise);
-    return currentIdx !== -1 && currentIdx < plan.length - 1 ? plan[currentIdx + 1] : null;
+    const lastIdx = Math.max(...zoomGroup.map(n => plan.findIndex(ex => ex.name === n)));
+    return lastIdx !== -1 && lastIdx < plan.length - 1 ? plan[lastIdx + 1] : null;
   })() : null;
   const backToListHtml = isZoomed ? `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px">
@@ -16354,6 +16388,9 @@ function renderWorkoutPlan() {
       const allDone = setState.length > 0 && doneCount === setState.length;
       const accent = workoutAccentColor(exIndex);
       const cardColor = allDone ? 'var(--sage)' : accent;
+      const ssPK = currentPlanKey(), ssPn = supersetPartnerFor(ssPK, ex.name), ssPi = ssPn ? visiblePlan.findIndex(p => p.name === ssPn) : -1;
+      const ssRole = ssPi === -1 ? '' : (ssPi > exIndex ? 'a' : 'b'); // 'a' = first of the pair, 'b' = second
+      const ssNextIdx = ssRole ? supersetNextUp(ssPK, ex.name, ssRole === 'a') : -1;
       if (reorderingExercises) {
         // Compact row: just the drag handle and name, sets/inputs hidden
         // — smaller cards mean less scrolling to see the whole list
@@ -16414,8 +16451,8 @@ function renderWorkoutPlan() {
       const collapsedSummary = isCollapsed ? `<div class="exercise-collapsed-summary">${doneCount}/${setState.length} sets${topDone ? ` · top ${topDone.weight} × ${topDone.reps}` : ''}${allDone ? ' ✓' : ''}</div>` : '';
       const collapseBtn = isZoomed ? '' : `<button type="button" class="exercise-collapse-btn" data-exercise="${ex.name}" aria-expanded="${!isCollapsed}" aria-label="${isCollapsed ? 'Expand' : 'Minimize'} ${ex.name}" title="${isCollapsed ? 'Expand' : 'Minimize'}"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${isCollapsed ? '<polyline points="6 9 12 15 18 9"/>' : '<polyline points="18 15 12 9 6 15"/>'}</svg></button>`;
       const segHtml = `<div class="progress-segs${setState.length > 7 ? ' many' : ''}" role="img" aria-label="${doneCount} of ${setState.length} sets done" title="${doneCount}/${setState.length} sets done" style="--seg-color:${cardColor}">${setState.map(s => `<span class="progress-seg${s.done ? ' on' : ''}"></span>`).join('')}</div>`;
-      return `
-      <div class="workout-exercise-block${allDone ? ' workout-exercise-done' : ''}" data-exercise="${ex.name}" style="margin-bottom:18px;padding:16px 16px 12px;border:2px solid ${cardColor};border-radius:16px;background:${allDone ? 'var(--success-tint)' : 'transparent'};box-shadow:${allDone ? '0 0 22px -4px var(--sage)' : 'none'};transition:box-shadow 0.3s ease">
+      return `${ssRole === 'a' ? `<div class="ss-tag">⚡ Superset · ${escapeHtml(ex.name)} + ${escapeHtml(ssPn)} · one set of each, then rest</div>` : ''}
+      <div class="workout-exercise-block${allDone ? ' workout-exercise-done' : ''}${ssRole ? ' ss-' + ssRole : ''}" data-exercise="${ex.name}" style="margin-bottom:18px;padding:16px 16px 12px;border:2px solid ${cardColor};border-radius:16px;background:${allDone ? 'var(--success-tint)' : 'transparent'};box-shadow:${allDone ? '0 0 22px -4px var(--sage)' : 'none'};transition:box-shadow 0.3s ease">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
           <div class="exercise-zoom-btn" data-exercise="${ex.name}" style="font-family:var(--font-text);font-weight:800;font-size:17px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 4px;margin:-8px 0">
             <span>${ex.name}</span>
@@ -16441,7 +16478,7 @@ function renderWorkoutPlan() {
         ${(showStep || warmOffer) ? `<div class="coach-chips">${showStep ? `<button type="button" class="coach-chip next-step-chip" data-exercise="${ex.name}" data-sets="${ex.sets}">⬆ ${nextStep.text}</button>` : ''}${warmOffer ? `<button type="button" class="coach-chip warmup-chip" data-exercise="${ex.name}">🔥 ${warmOffer.text}</button>` : ''}</div>` : ''}
         ${plateau ? `<div style="font-size:12px;color:#FFB020;font-weight:700;margin-bottom:8px">${plateau}</div>` : ''}
         <div class="set-rows-container" data-exercise-name="${ex.name}">
-          ${setState.map((s, i) => renderSetRowHtml(ex.name, i, s, prevSetAligned(setState, prevSets, i), accent)).join('')}
+          ${setState.map((s, i) => renderSetRowHtml(ex.name, i, s, prevSetAligned(setState, prevSets, i), accent, i === ssNextIdx)).join('')}
         </div>
         <div style="display:flex;gap:8px"><button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${ex.name}" style="flex:1;min-width:0;margin-top:2px;border-style:dashed;font-size:12px;padding:9px">+ Add set</button>${skipControl}</div>
         </div>
