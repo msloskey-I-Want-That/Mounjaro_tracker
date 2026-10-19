@@ -11841,12 +11841,16 @@ async function logExercise(type, min, dist, incline) {
     // nextPPLDay()/nextWorkoutDay() can advance from what was really
     // trained rather than a blind session count — see their own
     // comments for why that distinction matters.
-    if (workoutPlanMode === 'ppl' || workoutPlanMode === 'split' || (workoutPlanMode === 'custom' && customCurrentDay())) item.planDay = currentPlanKey();
+    // A quick (no-routine) workout is deliberately NOT stamped with a plan day: 'quick' is not a day of any plan, and Push/Pull/Legs
+    // treats an unknown day as "start again at Push", which would knock the person's cycle back.
+    if (!quickWorkoutOn() && (workoutPlanMode === 'ppl' || workoutPlanMode === 'split' || (workoutPlanMode === 'custom' && customCurrentDay()))) item.planDay = currentPlanKey();
   }
   await writeEx(date, [...exForDate(date), item]);
   if (type === 'Strength') {
     // Fresh start for next time — otherwise the checked-off sets from
     // this session would still show as "done" on the next workout.
+    const quickWasOn = quickWorkoutOn();
+    if (quickWasOn) { try { localStorage.removeItem(QUICK_LS); } catch (e) { /* ignore */ } clearQuickPlanData(); saveWorkoutPlanCustomizations().catch(err => console.error(err)); } // the quick workout is done: the next one starts empty
     workoutSessionState = {};
     workoutNotesState = {};
     workoutVariationState = {};
@@ -11858,6 +11862,7 @@ async function logExercise(type, min, dist, incline) {
     splitDayOverride = null;
     customDayOverride = null;
     zoomedExercise = null; reorderingExercises = false;
+    if (quickWasOn) renderWorkoutPlan(); // back to the normal plan screen
   }
   return { date, ts: item.ts };
 }
@@ -12293,8 +12298,9 @@ function renderQuickWalk() {
     document.getElementById('qwOpen').addEventListener('click', openQuickWalkView);
     if (!qwInterval) qwInterval = setInterval(qwTick, 1000); qwTick(); return;
   }
-  box.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px">${QW_TYPES.map(([t, i]) => `<button type="button" class="btn btn-secondary qw-start" data-type="${t}" style="flex:1 1 calc(50% - 8px);min-width:0;padding:14px 8px;font-weight:800;font-size:14px">${i} ${t}</button>`).join('')}</div>`;
+  box.innerHTML = `<button type="button" class="btn btn-primary qw-lift" style="width:100%;margin-bottom:8px;padding:14px;font-weight:800;font-size:14px">🏋️ Quick workout (no routine)</button><div style="display:flex;flex-wrap:wrap;gap:8px">${QW_TYPES.map(([t, i]) => `<button type="button" class="btn btn-secondary qw-start" data-type="${t}" style="flex:1 1 calc(50% - 8px);min-width:0;padding:14px 8px;font-weight:800;font-size:14px">${i} ${t}</button>`).join('')}</div>`;
   box.querySelectorAll('.qw-start').forEach(b => b.addEventListener('click', () => startQuickWalk(b.dataset.type)));
+  const lift = box.querySelector('.qw-lift'); if (lift) lift.addEventListener('click', startQuickWorkout);
 }
 function openQuickWalkView() {
   document.getElementById('qwType').textContent = localStorage.getItem('mounjaro-ex-timer-type') || 'Walk';
@@ -15859,9 +15865,11 @@ function adoptKeysFromBackup(settings) { // returns the settings WITHOUT any key
 // A row of the person's routines right under "Workout Plan": tap one to switch, or tap ＋ Add routine to build another.
 function routineStripHtml() {
   const full = customRoutines.length >= RE_MAX_ROUTINES;
-  return `<div class="chip-row routine-strip" style="margin-bottom:6px">${customRoutines.map(r => `<div class="chip routine-use-chip${r.id === activeRoutineId ? ' on' : ''}" role="button" tabindex="0" data-routine-use="${r.id}" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>`).join('')}<div class="chip routine-add-chip${full ? ' disabled' : ''}" role="button" tabindex="0" data-routine-new="1"${full ? ' aria-disabled="true"' : ''}>＋ Add routine</div></div><div class="routine-add-msg" style="display:none;font-size:12px;color:var(--coral);font-weight:700;margin:0 0 10px">You already have ${RE_MAX_ROUTINES} routines. Open My routines below and delete one to add another.</div>`;
+  return `<div class="chip-row routine-strip" style="margin-bottom:6px">${customRoutines.map(r => `<div class="chip routine-use-chip${r.id === activeRoutineId ? ' on' : ''}" role="button" tabindex="0" data-routine-use="${r.id}" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>`).join('')}<div class="chip routine-add-chip${full ? ' disabled' : ''}" role="button" tabindex="0" data-routine-new="1"${full ? ' aria-disabled="true"' : ''}>＋ Add routine</div><div class="chip quick-start-chip" role="button" tabindex="0">⚡ Quick workout</div></div><div class="routine-add-msg" style="display:none;font-size:12px;color:var(--coral);font-weight:700;margin:0 0 10px">You already have ${RE_MAX_ROUTINES} routines. Open My routines below and delete one to add another.</div>`;
 }
 function wireRoutineButtons(root) {
+  (root || document).querySelectorAll('.quick-start-btn, .quick-start-chip').forEach(c => { c.addEventListener('click', startQuickWorkout); c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startQuickWorkout(); } }); });
+  (root || document).querySelectorAll('.quick-end-btn').forEach(c => c.addEventListener('click', () => endQuickWorkout(true)));
   (root || document).querySelectorAll('.routine-use-chip').forEach(c => { const go = () => { if (c.dataset.routineUse !== activeRoutineId) useRoutine(c.dataset.routineUse); }; c.addEventListener('click', go); c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }); });
   (root || document).querySelectorAll('.routine-add-chip').forEach(c => { const go = () => { if (customRoutines.length >= RE_MAX_ROUTINES) { const m = c.closest('.routine-strip').nextElementSibling; if (m) m.style.display = ''; return; } openRoutineEditor('new'); }; c.addEventListener('click', go); c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }); });
   (root || document).querySelectorAll('.routine-edit-btn').forEach(b => b.addEventListener('click', () => { if (typeof openRoutineEditor === 'function') openRoutineEditor(); }));
@@ -15870,7 +15878,40 @@ function wireRoutineButtons(root) {
 
 { const _b = document.getElementById('setupRoutineBtn'); if (_b) _b.addEventListener('click', () => openRoutineManager()); }
 
+// ── QUICK WORKOUT: a one-off session with no routine ──────────────────────────
+// Add exercises as you go. It is not part of any routine, so it never moves a routine's day forward. It lasts for
+// today, and ends when the workout is logged (or when you end it). The day's exercise list is kept under the
+// plan key 'quick' and wiped at the start and the end, so every quick workout begins empty.
+const QUICK_KEY = 'quick', QUICK_LS = 'fit-quick-workout';
+function quickWorkoutOn() { try { return localStorage.getItem(QUICK_LS) === todayStr(); } catch (e) { return false; } }
+function clearQuickPlanData() {
+  customWorkoutExercises[QUICK_KEY] = []; hiddenWorkoutExercises[QUICK_KEY] = [];
+  delete exerciseOrderOverride[QUICK_KEY]; delete supersetPairs[QUICK_KEY]; delete exerciseRestOverride[QUICK_KEY];
+}
+async function startQuickWorkout() {
+  if (quickWorkoutOn()) { revealWorkoutPlan(); return; }
+  if (!confirmDiscardWorkoutProgress()) return;
+  resetWorkoutScreenState(); clearQuickPlanData();
+  try { localStorage.setItem(QUICK_LS, todayStr()); } catch (e) { /* storage unavailable */ }
+  renderWorkoutPlan(); if (typeof updateStats === 'function') updateStats();
+  revealWorkoutPlan();
+  try { await saveWorkoutPlanCustomizations(); } catch (err) { console.error(err); }
+}
+function endQuickWorkout(ask) {
+  if (ask && !confirmDiscardWorkoutProgress()) return;
+  try { localStorage.removeItem(QUICK_LS); } catch (e) { /* ignore */ }
+  resetWorkoutScreenState(); clearQuickPlanData();
+  renderWorkoutPlan(); if (typeof updateStats === 'function') updateStats();
+  if (syncId) saveWorkoutPlanCustomizations().catch(err => console.error(err));
+}
+function revealWorkoutPlan() { // open the Workout Plan card (it is collapsed by default) and bring it into view
+  const card = document.getElementById('workoutPlanCard'); if (!card) return;
+  const content = document.getElementById('workoutPlanCardContent'), title = card.querySelector('.form-section-title');
+  if (content && content.style.display === 'none' && title) title.click();
+  try { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* ignore */ }
+}
 function currentPlanKey() {
+  if (quickWorkoutOn()) return QUICK_KEY;
   if (workoutPlanMode === 'fullbody') return 'fullbody';
   if (workoutPlanMode === 'custom') return customPlanKey();
   if (workoutPlanMode === 'ppl') return pplDayOverride || nextPPLDay();
@@ -15881,6 +15922,7 @@ function currentPlanKey() {
 // stat card — reuses the exact same resolution logic (including any
 // active PPL override) so the two never disagree.
 function currentPlanDisplayName() {
+  if (quickWorkoutOn()) return 'Quick workout';
   const key = currentPlanKey();
   if (workoutPlanMode === 'custom') { const d = customCurrentDay(); return d ? d.name : 'My Routine'; }
   if (key === 'fullbody') return 'Full Body';
@@ -16035,7 +16077,7 @@ function renderWorkoutPlan() {
 
   const titleEl = document.getElementById('workoutPlanTitle');
   if (titleEl) {
-    const modeLabel = workoutPlanMode === 'fullbody' ? 'Full Body'
+    const modeLabel = quickWorkoutOn() ? 'Quick workout' : workoutPlanMode === 'fullbody' ? 'Full Body'
       : workoutPlanMode === 'ppl' ? 'PPL'
       : workoutPlanMode === 'custom' ? (activeRoutine() ? activeRoutine().name : 'My Routine')
       : 'Upper/Lower';
@@ -16051,7 +16093,17 @@ function renderWorkoutPlan() {
   }
 
   let headerHtml, plan, footerHtml;
-  if (workoutPlanMode === 'fullbody') {
+  if (quickWorkoutOn()) {
+    plan = [];
+    const hasAny = (customWorkoutExercises[QUICK_KEY] || []).some(e => !(hiddenWorkoutExercises[QUICK_KEY] || []).includes(e.name));
+    headerHtml = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">⚡ Quick workout</div>
+        <div style="font-size:11px;color:var(--ink-soft)">not part of a routine</div>
+      </div>
+      ${hasAny ? '' : `<div class="quick-empty-hint" style="font-size:13px;color:var(--ink-soft);margin-bottom:12px">Add the exercises as you go. Tap <b>+ Add Exercise</b> below and pick from the library, or type your own.</div>`}`;
+    footerHtml = `Check off each set as you finish it. A rest timer starts automatically. Log it as <b>Strength</b> below (or use the timer) when you are done. Changed your mind? <button type="button" class="routine-edit-link quick-end-btn">End quick workout</button>`;
+  } else if (workoutPlanMode === 'fullbody') {
     plan = WORKOUT_PLAN_FULLBODY;
 
     const daysSince = daysSinceLastWorkout();
@@ -16151,6 +16203,9 @@ function renderWorkoutPlan() {
     if (!routine || !routine.days.length) {
       box.innerHTML = `
         <div class="routine-empty">
+          <button type="button" class="btn btn-primary btn-sm quick-start-btn" style="width:100%;margin-bottom:6px">⚡ Start a quick workout</button>
+          <div style="font-size:12px;color:var(--ink-soft);margin-bottom:12px">No routine today? Add exercises as you go. Nothing to set up first.</div>
+          <div style="text-align:center;font-size:11px;color:var(--ink-soft);margin:2px 0 8px">— or —</div>
           <div style="font-weight:800;margin-bottom:6px">Build your own routine</div>
           <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">Choose your training days and pick each day's exercises from the library. Every workout you log moves you on to the next day automatically.</div>
           <button type="button" class="btn btn-primary btn-sm routine-edit-btn" style="width:100%">Set up my routine</button>
@@ -16932,7 +16987,11 @@ document.getElementById('quickWeightBtn').addEventListener('click', () => openQu
 document.getElementById('quickWorkoutBtn').addEventListener('click', () => {
   showView('exercise');
   const startBtn = document.getElementById('startPlanBtn');
-  if (startBtn) startBtn.click();
+  if (startBtn) { startBtn.click(); return; }
+  // No "Start this workout" button means there is no routine day to start. Don't leave the person on a silent screen:
+  if (workoutStartedAt || quickWorkoutOn()) revealWorkoutPlan();                              // a workout is already running: show it
+  else if (workoutPlanMode === 'custom' && customRoutines.length && !activeRoutine()) revealWorkoutPlan(); // routines saved but none chosen: show the chooser
+  else startQuickWorkout();                                                                    // no routine at all: begin a one-off workout
 });
 document.getElementById('water16Btn').addEventListener('click', () => adjustWater(16));
 document.getElementById('waterMinusBtn').addEventListener('click', () => adjustWater(-8));
