@@ -12866,6 +12866,7 @@ function daysSinceLastExercise() {
 // otherwise an unrelated re-render would silently wipe out whatever had
 // already been checked off.
 let workoutSessionState = {}; // { exerciseName: [{weight, reps, done, checkedAt}, ...] }
+const workoutSetsTrimmed = new Set(); // exercises where the person removed a set this session: never top them back up to the plan's set count
 let workoutNotesState = {}; // { exerciseName: 'note text' } - cleared on the same resets as workoutSessionState
 let workoutVariationState = {}; // { exerciseName: 'optionKey' } - cleared on the same resets as workoutSessionState
 // Exercises where grip/handle/foot position meaningfully shifts which
@@ -13087,6 +13088,7 @@ function parseSetCount(setsStr) {
 
 function getOrInitSetState(exerciseName, setCount, setsTarget) {
   if (!workoutSessionState[exerciseName]) {
+    workoutSetsTrimmed.delete(exerciseName); // a fresh session for this exercise starts at the plan's full set count
     const prev = previousSetsFor(exerciseName);
     const rawSuggestion = setsTarget ? suggestedSetValues(exerciseName, setsTarget) : null;
     const suggestion = rawSuggestion && rawSuggestion.holding ? rawSuggestion : null; // a weight increase is only OFFERED (tappable chip), never pre-filled
@@ -13103,7 +13105,8 @@ function getOrInitSetState(exerciseName, setCount, setsTarget) {
       return { weight, reps, done: false, warmup: false };
     });
   }
-  while (workoutSessionState[exerciseName].length < setCount) {
+  // Top up to the plan's set count only if the person has not deliberately removed a set (otherwise 3 x 10-12 could never become 2 sets)
+  if (!workoutSetsTrimmed.has(exerciseName)) while (workoutSessionState[exerciseName].length < setCount) {
     workoutSessionState[exerciseName].push({ weight: '', reps: '', done: false, warmup: false });
   }
   return workoutSessionState[exerciseName];
@@ -14212,6 +14215,7 @@ async function removeWorkoutSet(exerciseName, idx) {
   if (!sets || !sets[idx]) return;
   const removed = sets[idx];
   workoutSessionState[exerciseName] = sets.filter((_, i) => i !== idx);
+  workoutSetsTrimmed.add(exerciseName);
   // Sets are addressed by position, so removing one slides the later ones up
   // a slot — the rest bar (and the auto-focus target) have to follow the set
   // they belong to, not stay on the index, or they'd jump to its neighbor.
@@ -20650,7 +20654,7 @@ function persistWorkoutDraft() {
     if (!_draftCreatedAt) _draftCreatedAt = Date.now();
     const draft = { v: 1, createdAt: _draftCreatedAt, savedAt: Date.now(), startedAt: workoutStartedAt,
       sessions: workoutSessionState, notes: workoutNotesState, variations: workoutVariationState, swaps: todaysSwaps, skips: todaysSkips,
-      pplDay: pplDayOverride, splitDay: splitDayOverride };
+      pplDay: pplDayOverride, splitDay: splitDayOverride, trimmed: [...workoutSetsTrimmed] };
     const sig = JSON.stringify({ ...draft, savedAt: 0 }); // so an idle session doesn't rewrite storage every tick
     if (sig === _lastDraftSig) return;
     localStorage.setItem(WORKOUT_DRAFT_KEY, JSON.stringify(draft));
@@ -20699,6 +20703,7 @@ function restoreWorkoutDraft() {
   const alreadySaved = entries.some(e => (e.ex || []).some(x => x.type === 'Strength' && x.ts >= (draft.createdAt || 0)));
   if (tooOld || alreadySaved) { clearWorkoutDraft(); return; }
   workoutSessionState = draft.sessions || {};
+  workoutSetsTrimmed.clear(); (Array.isArray(draft.trimmed) ? draft.trimmed : []).forEach(n => { if (typeof n === 'string') workoutSetsTrimmed.add(n); });
   workoutNotesState = draft.notes || {};
   workoutVariationState = draft.variations || {};
   todaysSwaps = draft.swaps || {};
