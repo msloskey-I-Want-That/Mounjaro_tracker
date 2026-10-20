@@ -1074,6 +1074,7 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
   border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
   font-size: 12px; font-weight: 800; cursor: pointer; touch-action: manipulation; white-space: nowrap;
 }
+@media (max-width: 380px) { #stbTime { font-size: 100px !important; } }
 .set-timer-btn.running { background: var(--coral); border-color: var(--coral); color: #0d0d0f; }
 .set-check-btn {
   width: 44px; height: 40px; flex-shrink: 0; border-radius: 12px;
@@ -1651,6 +1652,14 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 <div id="routineEditor" class="re-overlay" style="display:none"></div>
 <div id="routineShare" class="re-overlay" style="display:none"></div>
 <div id="gymPassSheet" class="re-overlay" style="display:none"></div>
+<div id="setTimerBig" role="dialog" aria-modal="true" aria-label="Set timer" style="display:none;position:fixed;inset:0;z-index:1850;background:var(--bg,#14102a);color:var(--ink);flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:max(24px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom));text-align:center">
+  <div id="stbLabel" style="font-size:16px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-soft)"></div>
+  <div id="stbTime" aria-live="off" style="font-family:var(--font-num);font-weight:800;line-height:1;font-size:132px">0</div>
+  <div id="stbUnit" style="font-size:15px;font-weight:700;color:var(--ink-soft);margin-top:-6px">seconds</div>
+  <div id="stbGoal" style="font-size:16px;font-weight:800;min-height:22px"></div>
+  <button type="button" class="btn btn-primary" id="stbStop" style="width:100%;max-width:340px;padding:24px;font-size:22px;font-weight:800;margin-top:10px">■ STOP</button>
+  <button type="button" class="btn btn-ghost btn-sm" id="stbHide">Hide (timer keeps running)</button>
+</div>
 <div id="doctorEmailSheet" class="re-overlay" style="display:none"></div>
 <div id="gymPassView" role="dialog" aria-modal="true" aria-label="Gym pass" style="display:none;position:fixed;inset:0;z-index:1900;background:#fff;color:#111;flex-direction:column;align-items:center;padding:max(12px,env(safe-area-inset-top)) 12px max(14px,env(safe-area-inset-bottom));overflow:auto">
   <img id="gymPassImgEl" alt="Gym pass" style="width:100%;max-width:520px;height:auto;margin:auto 0 0">
@@ -12267,6 +12276,8 @@ function gymSaveLink() {
   const btn = document.getElementById('gymPassBtn'), edit = document.getElementById('gymPassEditBtn'), sheet = document.getElementById('gymPassSheet'); if (!btn) return;
   btn.addEventListener('click', openGymPass); edit.addEventListener('click', openGymSheet);
   document.getElementById('gymPassCloseBtn').addEventListener('click', closeGymPassView);
+  document.getElementById('stbStop').addEventListener('click', () => stopSetStopwatch());
+  document.getElementById('stbHide').addEventListener('click', () => { if (setStopwatch) setStopwatch.hidden = true; bigTimerClose(); });
   document.getElementById('gymPassAppBtn').addEventListener('click', () => { closeGymPassView(); gymGo(gymLink()); });
   sheet.addEventListener('click', e => {
     const b = e.target.closest('[data-gp]'); if (!b) return; const a = b.dataset.gp;
@@ -14146,6 +14157,22 @@ function wireCollapseControls() {
 // Stopwatch for timed sets (farmers carry, plank, dead hang...): tap ▶, carry,
 // tap ■ and the seconds are filled in. Session-only; one runs at a time.
 let setStopwatch = null; // { exercise, idx, startedAt, tick }
+// A big, easy-to-read timer for the set that is running (farmers carry, plank, dead hang...): glance at it from across the room.
+function stbFormat(secs) { return secs < 60 ? String(secs) : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`; }
+function stbTarget(exerciseName) { // the goal written on the exercise's own card, else the plan's
+  try { const blk = [...document.querySelectorAll('.workout-exercise-block')].find(b => b.dataset.exercise === exerciseName); return timedTargetRange((blk && blk.dataset.sets) || planTargetTextFor(exerciseName)); } catch (e) { return null; } }
+function bigTimerClose() { const el = document.getElementById('setTimerBig'); if (el) el.style.display = 'none'; }
+function bigTimerPaint(sw) {
+  const el = document.getElementById('setTimerBig'); if (!el || sw.hidden) return;
+  const secs = Math.max(0, Math.round((Date.now() - sw.startedAt) / 1000)), tg = stbTarget(sw.exercise);
+  if (el.style.display !== 'flex') { el.style.display = 'flex'; document.getElementById('stbLabel').textContent = `${sw.exercise} · set ${sw.idx + 1}`; }
+  document.getElementById('stbTime').textContent = stbFormat(secs);
+  document.getElementById('stbUnit').textContent = secs < 60 ? 'seconds' : 'minutes : seconds';
+  const goal = document.getElementById('stbGoal'), reached = tg && secs >= tg.min, over = tg && secs > tg.max;
+  goal.textContent = tg ? (over ? `Past your goal (${tg.min}–${tg.max} sec)` : reached ? `Goal reached (${tg.min}–${tg.max} sec)` : `Goal: ${tg.min}${tg.max !== tg.min ? '–' + tg.max : ''} sec`) : '';
+  goal.style.color = reached ? 'var(--teal)' : 'var(--ink-soft)'; document.getElementById('stbTime').style.color = reached ? 'var(--teal)' : 'var(--ink)';
+  if (reached && !sw.hitMin) { sw.hitMin = true; try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) { /* not available */ } }
+}
 function stopwatchRow(sw) { return [...document.querySelectorAll('.set-row')].find(r => r.dataset.exercise === sw.exercise && Number(r.dataset.setIdx) === sw.idx) || null; }
 function stopwatchPaint(sw, running) {
   const row = stopwatchRow(sw); if (!row) return false;
@@ -14154,9 +14181,11 @@ function stopwatchPaint(sw, running) {
   if (workoutSessionState[sw.exercise] && workoutSessionState[sw.exercise][sw.idx]) workoutSessionState[sw.exercise][sw.idx].reps = String(secs);
   if (input) input.value = secs;
   if (btn) { btn.classList.toggle('running', running); btn.textContent = running ? '■ Stop' : '▶ Start'; btn.setAttribute('aria-label', running ? 'Stop timer' : 'Start timer'); }
+  if (running) bigTimerPaint(sw); else bigTimerClose();
   return true;
 }
 function stopSetStopwatch() {
+  bigTimerClose();
   if (!setStopwatch) return;
   const sw = setStopwatch; setStopwatch = null; clearInterval(sw.tick);
   stopwatchPaint(sw, false);
@@ -14170,7 +14199,7 @@ function toggleSetStopwatch(exerciseName, idx) {
   stopwatchPaint(sw, true);
   sw.tick = setInterval(() => {
     const row = stopwatchRow(sw);
-    if (setStopwatch !== sw || !row || row.classList.contains('done')) { if (setStopwatch === sw) { setStopwatch = null; } clearInterval(sw.tick); return; }
+    if (setStopwatch !== sw || !row || row.classList.contains('done')) { if (setStopwatch === sw) { setStopwatch = null; } clearInterval(sw.tick); bigTimerClose(); return; }
     stopwatchPaint(sw, true);
   }, 250);
   try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) {}
@@ -16454,7 +16483,7 @@ function renderWorkoutPlan() {
       const collapseBtn = isZoomed ? '' : `<button type="button" class="exercise-collapse-btn" data-exercise="${ex.name}" aria-expanded="${!isCollapsed}" aria-label="${isCollapsed ? 'Expand' : 'Minimize'} ${ex.name}" title="${isCollapsed ? 'Expand' : 'Minimize'}"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${isCollapsed ? '<polyline points="6 9 12 15 18 9"/>' : '<polyline points="18 15 12 9 6 15"/>'}</svg></button>`;
       const segHtml = `<div class="progress-segs${setState.length > 7 ? ' many' : ''}" role="img" aria-label="${doneCount} of ${setState.length} sets done" title="${doneCount}/${setState.length} sets done" style="--seg-color:${cardColor}">${setState.map(s => `<span class="progress-seg${s.done ? ' on' : ''}"></span>`).join('')}</div>`;
       return `${ssRole === 'a' ? `<div class="ss-tag">⚡ Superset · ${escapeHtml(ex.name)} + ${escapeHtml(ssPn)} · one set of each, then rest</div>` : ''}
-      <div class="workout-exercise-block${allDone ? ' workout-exercise-done' : ''}${ssRole ? ' ss-' + ssRole : ''}" data-exercise="${ex.name}" style="margin-bottom:18px;padding:16px 16px 12px;border:2px solid ${cardColor};border-radius:16px;background:${allDone ? 'var(--success-tint)' : 'transparent'};box-shadow:${allDone ? '0 0 22px -4px var(--sage)' : 'none'};transition:box-shadow 0.3s ease">
+      <div class="workout-exercise-block${allDone ? ' workout-exercise-done' : ''}${ssRole ? ' ss-' + ssRole : ''}" data-exercise="${ex.name}" data-sets="${escapeHtml(String(ex.sets || ''))}" style="margin-bottom:18px;padding:16px 16px 12px;border:2px solid ${cardColor};border-radius:16px;background:${allDone ? 'var(--success-tint)' : 'transparent'};box-shadow:${allDone ? '0 0 22px -4px var(--sage)' : 'none'};transition:box-shadow 0.3s ease">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
           <div class="exercise-zoom-btn" data-exercise="${ex.name}" style="font-family:var(--font-text);font-weight:800;font-size:17px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 4px;margin:-8px 0">
             <span>${ex.name}</span>
