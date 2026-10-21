@@ -16611,11 +16611,12 @@ function renderWorkoutPlan() {
       setExType('Strength');
       const auto = computeAutoWorkoutDuration();
       const elapsed = workoutStartedAt ? Math.max(1, Math.round((Date.now() - workoutStartedAt) / 60000)) : null;
-      const minutes = auto || elapsed;
-      if (minutes) {
-        const minInput = document.getElementById('exMin');
-        if (minInput) { minInput.value = minutes; lastAutoFilledMin = minutes; }
-      }
+      // Minutes the person typed themselves always win. Without this, someone entering a finished workout afterwards (all sets checked within a
+      // minute of each other) had their typed "60" overwritten by the clock's "1".
+      const minInput = document.getElementById('exMin');
+      const typedMin = minInput && minInput.value !== '' && minInput.value !== String(lastAutoFilledMin) ? parseInt(minInput.value, 10) : null;
+      const minutes = typedMin > 0 ? typedMin : (auto || elapsed);
+      if (minutes && minInput && !(typedMin > 0)) { minInput.value = minutes; lastAutoFilledMin = minutes; }
       workoutStartedAt = null; setWorkoutFullscreen(false); collapsedExercises.clear();
       if (window.__checkPendingServiceWorkerReload) window.__checkPendingServiceWorkerReload();
       stopWorkoutTimer();
