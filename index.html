@@ -13553,7 +13553,16 @@ function nextStepFor(exerciseName, setsTarget) {
       let secs = range.min, why = `Aim for ${range.min}s a set`;
       if (last) {
         const best = Math.max(...last.map(x => x.secs));
-        if (last.every(x => x.secs >= range.max)) { secs = best + 5; why = `Every set reached ${range.max}s last time. Try ${secs}s`; }
+        if (mode === 'timedLoaded' && last.every(x => x.secs >= range.max)) {
+          // A loaded carry that is already past its target time: the next step is more weight, back at the start of the time range.
+          const lw = Math.max(...last.map(x => x.weight || 0));
+          if (lw > 0) {
+            if (lastEffortFor(exerciseName) === 5 || detectDeloadNeeded()) return null; // a reason to hold, not push (same rule as weighted lifts)
+            const weight = lw + (lw >= 100 ? 10 : 5);
+            return { kind: 'weight', weight, reps: range.min, text: `Every set reached at least ${range.max}s at ${lw} lb (best ${best}s). Try ${weight} lb for ${range.min}${range.max !== range.min ? '–' + range.max : ''}s · tap to use` };
+          }
+        }
+        if (last.every(x => x.secs >= range.max)) { secs = best + 5; why = `Every set reached at least ${range.max}s last time (best ${best}s). Try ${secs}s`; }
         else { secs = Math.min(Math.max(best, range.min), range.max); why = `Last best ${best}s. Aim for ${secs}s a set`; }
       }
       return { kind: 'secs', secs, text: `${why} · tap to use` };
