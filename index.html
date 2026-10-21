@@ -12276,7 +12276,15 @@ function gymSaveLink() {
   const btn = document.getElementById('gymPassBtn'), edit = document.getElementById('gymPassEditBtn'), sheet = document.getElementById('gymPassSheet'); if (!btn) return;
   btn.addEventListener('click', openGymPass); edit.addEventListener('click', openGymSheet);
   document.getElementById('gymPassCloseBtn').addEventListener('click', closeGymPassView);
-  document.getElementById('stbStop').addEventListener('click', () => stopSetStopwatch());
+  document.getElementById('stbStop').addEventListener('click', () => {
+    // The big STOP means "I'm finished with this set": record the seconds AND check the set off, exactly as tapping its check button would
+    // (PR check, rest timer, next exercise). The small Stop on the row still only fills in the seconds.
+    const sw = setStopwatch, ex = sw && sw.exercise, idx = sw && sw.idx;
+    stopSetStopwatch();
+    if (!sw) return;
+    const st = workoutSessionState[ex] && workoutSessionState[ex][idx], row = stopwatchRow({ exercise: ex, idx });
+    if (st && !st.done && row) { const chk = row.querySelector('.set-check-btn'); if (chk) chk.click(); }
+  });
   document.getElementById('stbHide').addEventListener('click', () => { if (setStopwatch) setStopwatch.hidden = true; bigTimerClose(); });
   document.getElementById('gymPassAppBtn').addEventListener('click', () => { closeGymPassView(); gymGo(gymLink()); });
   sheet.addEventListener('click', e => {
