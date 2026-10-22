@@ -3841,6 +3841,33 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
           </div>
           <div class="settings-row">
             <div>
+              <div class="settings-row-label">Daily Calorie Goal</div>
+              <div class="settings-row-sub">Type your own number, or leave blank to use the calculated one. <span id="setCalGoalNote" style="display:none;color:var(--coral);font-weight:700">Under 1,200 a day is usually only done with a doctor's guidance.</span></div>
+            </div>
+            <input type="number" inputmode="numeric" id="setCalGoal" placeholder="Auto" min="1000" max="6000"
+              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right;font-weight:700">
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Daily Carb Goal (g)</div>
+              <div class="settings-row-sub">Blank = whatever is left after protein and fat</div>
+            </div>
+            <input type="number" inputmode="numeric" id="setCarbGoal" placeholder="Auto" min="1" max="800"
+              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right;font-weight:700">
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Daily Fat Goal (g)</div>
+              <div class="settings-row-sub">Blank = 30% of your calories</div>
+            </div>
+            <input type="number" inputmode="numeric" id="setFatGoal" placeholder="Auto" min="10" max="300"
+              style="width:90px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:14px;background:var(--input-bg);color:var(--teal);text-align:right;font-weight:700">
+          </div>
+          <div class="settings-row" style="padding-top:0">
+            <div class="settings-row-sub" id="macroGoalAutoNote"></div>
+          </div>
+          <div class="settings-row">
+            <div>
               <div class="settings-row-label">Weigh-in day</div>
               <div class="settings-row-sub">The weight box shows in Quick Log on this day (a link adds it any other day)</div>
             </div>
@@ -4437,6 +4464,7 @@ let userActivityLevel = 'moderate';
 let userLossRate = 1;        // lbs/week
 let weighInDay = 'any';       // 'any' or a weekday number '0'-'6' (Sun-Sat): the day the weight box shows in Quick Log
 let userProteinGoal = 100;   // grams/day — default 100; changeable in Settings
+let calGoalOverride = 0, carbGoalOverride = 0, fatGoalOverride = 0; // typed-in daily goals; 0 = use the calculated number
 let workoutPlanMode = 'split'; // 'split' (Day A/B alternating), 'fullbody' (one list every session), 'ppl' (Push/Pull/Legs, 3-day rotation), or 'custom' (My Routine)
 let customRoutines = [];      // My Routine: [{ id, name, days: [{ id, name, exercises: [{ name, sets }] }] }] — saved in the person's own settings
 let activeRoutineId = null;
@@ -6466,6 +6494,9 @@ function startListening() {
       if (s.lossRate)               userLossRate   = parseFloat(s.lossRate) || 1;
       if (s.weighInDay != null)     weighInDay = String(s.weighInDay);
       if (s.proteinGoal)            userProteinGoal = (parseInt(s.proteinGoal) >= 30 && parseInt(s.proteinGoal) <= 300) ? parseInt(s.proteinGoal) : 100;
+      if (s.calGoal != null)        calGoalOverride  = (parseInt(s.calGoal) >= 1000 && parseInt(s.calGoal) <= 6000) ? parseInt(s.calGoal) : 0;
+      if (s.carbGoal != null)       carbGoalOverride = (parseInt(s.carbGoal) >= 1 && parseInt(s.carbGoal) <= 800) ? parseInt(s.carbGoal) : 0;
+      if (s.fatGoal != null)        fatGoalOverride  = (parseInt(s.fatGoal) >= 10 && parseInt(s.fatGoal) <= 300) ? parseInt(s.fatGoal) : 0;
       if (s.workoutPlanMode)        workoutPlanMode = s.workoutPlanMode;
       if (s.recovery) { try { recSetFromDoc(s.recovery); renderRecoveryCard(); } catch (err) { console.error(err); } }
       if (s.appMode || s.userName) { setAppModeLocal(s.appMode || appMode, s.userName != null ? s.userName : null); }
@@ -6543,6 +6574,7 @@ function syncSettingsInputs() {
   if (actEl) actEl.value = userActivityLevel;
   if (lossEl) lossEl.value = userLossRate;
   const pgEl = document.getElementById('setProteinGoal'); if (pgEl && document.activeElement !== pgEl) pgEl.value = userProteinGoal;
+  try { fillMacroGoalInputs(); } catch (err) { console.error(err); }
   const wdEl = document.getElementById('setWeighInDay'); if (wdEl) wdEl.value = weighInDay;
   const wpmEl = document.getElementById('setWorkoutPlanMode');
   if (wpmEl) wpmEl.value = workoutPlanMode;
@@ -6550,6 +6582,14 @@ function syncSettingsInputs() {
   if (document.activeElement !== sg) sg.value = stepGoalOverride > 0 ? stepGoalOverride : '';
 }
 
+function fillMacroGoalInputs() {
+  const set = (id, v) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = v > 0 ? v : ''; };
+  set('setCalGoal', calGoalOverride); set('setCarbGoal', carbGoalOverride); set('setFatGoal', fatGoalOverride);
+  const auto = computeCalorieTargets(true), note = document.getElementById('macroGoalAutoNote');
+  if (note) note.textContent = `Calculated for you right now: ${auto.calorieTarget.toLocaleString('en-US')} calories · ${auto.carbTarget} g carbs · ${auto.fatTarget} g fat. Blank boxes use these.`;
+  const lowNote = document.getElementById('setCalGoalNote'), cv = parseInt((document.getElementById('setCalGoal') || {}).value);
+  if (lowNote) lowNote.style.display = cv > 0 && cv < 1200 ? '' : 'none';
+}
 function hideLoading() {
   const el = document.getElementById('loading');
   el.classList.add('hide');
@@ -17097,10 +17137,17 @@ function renderWater() {
   const tCb = t && t.carbs ? parseFloat(t.carbs) : null;
   document.getElementById('scCarbs').textContent = tCb != null ? tCb + ' g' : '—';
   const cbSub = document.getElementById('scCarbsSub');
-  if (tCb != null && tCb > 150) { cbSub.textContent = 'above moderate (150g)'; cbSub.className = 'sc-sub warn'; }
-  else if (tCb != null) { cbSub.textContent = 'moderate range ✓'; cbSub.className = 'sc-sub good'; }
-  else { cbSub.textContent = 'moderate: under 150g'; cbSub.className = 'sc-sub'; }
-  setStatBar('scCarbsBar', tCb || 0, 150, true);
+  if (carbGoalOverride > 0) { // a carb goal typed in Settings: judge against it, like calories and fat
+    if (tCb != null && tCb > carbGoalOverride) { cbSub.textContent = `over goal (${carbGoalOverride}g)`; cbSub.className = 'sc-sub warn'; }
+    else if (tCb != null) { cbSub.textContent = `${Math.round(carbGoalOverride - tCb)}g left of ${carbGoalOverride}g`; cbSub.className = 'sc-sub good'; }
+    else { cbSub.textContent = `goal: ${carbGoalOverride}g/day`; cbSub.className = 'sc-sub'; }
+    setStatBar('scCarbsBar', tCb || 0, carbGoalOverride, true);
+  } else {
+    if (tCb != null && tCb > 150) { cbSub.textContent = 'above moderate (150g)'; cbSub.className = 'sc-sub warn'; }
+    else if (tCb != null) { cbSub.textContent = 'moderate range ✓'; cbSub.className = 'sc-sub good'; }
+    else { cbSub.textContent = 'moderate: under 150g'; cbSub.className = 'sc-sub'; }
+    setStatBar('scCarbsBar', tCb || 0, 150, true);
+  }
 
   // Calories and Fat today — targets come from the Mifflin-St Jeor
   // calculator (Settings), recalculating automatically off your most
@@ -19093,7 +19140,7 @@ const PROTEIN_GOAL_G = 100;
 // after Protein (fixed at 100g) and Fat are accounted for. Recalculates
 // live off your most recent logged weight, so as you lose weight the
 // target adjusts the same way a real TDEE recalculation would.
-function computeCalorieTargets() {
+function computeCalorieTargets(ignoreOverrides) {
   const weightEntries = entries.filter(e => e.weight != null && e.weight !== '').sort((a,b) => a.date.localeCompare(b.date));
   const currentWeightLbs = weightEntries.length ? parseFloat(weightEntries[weightEntries.length - 1].weight) : baselineWeight;
   const weightKg = currentWeightLbs * 0.453592;
@@ -19105,11 +19152,14 @@ function computeCalorieTargets() {
   const tdee = bmr * multiplier;
   const dailyDeficit = (userLossRate || 1) * 3500 / 7;
   const rawTarget = tdee - dailyDeficit;
-  const calorieTarget = Math.max(1200, Math.round(rawTarget)); // 1200 cal/day is a widely-used adult safety floor
-  const flooredForSafety = rawTarget < 1200;
-  const fatTarget = Math.round((calorieTarget * 0.30) / 9);
-  const carbTarget = Math.max(0, Math.round((calorieTarget - userProteinGoal * 4 - fatTarget * 9) / 4));
-  return { calorieTarget, proteinTarget: userProteinGoal, fatTarget, carbTarget, bmr: Math.round(bmr), tdee: Math.round(tdee), flooredForSafety };
+  const autoCalories = Math.max(1200, Math.round(rawTarget)); // 1200 cal/day is a widely-used adult safety floor for the CALCULATED number
+  // A number typed in Settings wins. Fat and carbs not typed in still follow the calorie target: fat is 30% of it, carbs the remainder after protein and fat.
+  const useCal = !ignoreOverrides && calGoalOverride > 0, useFat = !ignoreOverrides && fatGoalOverride > 0, useCarb = !ignoreOverrides && carbGoalOverride > 0;
+  const calorieTarget = useCal ? calGoalOverride : autoCalories;
+  const flooredForSafety = !useCal && rawTarget < 1200;
+  const fatTarget = useFat ? fatGoalOverride : Math.round((calorieTarget * 0.30) / 9);
+  const carbTarget = useCarb ? carbGoalOverride : Math.max(0, Math.round((calorieTarget - userProteinGoal * 4 - fatTarget * 9) / 4));
+  return { calorieTarget, proteinTarget: userProteinGoal, fatTarget, carbTarget, bmr: Math.round(bmr), tdee: Math.round(tdee), flooredForSafety, typedIn: { cal: useCal, carb: useCarb, fat: useFat } };
 }
 
 // Tracks the last value shown for each animated number, keyed by
@@ -20609,6 +20659,11 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async () =>
   payload.weighInDay = document.getElementById('setWeighInDay').value || 'any';
   const pgVal = parseInt(document.getElementById('setProteinGoal').value);
   if (pgVal >= 30 && pgVal <= 300) payload.proteinGoal = pgVal; // anything outside a sane range is ignored, the old goal stays
+  // Daily goals typed in Settings: blank = back to the calculated number; a number outside a sane range is ignored and the old goal stays.
+  const macroField = (id, lo, hi, key, cur) => { const raw = document.getElementById(id).value.trim(); if (raw === '') { payload[key] = 0; return; } const v = parseInt(raw); payload[key] = (v >= lo && v <= hi) ? v : cur; };
+  macroField('setCalGoal', 1000, 6000, 'calGoal', calGoalOverride); macroField('setCarbGoal', 1, 800, 'carbGoal', carbGoalOverride); macroField('setFatGoal', 10, 300, 'fatGoal', fatGoalOverride);
+  calGoalOverride = payload.calGoal; carbGoalOverride = payload.carbGoal; fatGoalOverride = payload.fatGoal;
+  try { fillMacroGoalInputs(); updateStats(); } catch (err) { console.error(err); }
   payload.workoutPlanMode = document.getElementById('setWorkoutPlanMode').value;
   const sgVal = parseInt(document.getElementById('setStepGoal').value) || 0;
   payload.stepGoal = sgVal;
@@ -20618,6 +20673,8 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async () =>
   msg.style.color = 'var(--in)';
   setTimeout(() => msg.textContent = '', 2500);
 });
+
+document.getElementById('setCalGoal').addEventListener('input', () => { const v = parseInt(document.getElementById('setCalGoal').value); document.getElementById('setCalGoalNote').style.display = v > 0 && v < 1200 ? '' : 'none'; });
 
 document.getElementById('syncIdPill').addEventListener('click', () => {
   if (!syncId) return;
