@@ -16243,6 +16243,9 @@ function variantBase(name) {
   // Every biceps curl (incline, preacher, cable straight/bent bar, EZ bar, ...) is one movement with versions.
   // Hammer, reverse, wrist, leg/hamstring and Zottman curls work other muscles and stay their own exercise.
   if (/\bcurl\b/.test(b) && !/\b(hammer|reverse|wrist|leg|hamstring|nordic|zottman|lying|seated leg)\b/.test(b)) b = 'bicep curl';
+  // Every chest press (flat, incline, decline, supine, bench, Smith, plate-loaded, MTS...) is one movement with versions.
+  // Shoulder/overhead/leg presses and close-grip (triceps) bench stay their own exercise.
+  else if (/\bpress\b/.test(b) && /\b(chest|bench|incline|decline|supine|flat)\b/.test(b) && !/\b(shoulder|overhead|military|leg|arnold|close|tricep|landmine)\b/.test(b)) b = 'chest press';
   return b || null;
 }
 // Equipment word in a name -> the short button label shown on a grouped card.
@@ -16253,7 +16256,8 @@ function variantNameLabels() { const m = exerciseGroups._labels; return (m && ty
 function variantChipLabels(names, label) {
   const own = variantNameLabels(), out = {};
   const sing = w => (w.length > 2 && /s$/.test(w) && !/(ss|us|is)$/.test(w)) ? w.slice(0, -1) : w;
-  const baseWords = new Set([...String(variantBase(label) || '').split(' '), ...String(variantBase(names[0]) || '').split(' '), 'seated', 'kneeling'].filter(Boolean));
+  const fam = String(variantBase(names[0]) || '');
+  const baseWords = new Set([...String(variantBase(label) || '').split(' '), ...fam.split(' '), 'seated', 'kneeling', ...(fam === 'chest press' ? ['bench'] : [])].filter(Boolean));
   names.forEach(n => {
     let t = own[n];
     if (!t) {
