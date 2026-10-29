@@ -16225,6 +16225,9 @@ function variantBase(name) {
   b = b.split(' ').map(w => (w.length > 3 && /(ch|sh|x)es$/.test(w)) ? w.slice(0, -2) : (w.length > 2 && /s$/.test(w) && !/(ss|us|is)$/.test(w)) ? w.slice(0, -1) : w).join(' ');
   // Every pulldown is done seated, so "Seated Lat Pulldown" is just another lat pulldown.
   if (/\bpulldown\b/.test(b)) b = b.replace(/\b(seated|kneeling)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  // Every biceps curl (incline, preacher, cable straight/bent bar, EZ bar, ...) is one movement with versions.
+  // Hammer, reverse, wrist, leg/hamstring and Zottman curls work other muscles and stay their own exercise.
+  if (/\bcurl\b/.test(b) && !/\b(hammer|reverse|wrist|leg|hamstring|nordic|zottman|lying|seated leg)\b/.test(b)) b = 'bicep curl';
   return b || null;
 }
 // Equipment word in a name -> the short button label shown on a grouped card.
@@ -16234,9 +16237,18 @@ function variantNameLabels() { const m = exerciseGroups._labels; return (m && ty
 // else the full exercise name. Two versions never share a label.
 function variantChipLabels(names, label) {
   const own = variantNameLabels(), out = {};
+  const sing = w => (w.length > 2 && /s$/.test(w) && !/(ss|us|is)$/.test(w)) ? w.slice(0, -1) : w;
+  const baseWords = new Set([...String(variantBase(label) || '').split(' '), ...String(variantBase(names[0]) || '').split(' '), 'seated', 'kneeling'].filter(Boolean));
   names.forEach(n => {
     let t = own[n];
-    if (!t) { const hit = VARIANT_EQUIP_LABELS.find(([re]) => re.test(n)); if (hit) t = hit[1]; }
+    if (!t) {
+      // Keep the words that tell this version apart ("Incline Dumbbell", "Cable Bent Bar"); if only an equipment word is left, use its tidy label.
+      const words = String(n).replace(/[()]/g, ' ').split(/\s+/).filter(Boolean);
+      const rest = words.filter(w => !baseWords.has(sing(w.toLowerCase().replace(/[^a-z0-9]/g, ''))));
+      const restPlain = rest.join(' ').replace(VARIANT_WORDS, ' ').replace(/[^a-z0-9]/gi, '');
+      if (rest.length && restPlain) t = rest.join(' ');
+      else { const hit = VARIANT_EQUIP_LABELS.find(([re]) => re.test(n)); if (hit) t = hit[1]; }
+    }
     if (!t) { const m = String(n).match(/\(([^)]+)\)/); if (m && m[1].trim().length >= 3) t = m[1].trim().charAt(0).toUpperCase() + m[1].trim().slice(1); }
     out[n] = t || n;
   });
