@@ -13090,6 +13090,7 @@ let hiddenWorkoutExercises = { A: [], B: [], fullbody: [] };
 let exerciseOrderOverride = {}; // { planKey: [exerciseName, ...] } — synced same as hidden/custom exercises above
 let exerciseGroups = {}; // { planKey: [ { label, variants:[exerciseName,...], active: exerciseName } ] } — same movement on different equipment, shown as ONE card with equipment chips; each variant is still logged under its own full name
 let groupPanelOpen = false;
+let variantRenameOpen = null; // label of the grouped card whose Rename box is open
 let supersetPairs = {}; // { planKey: { exName: partnerExName, partnerExName: exName } } — bidirectional, so either side of a pair looks the other up the same way
 let exerciseRestOverride = {}; // { exerciseName: seconds } — a rest duration adjusted via the +15/-15 timer buttons, remembered per exercise going forward; synced same as the fields above
 
@@ -14382,7 +14383,27 @@ function wireWorkoutPlanEvents() {
   }));
   document.querySelectorAll('.variant-ungroup-btn').forEach(b => b.addEventListener('click', async () => {
     const k = currentPlanKey();
+    const g = (exerciseGroups[k] || []).find(x => x.label === b.dataset.group);
+    if (g) {
+      const off = exerciseGroups._ungrouped && typeof exerciseGroups._ungrouped === 'object' && !Array.isArray(exerciseGroups._ungrouped) ? exerciseGroups._ungrouped : {};
+      const bases = new Set([...(Array.isArray(off[k]) ? off[k] : []), autoGroupBase(g.label), ...g.variants.map(autoGroupBase)].filter(Boolean));
+      exerciseGroups._ungrouped = { ...off, [k]: [...bases] };
+    }
     exerciseGroups[k] = (exerciseGroups[k] || []).filter(x => x.label !== b.dataset.group);
+    if (variantRenameOpen === b.dataset.group) variantRenameOpen = null;
+    await persistGroups(); renderWorkoutPlan();
+  }));
+  document.querySelectorAll('.variant-rename-btn').forEach(b => b.addEventListener('click', () => {
+    variantRenameOpen = variantRenameOpen === b.dataset.group ? null : b.dataset.group; renderWorkoutPlan();
+  }));
+  document.querySelectorAll('.variant-rename-save').forEach(b => b.addEventListener('click', async () => {
+    const labels = { ...variantNameLabels() };
+    const panel = b.closest('.variant-rename-panel');
+    (panel ? panel.querySelectorAll('.variant-rename-input') : []).forEach(inp => {
+      const v = cleanExerciseName(inp.value).slice(0, 24);
+      if (v) labels[inp.dataset.name] = v; else delete labels[inp.dataset.name];
+    });
+    exerciseGroups._labels = labels; variantRenameOpen = null;
     await persistGroups(); renderWorkoutPlan();
   }));
   document.querySelectorAll('.exercise-zoom-btn').forEach(el => {
@@ -16197,10 +16218,84 @@ function detectTypicalRestDay() {
 const PLAN_TIP_KEY = 'mounjaro-plan-tip-open';
 
 // ── Same movement, different equipment: one card with equipment chips ──
-const VARIANT_WORDS = /\b(cable|machine|plate[- ]?loaded|free[- ]?weights?|dumbbells?|barbell|smith(?: machine)?|hammer strength|selectorized|lever|db|bb)\b/gi;
+const VARIANT_WORDS = /\b(cables?|machines?|plates?[- ]?loaded|pin[- ]?loaded|free[- ]?weights?|dumbbells?|barbells?|smith(?: machine)?|hammer strength|selectorized|lever|db|bb)\b/gi;
 function variantBase(name) {
-  const b = String(name || '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(VARIANT_WORDS, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  let b = String(name || '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/\bpull[\s-]+downs?\b/g, 'pulldown').replace(VARIANT_WORDS, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  // "Lat Pulldowns" and "Lat Pulldown" are the same movement: compare singular words.
+  b = b.split(' ').map(w => (w.length > 3 && /(ch|sh|x)es$/.test(w)) ? w.slice(0, -2) : (w.length > 2 && /s$/.test(w) && !/(ss|us|is)$/.test(w)) ? w.slice(0, -1) : w).join(' ');
+  // Every pulldown is done seated, so "Seated Lat Pulldown" is just another lat pulldown.
+  if (/\bpulldown\b/.test(b)) b = b.replace(/\b(seated|kneeling)\b/g, ' ').replace(/\s+/g, ' ').trim();
   return b || null;
+}
+// Equipment word in a name -> the short button label shown on a grouped card.
+const VARIANT_EQUIP_LABELS = [[/plates?[- ]?loaded/i, 'Plate-loaded'], [/pin[- ]?loaded|selectorized/i, 'Machine'], [/hammer strength/i, 'Hammer Strength'], [/smith/i, 'Smith'], [/cables?\b/i, 'Cable'], [/machines?\b|\blever\b/i, 'Machine'], [/dumbbells?|\bdb\b/i, 'Dumbbell'], [/barbells?|\bbb\b/i, 'Barbell'], [/free[- ]?weights?/i, 'Free weights']];
+function variantNameLabels() { const m = exerciseGroups._labels; return (m && typeof m === 'object' && !Array.isArray(m)) ? m : {}; }
+// Labels for every version on one card: your own name for it, else the equipment word, else what is in brackets,
+// else the full exercise name. Two versions never share a label.
+function variantChipLabels(names, label) {
+  const own = variantNameLabels(), out = {};
+  names.forEach(n => {
+    let t = own[n];
+    if (!t) { const hit = VARIANT_EQUIP_LABELS.find(([re]) => re.test(n)); if (hit) t = hit[1]; }
+    if (!t) { const m = String(n).match(/\(([^)]+)\)/); if (m && m[1].trim().length >= 3) t = m[1].trim().charAt(0).toUpperCase() + m[1].trim().slice(1); }
+    out[n] = t || n;
+  });
+  const seen = {}; names.forEach(n => { seen[out[n]] = (seen[out[n]] || 0) + 1; });
+  names.forEach(n => { if (seen[out[n]] > 1 && !own[n]) out[n] = n; });
+  return out;
+}
+function variantLastTop(name) {
+  try { const prev = (previousSetsFor(name) || []).filter(q => q && !q.warmup && q.weight > 0); return prev.length ? Math.max(...prev.map(q => q.weight)) : null; } catch (e) { return null; }
+}
+// Every exercise name you have ever logged, newest first (cached until the history changes).
+let _histNamesCache = { sig: '', names: [] };
+function historyExerciseNames() {
+  const sig = entries.length + '|' + (entries.length ? entries[entries.length - 1].date : '');
+  if (_histNamesCache.sig === sig) return _histNamesCache.names;
+  const seen = new Set(), names = [];
+  entries.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).forEach(e => (e.ex || []).forEach(x => {
+    if (x && x.type === 'Strength' && x.sets && typeof x.sets === 'object') Object.keys(x.sets).forEach(n => { if (!seen.has(n)) { seen.add(n); names.push(n); } });
+  }));
+  _histNamesCache = { sig, names };
+  return names;
+}
+// Stricter key for AUTOMATIC grouping: words in brackets count unless they only name equipment, so a version you
+// made on purpose ("Leg Press (low and narrow)", via + Variation) keeps its own card, while "Lat Pulldown (Cable)" joins.
+function autoGroupBase(name) {
+  return variantBase(String(name || '').replace(/\(([^)]*)\)/g, (m, c) => ' ' + String(c).replace(VARIANT_WORDS, ' ') + ' '));
+}
+function ungroupedBases(key) { const m = exerciseGroups._ungrouped; return (m && typeof m === 'object' && Array.isArray(m[key])) ? m[key] : []; }
+// Automatic grouping: on the day being shown, every exercise that is the same movement as another one on that
+// day, or as anything you have logged before, becomes ONE card with a button per version. Each version is still
+// saved under its own name, so its weights, records and suggestions stay its own. "Ungroup" is remembered.
+function autoGroupVariants(key, plan) {
+  if (!key || key === QUICK_KEY) return false;
+  const off = new Set(ungroupedBases(key)), hidden = new Set(hiddenWorkoutExercises[key] || []);
+  const dayNames = plan.map(e => e.name), hist = historyExerciseNames();
+  const byBase = {};
+  dayNames.forEach(n => { const b = autoGroupBase(n); if (b && !off.has(b)) (byBase[b] = byBase[b] || []).push(n); });
+  let changed = false;
+  Object.keys(byBase).forEach(b => {
+    const names = [...new Set([...byBase[b], ...hist.filter(n => !hidden.has(n) && autoGroupBase(n) === b)])];
+    if (names.length < 2) return;
+    const list = exerciseGroups[key] || [];
+    const g = list.find(x => x.variants.some(v => names.includes(v)));
+    if (g) {
+      const add = names.filter(n => !g.variants.includes(n) && !list.some(o => o !== g && o.variants.includes(n)));
+      if (add.length) { g.variants = [...g.variants, ...add]; changed = true; }
+    } else if (createVariantGroup(key, variantTitle(b), names)) changed = true;
+  });
+  return changed;
+}
+// A grouped version that is only in your history (not on this day's list) still gets a button: it borrows the
+// day's sets x reps target from the version that is on the list.
+function withHistoryVariants(plan, key) {
+  const names = new Set(plan.map(e => e.name)), hidden = new Set(hiddenWorkoutExercises[key] || []), extra = [];
+  (exerciseGroups[key] || []).forEach(g => {
+    const tpl = plan.find(e => g.variants.includes(e.name)); if (!tpl) return;
+    g.variants.forEach(v => { if (!names.has(v) && !hidden.has(v)) { names.add(v); extra.push({ ...tpl, name: v, fromHistory: true }); } });
+  });
+  return extra.length ? [...plan, ...extra] : plan;
 }
 function variantTitle(base) { return base.replace(/\b[a-z]/g, c => c.toUpperCase()); }
 function variantChipLabel(name, label) {
@@ -16225,7 +16320,8 @@ function collapseVariantGroups(plan, key) {
     if (idxs.length < 2) return;
     const ci = idxs.find(i => out[i].name === g.active);
     const chosen = out[ci !== undefined ? ci : idxs[0]];
-    const merged = { ...chosen, variantGroup: g.label, variantOptions: idxs.map(i => out[i].name) };
+    const opts = idxs.map(i => out[i].name);
+    const merged = { ...chosen, variantGroup: g.label, variantOptions: opts, variantLabels: variantChipLabels(opts, g.label) };
     const first = idxs[0];
     out = out.map((e, i) => i === first ? merged : e).filter((e, i) => i === first || !idxs.includes(i));
   });
@@ -16506,6 +16602,8 @@ function renderWorkoutPlan() {
   }
 
   const dayAllNames = plan.map(e => e.name);
+  try { if (autoGroupVariants(planKey, plan)) saveWorkoutPlanCustomizations().catch(err => console.error('Failed to save exercise groups:', err)); } catch (err) { console.error('auto-group failed:', err); }
+  plan = withHistoryVariants(plan, planKey);
   plan = collapseVariantGroups(plan, planKey);
 
   // Zoomed-in view narrows the list to just one exercise's own sets —
@@ -16659,7 +16757,7 @@ function renderWorkoutPlan() {
           <span class="exercise-sets-target">${setsTargetText}</span>
           ${variationControl}${supersetControl}${swapControl}${noteControl}
         </div>
-        ${ex.variantOptions ? `<div class="variant-row"><div class="chip-row" style="gap:6px">${ex.variantOptions.map(n => `<div class="chip variant-chip${n === ex.name ? ' on' : ''}${doneCount > 0 && n !== ex.name ? ' locked' : ''}" data-group="${escapeHtml(ex.variantGroup)}" data-name="${escapeHtml(n)}" data-from="${escapeHtml(ex.name)}" style="font-size:12px;padding:7px 11px${doneCount > 0 && n !== ex.name ? ';opacity:0.45' : ''}">${escapeHtml(variantChipLabel(n, ex.variantGroup))}</div>`).join('')}<button type="button" class="btn btn-ghost btn-sm variant-ungroup-btn" data-group="${escapeHtml(ex.variantGroup)}" style="font-size:11px;padding:5px 9px">Ungroup</button></div>${doneCount > 0 ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:5px">Switch equipment before logging sets. Uncheck this one's sets to change.</div>` : ''}</div>` : ''}
+        ${ex.variantOptions ? `<div class="variant-row"><div class="chip-row" style="gap:6px">${ex.variantOptions.map(n => `<div class="chip variant-chip${n === ex.name ? ' on' : ''}${doneCount > 0 && n !== ex.name ? ' locked' : ''}" data-group="${escapeHtml(ex.variantGroup)}" data-name="${escapeHtml(n)}" data-from="${escapeHtml(ex.name)}" style="font-size:12px;padding:7px 11px${doneCount > 0 && n !== ex.name ? ';opacity:0.45' : ''}">${escapeHtml((ex.variantLabels && ex.variantLabels[n]) || variantChipLabel(n, ex.variantGroup))}${(() => { const w = variantLastTop(n); return w ? `<span class="variant-chip-last" style="opacity:0.7;font-weight:500"> · ${w}</span>` : ''; })()}</div>`).join('')}<button type="button" class="btn btn-ghost btn-sm variant-rename-btn" data-group="${escapeHtml(ex.variantGroup)}" style="font-size:11px;padding:5px 9px">✎ Rename</button><button type="button" class="btn btn-ghost btn-sm variant-ungroup-btn" data-group="${escapeHtml(ex.variantGroup)}" style="font-size:11px;padding:5px 9px">Ungroup</button></div>${variantRenameOpen === ex.variantGroup ? `<div class="variant-rename-panel" style="margin-top:8px;padding:8px;border:1.5px dashed var(--line);border-radius:10px">${ex.variantOptions.map(n => `<label style="display:block;font-size:11px;color:var(--ink-soft);margin-bottom:6px">${escapeHtml(n)}${(() => { const w = variantLastTop(n); return w ? ` (last ${w} lb)` : ''; })()}<input type="text" class="variant-rename-input" data-name="${escapeHtml(n)}" maxlength="24" value="${escapeHtml(variantNameLabels()[n] || '')}" placeholder="e.g. Plate-loaded, Machine, Cable" style="display:block;width:100%;margin-top:3px;padding:7px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:13px;background:var(--input-bg);color:var(--ink)"></label>`).join('')}<button type="button" class="btn btn-primary btn-sm variant-rename-save" data-group="${escapeHtml(ex.variantGroup)}" style="width:100%">Save names</button></div>` : ''}${doneCount > 0 ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:5px">Switch equipment before logging sets. Uncheck this one's sets to change.</div>` : ''}</div>` : ''}
         ${variationCaption}
         ${supersetSelect}${swapSelect}${variationPanel}
         <div class="exercise-note-wrap" data-exercise="${ex.name}" style="display:${workoutNotesState[ex.name] ? '' : 'none'};margin-bottom:8px">
