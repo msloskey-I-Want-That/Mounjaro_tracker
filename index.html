@@ -7195,7 +7195,9 @@ function muscleSessionIndex() {
 // set goals, balance flags and the leaderboard stay strength-only. Short strolls don't count.
 const CARDIO_MUSCLES = { 'Walk': ['Quads', 'Hamstrings', 'Calves'], 'Dog Walk': ['Quads', 'Hamstrings', 'Calves'], 'Hiking': ['Quads', 'Hamstrings', 'Calves'], 'Treadmill': ['Quads', 'Hamstrings', 'Calves'], 'Bike': ['Quads', 'Calves'] };
 const CARDIO_ICONS = { 'Walk': '🚶', 'Dog Walk': '🐕', 'Hiking': '🥾', 'Treadmill': '🚶', 'Bike': '🚴', 'Health': '🚶' };
-const HEALTH_WALK_MIN_MI = 3; // Apple Health's daily distance counts only on a big walking day with no walk logged
+const HEALTH_WALK_MIN_MI = 3; // Apple Health's daily distance counts on a walking day with no walk logged
+const HEALTH_BIG_STEPS = 20000; // a 20k-step day always counts (even with a shorter walk logged)
+const STEPS_PER_MILE = 2100;
 function cardioMiles(c) { const d = parseFloat(c.dist), m = parseFloat(c.min); return d > 0 ? d : (m > 0 ? m / 20 : 0); } // ~3 mph when only minutes
 function cardioCounts(c) { const d = parseFloat(c.dist), m = parseFloat(c.min); return (d >= 1) || (!(d > 0) && m >= 20); }
 function cardioRecoveryHours(c) { // ~24h for 3 miles, up to 48h for a long hike
@@ -7204,23 +7206,28 @@ function cardioRecoveryHours(c) { // ~24h for 3 miles, up to 48h for a long hike
 }
 function cardioLabel(c) {
   const d = parseFloat(c.dist), m = parseFloat(c.min), name = c.type === 'Health' ? 'Walking (Apple Health)' : c.type;
-  return `${CARDIO_ICONS[c.type] || '🚶'} ${name}${d > 0 ? ` · ${Math.round(d * 10) / 10} mi` : ''}${m > 0 && c.type !== 'Health' ? ` · ${Math.round(m)} min` : ''}`;
+  return `${CARDIO_ICONS[c.type] || '🚶'} ${name}${c.steps > 0 ? ` · ${Math.round(c.steps).toLocaleString('en-US')} steps` : ''}${d > 0 ? ` · ${Math.round(d * 10) / 10} mi` : ''}${m > 0 && c.type !== 'Health' ? ` · ${Math.round(m)} min` : ''}`;
 }
 // { group: [{ t, date, cardio: { type, dist, min }, recH }] } oldest first.
 function muscleCardioIndex() {
   const idx = {}; MUSCLE_MAP_GROUPS.forEach(g => { idx[g] = []; });
   entries.forEach(e => {
-    let walked = false;
+    let walked = false, walkedMi = 0, lastT = 0;
     (e.ex || []).forEach(x => {
       const groups = x && CARDIO_MUSCLES[x.type]; if (!groups) return;
-      if (x.type !== 'Bike') walked = true;
-      const c = { type: x.type, dist: x.dist, min: x.min }; if (!cardioCounts(c)) return;
+      const c = { type: x.type, dist: x.dist, min: x.min };
       const t = (typeof x.ts === 'number' && x.ts > 1e11) ? x.ts : new Date(e.date + 'T12:00:00').getTime();
+      if (x.type !== 'Bike') { walked = true; walkedMi += cardioMiles(c); lastT = Math.max(lastT, t); }
+      if (!cardioCounts(c)) return;
       groups.forEach(g => idx[g].push({ t, date: e.date, cardio: c, recH: cardioRecoveryHours(c) }));
     });
-    const hd = parseFloat(e.distanceMi);
-    if (!walked && hd >= HEALTH_WALK_MIN_MI) {
-      const c = { type: 'Health', dist: hd }, t = new Date(e.date + 'T18:00:00').getTime();
+    // Apple Health: 3+ miles with no walk logged, or a 20k-step day that went well beyond the walks you logged.
+    const hd = parseFloat(e.distanceMi), steps = parseFloat(e.steps);
+    const hMi = hd > 0 ? hd : (steps > 0 ? steps / STEPS_PER_MILE : 0);
+    const big = steps >= HEALTH_BIG_STEPS && hMi > walkedMi + 1;
+    if ((!walked && hd >= HEALTH_WALK_MIN_MI) || (!walked && big) || (walked && big)) {
+      const c = { type: 'Health', dist: Math.round(hMi * 10) / 10, steps: steps > 0 ? steps : undefined };
+      const t = Math.max(new Date(e.date + 'T18:00:00').getTime(), lastT + 1); // the whole day's walking: it is the latest session
       CARDIO_MUSCLES.Walk.forEach(g => idx[g].push({ t, date: e.date, cardio: c, recH: cardioRecoveryHours(c) }));
     }
   });
