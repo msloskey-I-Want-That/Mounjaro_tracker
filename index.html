@@ -1101,6 +1101,11 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 .hist-pr { margin-left: 2px; }
 .log-ctx-card { margin-bottom: 12px !important; }
 #logSubtabRow { flex-wrap: nowrap; gap: 6px; }
+/* Exercise tab, Nov 1 */
+#workoutPlanCard .plan-day-head { display: none !important; }
+#weekRecapCard:not(.wr-more) #weekRecapGrid > :nth-child(n+4), #weekRecapCard:not(.wr-more) #weekRecapMissed { display: none !important; }
+body:not(.mode-exercise) #exManualBlock:not(.open) { display: none; }
+body.mode-exercise #exManualToggle { display: none !important; }
 /* Food tab, Nov 1: one water control (in Daily Nutrition), one photo button (in Add Food), search-first Add Food */
 #waterCard, #foodStripPhoto, #foodTabRow, #addMethodRow, #nutritionCard #nutAppetite { display: none !important; }
 .food-quick-actions { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin: 4px 0 12px; }
@@ -3112,22 +3117,6 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
         <label class="ex-date-chip" id="exDateChip" for="exDate"><span id="exDateChipText">Today</span><span aria-hidden="true">▾</span><input type="date" id="exDate" class="ex-date-input" aria-label="Date to log exercise for"></label>
       </div>
 
-      <div class="form-card" id="weekRecapCard">
-        <div class="form-section-title">This week</div>
-        <div id="gymPassRow" style="display:none;gap:8px;margin-bottom:12px"><!-- Nov 1: removed at Mike's request (he scans in with the Planet Fitness app); kept hidden so its wiring still runs -->
-          <button type="button" class="btn btn-secondary" id="gymPassBtn" style="flex:1;min-width:0;padding:12px 10px;font-weight:800">🏷️ Open gym pass</button>
-          <button type="button" class="btn btn-ghost btn-sm" id="gymPassEditBtn" aria-label="Gym pass link settings" style="flex:0 0 44px;padding:0">⚙</button>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;margin:0 0 12px">
-          <button type="button" class="btn btn-ghost btn-sm" id="gymCheckinBtn" style="flex:1;min-width:0;padding:10px;font-weight:800">📍 Check in at the gym</button>
-          <div id="gymCheckinCount" style="flex:0 0 auto;font-size:12px;color:var(--ink-soft)"></div>
-        </div>
-        <div id="weekRecapGrid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center"></div>
-        <div id="weekRecapMissed" style="font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.4"></div>
-        <button type="button" class="btn btn-ghost btn-sm" id="weekRecapShare" style="width:100%;margin-top:10px">Share my week</button>
-      </div>
-
-
       <div class="form-card" id="workoutPlanCard">
         <div id="workoutPlanCardHeader" class="form-section-title" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <span id="workoutPlanTitle">Workout Plan</span>
@@ -3146,6 +3135,23 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
           <div class="prog-body" id="progressionResults"></div>
         </div>
       </div>
+      <div class="form-card" id="weekRecapCard">
+        <div class="form-section-title">This week</div>
+        <div id="gymPassRow" style="display:none;gap:8px;margin-bottom:12px"><!-- Nov 1: removed at Mike's request (he scans in with the Planet Fitness app); kept hidden so its wiring still runs -->
+          <button type="button" class="btn btn-secondary" id="gymPassBtn" style="flex:1;min-width:0;padding:12px 10px;font-weight:800">🏷️ Open gym pass</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="gymPassEditBtn" aria-label="Gym pass link settings" style="flex:0 0 44px;padding:0">⚙</button>
+        </div>
+        <div id="gymCheckinRow" style="display:none;gap:8px;align-items:center;margin:0 0 12px">
+          <button type="button" class="btn btn-ghost btn-sm" id="gymCheckinBtn" style="flex:1;min-width:0;padding:10px;font-weight:800">📍 Check in at the gym</button>
+          <div id="gymCheckinCount" style="flex:0 0 auto;font-size:12px;color:var(--ink-soft)"></div>
+        </div>
+        <div id="weekRecapGrid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="weekRecapMoreBtn" style="width:100%;margin-top:8px;padding:8px;font-size:12px">More ▾</button>
+        <div id="weekRecapMissed" style="font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.4"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="weekRecapShare" style="width:100%;margin-top:10px">Share my week</button>
+      </div>
+
+
       <div class="form-card" id="recoveryCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Stretch &amp; warm-up</span><span id="recoveryChevron" style="font-size:11px;color:var(--ink-soft)">▼</span></div>
         <div id="recSub" style="font-size:12px;color:var(--ink-soft);margin-bottom:10px"></div>
@@ -3180,6 +3186,8 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
           <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px">Heading out? One tap starts the timer. Stop &amp; Log saves it.</div>
           <div id="quickWalkBody"></div>
         </div>
+        <button type="button" class="btn btn-ghost btn-sm full-only" id="exManualToggle" style="width:100%;margin-bottom:10px;padding:10px;font-weight:700">✎ Log a past activity ▾</button>
+        <div id="exManualBlock">
         <div class="full-only" id="workoutDescBlock" style="margin-bottom:12px">
           <label style="display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px"><svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z"/></svg> Describe your workout <span style="font-weight:500">(optional)</span></label>
           <div style="display:flex;gap:8px">
@@ -3227,6 +3235,7 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
           </div>
           <button class="btn btn-secondary btn-sm" id="addExBtn" style="margin-bottom:2px;padding:12px 18px;font-size:13px;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800;text-transform:uppercase;letter-spacing:0.02em">+ Add</button>
           <button class="btn btn-ghost btn-sm" id="cancelExEditBtn" style="margin-bottom:2px;display:none">Cancel</button>
+        </div>
         </div>
         <div id="exList" style="margin-top:10px"></div>
       </div>
@@ -12547,7 +12556,8 @@ try {
   const timerBar = document.getElementById('exTimerBar');
   const descBlock = document.getElementById('workoutDescBlock');
   const parent = chipRow ? chipRow.closest('.form-card') : null;
-  if (parent && timerBar && descBlock) { parent.insertBefore(chipRow, descBlock); parent.insertBefore(timerBar, descBlock); }
+  const descParent = descBlock ? descBlock.parentNode : null; // Nov 1: Describe now sits inside #exManualBlock
+  if (parent && timerBar && descParent) { descParent.insertBefore(chipRow, descBlock); descParent.insertBefore(timerBar, descBlock); }
 } catch (err) { console.error('exercise chip reposition failed:', err); }
 try {
   // Each tile also gets a small ✏️ that flips it into an inline
@@ -12998,6 +13008,7 @@ let feelingCheckStep = 'initial';
 // cleared explicitly whenever the underlying exercise list could change
 // out from under it (starting/finishing a workout, switching days).
 let zoomedExercise = null;
+let previewSeeded = new Set(); let focusFirstOnStart = false; // Nov 1: one-line preview before Start
 let collapsedExercises = new Set(); // exercise cards the person has minimized (this session only)
 let lastPRSetKey = null;             // 'Exercise:idx' of a set that just earned a PR badge, for the one-time flash
 
@@ -13681,6 +13692,16 @@ function parseRepRange(setsStr) {
 // Up to `count` most recent sessions' working (non-warmup) sets for a
 // specific exercise, most recent first — the raw material for deciding
 // whether a weight increase looks due.
+// Last 3 sessions' top weight, oldest → newest ("100 → 105 → 110 lb"); weighted lifts only, needs 2+ sessions.
+function lastSessionsTrendHtml(exerciseName) {
+  try {
+    if (exerciseMode(exerciseName) !== 'weighted') return '';
+    const s = recentWorkingSetsFor(exerciseName, 3); if (s.length < 2) return '';
+    const tops = s.map(sets => Math.max(...sets.map(q => parseFloat(q.weight) || 0))).reverse();
+    const up = tops[tops.length - 1] > tops[0], down = tops[tops.length - 1] < tops[0];
+    return `<div class="ex-trend" style="font-size:12px;color:var(--ink-soft);margin:-2px 0 8px">Last ${tops.length}: <b style="color:${up ? 'var(--sage)' : down ? 'var(--coral)' : 'var(--ink)'}">${tops.join(' → ')} lb</b>${up ? ' ▲' : down ? ' ▼' : ''}</div>`;
+  } catch (err) { return ''; }
+}
 function recentWorkingSetsFor(exerciseName, count) {
   const sorted = entries.filter(e => e.ex && e.ex.length).slice().sort((a, b) => b.date.localeCompare(a.date));
   const sessions = [];
@@ -14346,6 +14367,10 @@ function progressLinesHtml() {
 }
 
 function wireCollapseControls() {
+  document.querySelectorAll('.exercise-collapsed-summary').forEach(el => { el.style.cursor = 'pointer'; el.addEventListener('click', ev => {
+    ev.stopPropagation(); const blk = el.closest('.workout-exercise-block'); if (!blk) return;
+    collapsedExercises.delete(blk.dataset.exercise); renderWorkoutPlan();
+  }); });
   document.querySelectorAll('.exercise-collapse-btn').forEach(btn => btn.addEventListener('click', ev => {
     ev.stopPropagation();
     const n = btn.dataset.exercise;
@@ -16733,7 +16758,7 @@ function renderWorkoutPlan() {
     plan = [];
     const hasAny = (customWorkoutExercises[QUICK_KEY] || []).some(e => !(hiddenWorkoutExercises[QUICK_KEY] || []).includes(e.name));
     headerHtml = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="plan-day-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">⚡ Quick workout</div>
         <div style="font-size:11px;color:var(--ink-soft)">not part of a routine</div>
       </div>
@@ -16766,7 +16791,7 @@ function renderWorkoutPlan() {
 
     headerHtml = `
       ${feelingCheckHtml}
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="plan-day-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">Full Body</div>
         <div style="font-size:11px;color:var(--ink-soft)">${totalStrengthSessions()} sessions logged so far</div>
       </div>`;
@@ -16815,7 +16840,7 @@ function renderWorkoutPlan() {
 
     headerHtml = `
       ${feelingCheckHtml}
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="plan-day-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">${next} Day${pplDayOverride ? ' <span style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:none;letter-spacing:normal">(picked)</span>' : ''}</div>
         <div style="font-size:11px;color:var(--ink-soft)">${pplDayOverride ? '' : 'next up · '}${totalStrengthSessions()} sessions logged so far</div>
       </div>
@@ -16875,7 +16900,7 @@ function renderWorkoutPlan() {
     headerHtml = `
       ${routineStripHtml()}
       ${feelingCheckHtml}
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="plan-day-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">${escapeHtml(day.name)}</div>
         <div style="font-size:11px;color:var(--ink-soft)">${customDayOverride ? '' : 'next up · '}${totalStrengthSessions()} sessions logged so far</div>
       </div>
@@ -16922,7 +16947,7 @@ function renderWorkoutPlan() {
 
     headerHtml = `
       ${feelingCheckHtml}
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="plan-day-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">Day ${next}${splitDayOverride ? ' <span style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:none;letter-spacing:normal">(picked)</span>' : ''}</div>
         <div style="font-size:11px;color:var(--ink-soft)">${splitDayOverride ? '' : 'next up · '}${totalStrengthSessions()} sessions logged so far</div>
       </div>
@@ -17007,6 +17032,11 @@ function renderWorkoutPlan() {
   heroMins.sort((a, b) => a - b);
   const heroTyp = heroMins.length ? heroMins[Math.floor(heroMins.length / 2)] : null;
   const todayWorkoutHtml = `<div class="today-workout" id="todayWorkout"><div class="tw-title">${escapeHtml(currentPlanDisplayName())}</div><div class="tw-meta">${plan.length} exercise${plan.length === 1 ? '' : 's'}${heroTyp ? ` · about ${heroTyp} min` : ''}</div><div class="tw-last">${heroLast ? `Last time: ${fmtDate(heroLast.date)} · ${heroLast.volume.toLocaleString()} lb` : 'First time on this day: this sets your baseline'}</div>${muscleLineHtml(plan)}${deloadNoteHtml()}</div>`;
+  try {
+    const pk = currentPlanKey() + '|' + todayStr(), anyDone = Object.values(workoutSessionState).some(a => (a || []).some(q => q.done));
+    if (!globalThis.__noPreviewList && !isZoomed && pk && !workoutStartedAt && !anyDone && !previewSeeded.has(pk) && currentPlanKey() !== QUICK_KEY) { visiblePlan.forEach(e => collapsedExercises.add(e.name)); previewSeeded.add(pk); }
+    if (focusFirstOnStart && !globalThis.__noPreviewList) { focusFirstOnStart = false; previewSeeded.add(pk); const first = visiblePlan.find(e => !(workoutSessionState[e.name] || []).every(q => q.done) || !(workoutSessionState[e.name] || []).length); visiblePlan.forEach(e => { if (!first || e.name !== first.name) collapsedExercises.add(e.name); }); }
+  } catch (err) { console.error('preview list:', err); }
   const anyOpenCard = visiblePlan.some(e => !collapsedExercises.has(e.name));
   const collapseAllHtml = (!isZoomed && !reorderingExercises && visiblePlan.length > 1)
     ? `<div class="collapse-all-row"><button type="button" class="btn btn-ghost btn-sm" id="collapseAllBtn">${anyOpenCard ? '⌃ Minimize all' : '⌄ Expand all'}</button></div>` : '';
@@ -17089,7 +17119,7 @@ function renderWorkoutPlan() {
         ? `<div class="variation-caption">${vcfg.icon} ${vcfg.options[vSelected].label} <span style="opacity:0.75">· ${vcfg.options[vSelected].targets}</span></div>` : '';
       const isCollapsed = !isZoomed && collapsedExercises.has(ex.name);
       const topDone = setState.filter(q => q.done && !q.warmup && parseFloat(q.weight) > 0).sort((a, b) => parseFloat(b.weight) - parseFloat(a.weight))[0];
-      const collapsedSummary = isCollapsed ? `<div class="exercise-collapsed-summary">${doneCount}/${setState.length} sets${topDone ? ` · top ${topDone.weight} × ${topDone.reps}` : ''}${allDone ? ' ✓' : ''}</div>` : '';
+      const collapsedSummary = isCollapsed ? (doneCount === 0 ? `<div class="exercise-collapsed-summary">${escapeHtml(String(ex.sets || ''))}${(() => { const p = (previousSetsFor(ex.name) || []).filter(q => q && !q.warmup && parseFloat(q.weight) > 0); return p.length ? ` · last ${Math.max(...p.map(q => parseFloat(q.weight)))} lb` : ''; })()} · tap to open</div>` : `<div class="exercise-collapsed-summary">${doneCount}/${setState.length} sets${topDone ? ` · top ${topDone.weight} × ${topDone.reps}` : ''}${allDone ? ' ✓' : ''}</div>`) : '';
       const collapseBtn = isZoomed ? '' : `<button type="button" class="exercise-collapse-btn" data-exercise="${ex.name}" aria-expanded="${!isCollapsed}" aria-label="${isCollapsed ? 'Expand' : 'Minimize'} ${ex.name}" title="${isCollapsed ? 'Expand' : 'Minimize'}"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${isCollapsed ? '<polyline points="6 9 12 15 18 9"/>' : '<polyline points="18 15 12 9 6 15"/>'}</svg></button>`;
       const segHtml = `<div class="progress-segs${setState.length > 7 ? ' many' : ''}" role="img" aria-label="${doneCount} of ${setState.length} sets done" title="${doneCount}/${setState.length} sets done" style="--seg-color:${cardColor}">${setState.map(s => `<span class="progress-seg${s.done ? ' on' : ''}"></span>`).join('')}</div>`;
       return `${ssRole === 'a' ? `<div class="ss-tag">⚡ Superset · ${escapeHtml(ex.name)} + ${escapeHtml(ssPn)} · one set of each, then rest</div>` : ''}
@@ -17105,6 +17135,7 @@ function renderWorkoutPlan() {
           <button type="button" class="remove-exercise-btn" data-exercise="${ex.name}" title="Remove from today's list" aria-label="Remove ${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:17px;line-height:1;cursor:pointer;padding:4px;margin-left:2px;flex-shrink:0">✕</button>
         </div>
         ${segHtml}
+        ${lastSessionsTrendHtml(ex.name)}
         ${collapsedSummary}
         <div class="exercise-body"${isCollapsed ? ' style="display:none" data-collapsed="1"' : ''}>
         ${ex.variantOptions ? `<div class="variant-row" style="margin:2px 0 12px"><div class="variant-pick-label" style="font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:6px">Which one today?</div><div class="variant-grid" style="display:grid;grid-template-columns:repeat(${ex.variantOptions.length + 1 <= 3 ? ex.variantOptions.length + 1 : 2},minmax(0,1fr));gap:8px">${ex.variantOptions.map(n => `<div class="chip variant-chip${n === ex.name ? ' on' : ''}${doneCount > 0 && n !== ex.name ? ' locked' : ''}" role="button" data-group="${escapeHtml(ex.variantGroup)}" data-name="${escapeHtml(n)}" data-from="${escapeHtml(ex.name)}" style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;white-space:normal;min-width:0;min-height:58px;margin:0;padding:22px 6px 10px;border-radius:14px;font-size:15px;font-weight:800;line-height:1.15${doneCount > 0 && n !== ex.name ? ';opacity:0.45' : ''}">${(() => { const t = (ex.variantLabels && ex.variantLabels[n]) || variantChipLabel(n, ex.variantGroup); const longest = Math.max(...String(t).split(/\s+/).map(x => x.length)); return `<span class="variant-chip-name" style="overflow-wrap:break-word;word-break:normal;max-width:100%${longest >= 9 ? ';font-size:13px' : ''}">${escapeHtml(t)}</span>`; })()}${(() => { const w = variantLastTop(n); return w ? `<span class="variant-chip-last" style="font-size:12px;font-weight:600;opacity:0.75;margin-top:3px">${w} lb</span>` : ''; })()}${n === ex.name && doneCount > 0 ? '' : `<button type="button" class="variant-remove-btn" data-name="${escapeHtml(n)}" title="Remove this version" aria-label="Remove ${escapeHtml(n)}" style="position:absolute;top:0;right:0;width:30px;height:26px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:inherit;opacity:0.7;font-size:16px;line-height:1;cursor:pointer;padding:0">✕</button>`}</div>`).join('')}<button type="button" class="variant-add-tile" data-group="${escapeHtml(ex.variantGroup)}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:58px;padding:10px 6px;border:1.5px dashed var(--line);border-radius:14px;background:none;color:var(--ink-soft);font-family:inherit;font-size:15px;font-weight:800;cursor:pointer">＋ Add<span style="font-size:11px;font-weight:600;margin-top:2px">another version</span></button></div>${variantAddOpen === ex.variantGroup ? `<div class="variant-add-panel" style="margin-top:8px;padding:8px;border:1.5px dashed var(--line);border-radius:10px"><label style="display:block;font-size:12px;font-weight:700;color:var(--ink)">What is the new one?<input type="text" class="variant-add-input" maxlength="24" placeholder="e.g. Cable, Machine, Plate-loaded" style="display:block;width:100%;margin-top:4px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:16px;background:var(--input-bg);color:var(--ink)"></label><div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="btn btn-primary btn-sm variant-add-save" data-group="${escapeHtml(ex.variantGroup)}" style="flex:1;min-width:0;padding:9px;font-size:14px">Add</button><button type="button" class="btn btn-ghost btn-sm variant-add-cancel" style="flex:1;min-width:0;padding:9px;font-size:14px">Cancel</button></div></div>` : ''}<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="btn btn-ghost btn-sm variant-rename-btn" data-group="${escapeHtml(ex.variantGroup)}" style="flex:1;min-width:0;font-size:13px;padding:9px">✎ Rename</button><button type="button" class="btn btn-ghost btn-sm variant-ungroup-btn" data-group="${escapeHtml(ex.variantGroup)}" style="flex:1;min-width:0;font-size:13px;padding:9px">Ungroup</button></div>${variantRenameOpen === ex.variantGroup ? `<div class="variant-rename-panel" style="margin-top:8px;padding:8px;border:1.5px dashed var(--line);border-radius:10px"><label style="display:block;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">Card name<input type="text" class="variant-card-name-input" maxlength="40" value="${escapeHtml(ex.variantGroup)}" style="display:block;width:100%;margin-top:3px;padding:7px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:13px;background:var(--input-bg);color:var(--ink)"></label><div style="font-size:11px;color:var(--ink-soft);margin-bottom:6px">Button names</div>${ex.variantOptions.map(n => `<label style="display:block;font-size:11px;color:var(--ink-soft);margin-bottom:6px">${escapeHtml(n)}${(() => { const w = variantLastTop(n); return w ? ` (last ${w} lb)` : ''; })()}<input type="text" class="variant-rename-input" data-name="${escapeHtml(n)}" maxlength="24" value="${escapeHtml(variantNameLabels()[n] || '')}" placeholder="e.g. Plate-loaded, Machine, Cable" style="display:block;width:100%;margin-top:3px;padding:7px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:13px;background:var(--input-bg);color:var(--ink)"></label>`).join('')}<button type="button" class="btn btn-primary btn-sm variant-rename-save" data-group="${escapeHtml(ex.variantGroup)}" style="width:100%">Save names</button></div>` : ''}${doneCount > 0 ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:6px">To switch, uncheck this one's done sets first.</div>` : ''}</div>` : ''}
@@ -17175,8 +17206,8 @@ function renderWorkoutPlan() {
              const currentSets = gatherWorkoutSets();
              const currentVolume = currentSets ? totalSessionWeight(currentSets) : 0;
              const lastSession = lastSessionVolumeForPlanDay(currentPlanKey());
-             if (!lastSession) return ''; // no prior session for this plan day yet — nothing to compare
-             return `<div style="font-size:11px;color:var(--ink-soft);margin-top:2px">${currentVolume.toLocaleString()} lb so far — last time: ${lastSession.volume.toLocaleString()} lb</div>`;
+             const setsSoFar = currentSets ? Object.values(currentSets).reduce((t, a) => t + a.filter(q => !q.warmup).length, 0) : 0;
+             return `<div id="workoutLiveLine" style="font-size:13px;font-weight:700;color:var(--ink);margin-top:4px">${setsSoFar} set${setsSoFar === 1 ? '' : 's'} · ${Math.round(currentVolume).toLocaleString()} lb so far</div>${lastSession ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:2px">Last time: ${lastSession.volume.toLocaleString()} lb</div>` : ''}`;
            })()}
          </div>
          <button type="button" class="btn btn-primary btn-sm" id="finishPlanBtn" style="margin-top:8px;width:100%;padding:12px;font-size:14px;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800;text-transform:uppercase;letter-spacing:0.02em">Finish Workout</button>`
@@ -17201,7 +17232,7 @@ function renderWorkoutPlan() {
       setExType('Strength');
       workoutStartedAt = Date.now(); setWorkoutFullscreen(true);
       startWorkoutTimer();
-      zoomedExercise = null; reorderingExercises = false; collapsedExercises.clear(); // fresh start, always begin on the full list
+      zoomedExercise = null; reorderingExercises = false; collapsedExercises.clear(); focusFirstOnStart = true; // fresh start: the first exercise opens, the rest stay one line each
       renderWorkoutPlan();
       const firstSetInput = document.querySelector('.set-weight-input');
       if (firstSetInput) {
@@ -18942,9 +18973,11 @@ try {
   // While the timer is running the card is full screen: tapping its title must not collapse it away.
   if (exCardTitle) exCardTitle.addEventListener('click', e => { if (e.target.closest('button')) return; /* the close button must still work */ if (document.getElementById('exerciseActivityCard').classList.contains('entry-popup-fullscreen')) e.stopImmediatePropagation(); }, true);
 } catch (err) { console.error('exerciseActivityCard collapsible setup failed:', err); }
-try { makeFoodCardCollapsible('aiCoachCard', 'aiCoachChevron', 'mounjaro-aicoach-expanded', true); } catch (err) { console.error('aiCoachCard collapsible setup failed:', err); }
+try { if (!localStorage.getItem('mounjaro-aicoach-closed-nov1')) { localStorage.setItem('mounjaro-aicoach-expanded', 'false'); localStorage.setItem('mounjaro-aicoach-closed-nov1', '1'); } } catch (err) { /* private mode */ }
+try { makeFoodCardCollapsible('aiCoachCard', 'aiCoachChevron', 'mounjaro-aicoach-expanded', false); } catch (err) { console.error('aiCoachCard collapsible setup failed:', err); }
 try { makeFoodCardCollapsible('recoveryCard', 'recoveryChevron', 'mounjaro-recovery-expanded', true); } catch (err) { console.error('recoveryCard collapsible setup failed:', err); }
-try { makeFoodCardCollapsible('workoutPlanCard', 'workoutPlanChevron', 'mounjaro-workoutplan-expanded', false); } catch (err) { console.error('workoutPlanCard collapsible setup failed:', err); }
+try { if (!localStorage.getItem('mounjaro-workoutplan-open-nov1')) { localStorage.setItem('mounjaro-workoutplan-expanded', 'true'); localStorage.setItem('mounjaro-workoutplan-open-nov1', '1'); } } catch (err) { /* private mode */ }
+try { makeFoodCardCollapsible('workoutPlanCard', 'workoutPlanChevron', 'mounjaro-workoutplan-expanded', true); } catch (err) { console.error('workoutPlanCard collapsible setup failed:', err); }
 try { makeFoodCardCollapsible('measurementsCard', 'measurementsChevron', 'mounjaro-measurements-expanded', false); } catch (err) { console.error('measurementsCard collapsible setup failed:', err); }
 
 // Home dashboard's two AI cards — collapsed by default, same reasoning
@@ -20116,6 +20149,19 @@ function updateFoodStripVisibility() {
 document.getElementById('app-main').addEventListener('scroll', updateFoodStripVisibility, { passive: true });
 document.getElementById('foodStripPhoto').addEventListener('click', () => startPhotoLog());
 document.getElementById('historyDoctorBtn').addEventListener('click', () => showDoctorSummary());
+// ── Exercise tab (Nov 1) ──
+(function wireExerciseSimplify() {
+  const more = document.getElementById('weekRecapMoreBtn'), wcard = document.getElementById('weekRecapCard');
+  if (more && wcard) more.addEventListener('click', () => { const on = !wcard.classList.contains('wr-more'); wcard.classList.toggle('wr-more', on); more.textContent = on ? 'Less ▴' : 'More ▾'; });
+  const tg = document.getElementById('exManualToggle'), blk = document.getElementById('exManualBlock');
+  if (!tg || !blk) return;
+  const setOpen = on => { blk.classList.toggle('open', on); tg.textContent = on ? '✕ Close past activity' : '✎ Log a past activity ▾'; };
+  tg.addEventListener('click', () => setOpen(!blk.classList.contains('open')));
+  const busy = () => ['cancelExEditBtn', 'exTimerStopBtn'].some(id => { const el = document.getElementById(id); return el && el.style.display !== 'none'; });
+  const sync = () => { if (busy()) setOpen(true); };
+  try { ['cancelExEditBtn', 'exTimerStopBtn'].forEach(id => { const el = document.getElementById(id); if (el) new MutationObserver(sync).observe(el, { attributes: true, attributeFilter: ['style'] }); }); } catch (err) { /* older browsers */ }
+  sync();
+})();
 // ── Add Food (Nov 1): a big "+ Add food" bar that opens the pop-up; search first; one row of icon buttons ──
 function syncAddFoodBar() {
   const card = document.getElementById('addFoodCard'), content = document.getElementById('addFoodCardContent');
@@ -20737,6 +20783,8 @@ function goalDaysSoFar() { // days this calendar week with a lift (plus a stretc
   entries.forEach(e => { if (e.date >= ws && e.date <= today && (e.ex || []).some(x => x.type === 'Strength')) days.add(e.date); });
   if (weeklyGoalStretch) recovery.sessions.forEach(x => { if (x.date >= ws && x.date <= today) days.add(x.date); });
   if (weeklyGoalGym) gymVisits.forEach(d => { if (d >= ws && d <= today) days.add(d); });
+  // Nov 1: a real walk, treadmill, hike, bike or cardio session counts too (no more manual gym check-in)
+  entries.forEach(e => { if (e.date >= ws && e.date <= today && (e.ex || []).some(x => x && (CARDIO_MUSCLES[x.type] || x.type === 'Cardio') && cardioCounts(x))) days.add(e.date); });
   return days.size;
 }
 function renderGoalRing() {
