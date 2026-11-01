@@ -6542,6 +6542,9 @@ function startListening() {
       if (s.exerciseGroups && typeof s.exerciseGroups === 'object') {
         exerciseGroups = { ...s.exerciseGroups };
       }
+      if (s.exerciseStations && typeof s.exerciseStations === 'object' && !Array.isArray(s.exerciseStations)) {
+        exerciseStations = { ...s.exerciseStations };
+      }
       if (s.exerciseRestOverride && typeof s.exerciseRestOverride === 'object') {
         exerciseRestOverride = { ...s.exerciseRestOverride };
       }
@@ -13171,6 +13174,8 @@ let hiddenWorkoutExercises = { A: [], B: [], fullbody: [] };
 let exerciseOrderOverride = {}; // { planKey: [exerciseName, ...] } — synced same as hidden/custom exercises above
 let exerciseGroups = {}; // { planKey: [ { label, variants:[exerciseName,...], active: exerciseName } ] } — same movement on different equipment, shown as ONE card with equipment chips; each variant is still logged under its own full name
 let groupPanelOpen = false;
+let exerciseStations = {}; // { planKey: [ { id, label, members: [exerciseName, ...] } ] } — one machine card holding several exercises (each still its own card, sets and history)
+let stationPanel = null;   // null | 'new' | { id, mode: 'add' | 'edit' }
 let variantAddOpen = null; // label of the grouped card whose + Add box is open
 let variantRenameOpen = null; // label of the grouped card whose Rename box is open
 let supersetPairs = {}; // { planKey: { exName: partnerExName, partnerExName: exName } } — bidirectional, so either side of a pair looks the other up the same way
@@ -14443,6 +14448,54 @@ function wireWorkoutPlanEvents() {
   });
   const groupBtn = document.getElementById('groupVariantsBtn');
   if (groupBtn) groupBtn.addEventListener('click', () => { groupPanelOpen = !groupPanelOpen; renderWorkoutPlan(); });
+  const saveStations = async () => { try { await saveWorkoutPlanCustomizations(); } catch (err) { console.error('Failed to save machine cards:', err); } };
+  const stById = id => stationsFor(currentPlanKey()).find(x => x.id === id);
+  const newStBtn = document.getElementById('newStationBtn');
+  if (newStBtn) newStBtn.addEventListener('click', () => { stationPanel = stationPanel === 'new' ? null : 'new'; renderWorkoutPlan(); });
+  const stCreate = document.getElementById('stationCreateBtn');
+  if (stCreate) stCreate.addEventListener('click', async () => {
+    const k = currentPlanKey();
+    const picked = [...document.querySelectorAll('.station-pick:checked')].map(c => c.value);
+    const added = [...document.querySelectorAll('.station-pick-new:checked')].map(c => { const sg = STATION_SUGGESTIONS.find(([n]) => n === c.value); return addExerciseToDay(k, c.value, sg && sg[1]); }).filter(Boolean);
+    const members = [...new Set([...picked, ...added])];
+    if (!members.length) { alert('Tick at least one exercise for this machine.'); return; }
+    const label = cleanExerciseName(document.getElementById('stationNameInput').value).slice(0, 40) || 'Cable Machine';
+    takeOutOfGroups(k, members);
+    exerciseStations[k] = [...stationsFor(k).map(st => ({ ...st, members: st.members.filter(n => !members.includes(n)) })).filter(st => st.members.length), { id: 'st' + Date.now().toString(36), label, members }];
+    stationPanel = null; await saveStations(); renderWorkoutPlan();
+  });
+  document.querySelectorAll('.station-add-btn').forEach(b => b.addEventListener('click', () => { stationPanel = stationPanel && stationPanel.id === b.dataset.station && stationPanel.mode === 'add' ? null : { id: b.dataset.station, mode: 'add' }; renderWorkoutPlan(); }));
+  document.querySelectorAll('.station-edit-btn').forEach(b => b.addEventListener('click', () => { stationPanel = stationPanel && stationPanel.id === b.dataset.station && stationPanel.mode === 'edit' ? null : { id: b.dataset.station, mode: 'edit' }; renderWorkoutPlan(); }));
+  const addToStation = async (id, name, group) => {
+    const k = currentPlanKey(), st = stById(id); if (!st) return;
+    const n = addExerciseToDay(k, name, group); if (!n) return;
+    takeOutOfGroups(k, [n]);
+    exerciseStations[k] = stationsFor(k).map(x => x.id === id ? { ...x, members: x.members.includes(n) ? x.members : [...x.members, n] } : { ...x, members: x.members.filter(m => m !== n) }).filter(x => x.members.length);
+    stationPanel = null; await saveStations(); renderWorkoutPlan();
+  };
+  document.querySelectorAll('.station-sugg-btn').forEach(b => b.addEventListener('click', () => { const sg = STATION_SUGGESTIONS.find(([n]) => n === b.dataset.name); addToStation(b.dataset.station, b.dataset.name, sg && sg[1]); }));
+  document.querySelectorAll('.station-own-btn').forEach(b => b.addEventListener('click', () => {
+    const inp = b.closest('.station-add-panel').querySelector('.station-own-input'), name = cleanExerciseName(inp.value);
+    if (!name) { inp.focus(); return; }
+    if (!muscleGroupFor(name)) { alert('I do not recognise that exercise yet. Add it with + Add Exercise (pick its muscle), then add it to the machine from the list.'); return; }
+    addToStation(b.dataset.station, name);
+  }));
+  document.querySelectorAll('.station-unmember-btn').forEach(b => b.addEventListener('click', async () => {
+    const k = currentPlanKey();
+    exerciseStations[k] = stationsFor(k).map(x => x.id === b.dataset.station ? { ...x, members: x.members.filter(m => m !== b.dataset.name) } : x).filter(x => x.members.length);
+    if (!stById(b.dataset.station)) stationPanel = null;
+    await saveStations(); renderWorkoutPlan();
+  }));
+  document.querySelectorAll('.station-save-btn').forEach(b => b.addEventListener('click', async () => {
+    const k = currentPlanKey(), inp = b.closest('.station-edit-panel').querySelector('.station-name-input');
+    const label = cleanExerciseName(inp.value).slice(0, 40);
+    if (label) exerciseStations[k] = stationsFor(k).map(x => x.id === b.dataset.station ? { ...x, label } : x);
+    stationPanel = null; await saveStations(); renderWorkoutPlan();
+  }));
+  document.querySelectorAll('.station-delete-btn').forEach(b => b.addEventListener('click', async () => {
+    const k = currentPlanKey(); exerciseStations[k] = stationsFor(k).filter(x => x.id !== b.dataset.station);
+    stationPanel = null; await saveStations(); renderWorkoutPlan();
+  }));
   const persistGroups = async () => { try { await saveWorkoutPlanCustomizations(); } catch (err) { console.error('Failed to save exercise groups:', err); } };
   document.querySelectorAll('.group-suggest-btn').forEach(b => b.addEventListener('click', async () => {
     let names = []; try { names = JSON.parse(b.dataset.names); } catch (e) { /* ignore */ }
@@ -16152,7 +16205,7 @@ const QUICK_KEY = 'quick', QUICK_LS = 'fit-quick-workout';
 function quickWorkoutOn() { try { return localStorage.getItem(QUICK_LS) === todayStr(); } catch (e) { return false; } }
 function clearQuickPlanData() {
   customWorkoutExercises[QUICK_KEY] = []; hiddenWorkoutExercises[QUICK_KEY] = [];
-  delete exerciseOrderOverride[QUICK_KEY]; delete supersetPairs[QUICK_KEY]; delete exerciseGroups[QUICK_KEY]; delete exerciseRestOverride[QUICK_KEY];
+  delete exerciseOrderOverride[QUICK_KEY]; delete supersetPairs[QUICK_KEY]; delete exerciseGroups[QUICK_KEY]; delete exerciseStations[QUICK_KEY]; delete exerciseRestOverride[QUICK_KEY];
 }
 async function startQuickWorkout() {
   if (quickWorkoutOn()) { revealWorkoutPlan(); return; }
@@ -16197,7 +16250,7 @@ function currentPlanDisplayName() {
 }
 
 async function saveWorkoutPlanCustomizations() {
-  await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { customWorkoutExercises, hiddenWorkoutExercises, exerciseOrderOverride, supersetPairs, exerciseGroups, exerciseRestOverride, customLibrary }, { merge: true });
+  await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { customWorkoutExercises, hiddenWorkoutExercises, exerciseOrderOverride, supersetPairs, exerciseGroups, exerciseStations, exerciseRestOverride, customLibrary }, { merge: true });
 }
 
 async function saveNewWorkoutExercise() {
@@ -16409,10 +16462,113 @@ function ungroupedBases(key) { const m = exerciseGroups._ungrouped; return (m &&
 // Automatic grouping: on the day being shown, every exercise that is the same movement as another one on that
 // day, or as anything you have logged before, becomes ONE card with a button per version. Each version is still
 // saved under its own name, so its weights, records and suggestions stay its own. "Ungroup" is remembered.
+// ── Machine cards ("Cable Machine"): several exercises done on one machine, shown inside one frame with
+// the machine's total for today and last time. Members keep their own cards, sets, history and suggestions,
+// and never auto-group into another card (so "Cable Curl" stays on the machine, not inside Bicep Curl).
+const STATION_SUGGESTIONS = [
+  ['Face Pull (cable)', 'Rear Delts'], ['Straight-Arm Pulldown (cable)', 'Back'], ['Cable Row (single-arm)', 'Back'],
+  ['Single-Arm Lat Pulldown (cable)', 'Back'], ['Cable Rear Delt Fly', 'Rear Delts'], ['Cable Curl', 'Biceps'],
+  ['Rope Hammer Curl (cable)', 'Forearms'], ['Triceps Pushdown (cable)', 'Triceps'], ['Overhead Triceps Extension (cable)', 'Triceps'],
+  ['Cable Fly', 'Chest'], ['Cable Lateral Raise', 'Shoulders'], ['Cable Crunch', 'Core'], ['Cable Woodchopper', 'Core'], ['Glute Kickback (cable)', 'Hamstrings']
+];
+function stationsFor(key) { return Array.isArray(exerciseStations[key]) ? exerciseStations[key] : []; }
+function stationOf(key, name) { return stationsFor(key).find(st => st.members.includes(name)) || null; }
+function stationMemberSet(key) { return new Set(stationsFor(key).flatMap(st => st.members)); }
+// Keep each machine's exercises together, at the spot of its first exercise.
+function orderStationMembers(plan, key) {
+  const sts = stationsFor(key); if (!sts.length) return plan;
+  const out = [], placed = new Set();
+  plan.forEach(ex => {
+    if (placed.has(ex)) return;
+    const st = stationOf(key, ex.swappedFrom || ex.name);
+    if (!st) { out.push(ex); placed.add(ex); return; }
+    plan.filter(x => !placed.has(x) && st.members.includes(x.swappedFrom || x.name)).forEach(x => { out.push(x); placed.add(x); });
+  });
+  return out;
+}
+function setVolume(sets) { return (sets || []).reduce((t, q) => t + ((q && !q.warmup && parseFloat(q.weight) > 0 && parseInt(q.reps, 10) > 0) ? parseFloat(q.weight) * parseInt(q.reps, 10) : 0), 0); }
+function stationTotals(st) {
+  let setsToday = 0, volToday = 0;
+  st.members.forEach(n => { const done = (workoutSessionState[n] || []).filter(q => q.done && !q.warmup); setsToday += done.length; volToday += setVolume(done); });
+  let last = null;
+  const sorted = entries.filter(e => e.ex && e.date < todayStr()).slice().sort((a, b) => b.date.localeCompare(a.date));
+  for (const e of sorted) {
+    let sets = 0, vol = 0;
+    e.ex.forEach(x => { if (x.type === 'Strength' && x.sets) st.members.forEach(n => { const w = (x.sets[n] || []).filter(q => !q.warmup); sets += w.length; vol += setVolume(w); }); });
+    if (sets) { last = { date: e.date, sets, vol }; break; }
+  }
+  return { setsToday, volToday, last };
+}
+function fmtLb(v) { return Math.round(v).toLocaleString('en-US') + ' lb'; }
+function stationWrap(htmls, list, key, flat) {
+  if (flat || !stationsFor(key).length) return htmls.join('');
+  let out = '', i = 0;
+  while (i < list.length) {
+    const st = stationOf(key, list[i].swappedFrom || list[i].name);
+    if (!st) { out += htmls[i]; i++; continue; }
+    let j = i; while (j < list.length && stationOf(key, list[j].swappedFrom || list[j].name) === st) j++;
+    const t = stationTotals(st), sid = escapeHtml(st.id), open = stationPanel && stationPanel.id === st.id ? stationPanel.mode : null;
+    const onDay = new Set(list.map(x => x.name));
+    const sugg = STATION_SUGGESTIONS.filter(([n]) => !onDay.has(n) && !st.members.includes(n));
+    out += `<div class="machine-station" data-station="${sid}" style="margin:0 0 18px;padding:12px 10px 4px;border:2px solid var(--teal);border-radius:20px;background:linear-gradient(180deg,rgba(55,198,255,0.10),rgba(55,198,255,0.02))">
+      <div class="machine-head" style="margin:0 4px 10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div class="machine-title" style="min-width:0;font-weight:800;font-size:17px;text-transform:uppercase;letter-spacing:0.02em">🏋 ${escapeHtml(st.label)}</div>
+          <div style="display:flex;gap:6px;flex-shrink:0"><button type="button" class="btn btn-ghost btn-sm station-add-btn" data-station="${sid}" style="padding:8px 10px;font-size:13px">＋ Add</button><button type="button" class="btn btn-ghost btn-sm station-edit-btn" data-station="${sid}" style="padding:8px 10px;font-size:13px">Edit</button></div>
+        </div>
+        <div class="machine-totals" style="display:flex;gap:8px;margin-top:8px;font-size:12px;color:var(--ink-soft)">
+          <div style="flex:1;min-width:0;padding:8px 10px;border-radius:12px;background:var(--input-bg)">Today<br><b style="color:var(--ink);font-size:14px">${t.setsToday} set${t.setsToday === 1 ? '' : 's'} · ${fmtLb(t.volToday)}</b></div>
+          <div style="flex:1;min-width:0;padding:8px 10px;border-radius:12px;background:var(--input-bg)">${t.last ? `Last time · ${fmtDate(t.last.date)}<br><b style="color:var(--ink);font-size:14px">${t.last.sets} sets · ${fmtLb(t.last.vol)}</b>` : 'Last time<br><b style="color:var(--ink);font-size:14px">—</b>'}</div>
+        </div>
+      </div>
+      ${open === 'add' ? `<div class="station-add-panel" style="margin:0 4px 12px;padding:10px;border:1.5px dashed var(--line);border-radius:12px">
+        <div style="font-size:12px;font-weight:700;margin-bottom:6px">Add an exercise on this machine</div>
+        ${sugg.map(([n]) => `<button type="button" class="btn btn-ghost btn-sm station-sugg-btn" data-station="${sid}" data-name="${escapeHtml(n)}" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px 10px;font-size:13px">＋ ${escapeHtml(n)}</button>`).join('')}
+        <div style="display:flex;gap:6px;margin-top:4px"><input type="text" class="station-own-input" maxlength="60" placeholder="Or type your own" style="flex:1;min-width:0;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:16px;background:var(--input-bg);color:var(--ink)"><button type="button" class="btn btn-primary btn-sm station-own-btn" data-station="${sid}" style="padding:9px 12px">Add</button></div>
+      </div>` : ''}
+      ${open === 'edit' ? `<div class="station-edit-panel" style="margin:0 4px 12px;padding:10px;border:1.5px dashed var(--line);border-radius:12px">
+        <label style="display:block;font-size:12px;font-weight:700">Machine name<input type="text" class="station-name-input" maxlength="40" value="${escapeHtml(st.label)}" style="display:block;width:100%;margin-top:4px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:16px;background:var(--input-bg);color:var(--ink)"></label>
+        <div style="font-size:12px;font-weight:700;margin:10px 0 4px">Exercises on it</div>
+        ${st.members.map(n => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;font-size:13px"><span style="min-width:0">${escapeHtml(n)}</span><button type="button" class="btn btn-ghost btn-sm station-unmember-btn" data-station="${sid}" data-name="${escapeHtml(n)}" style="flex-shrink:0;padding:6px 9px;font-size:12px">Take off</button></div>`).join('')}
+        <div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="btn btn-primary btn-sm station-save-btn" data-station="${sid}" style="flex:1;min-width:0;padding:9px">Save</button><button type="button" class="btn btn-ghost btn-sm station-delete-btn" data-station="${sid}" style="flex:1;min-width:0;padding:9px">Remove machine card</button></div>
+        <div style="font-size:11px;color:var(--ink-soft);margin-top:6px">Taking an exercise off (or removing the card) keeps the exercise on your day as a normal card.</div>
+      </div>` : ''}
+      ${htmls.slice(i, j).join('')}
+    </div>`;
+    i = j;
+  }
+  return out;
+}
+function stationNewPanelHtml(key, dayNames) {
+  const taken = stationMemberSet(key), onDay = new Set(dayNames);
+  return `<div id="stationNewPanel" style="margin:8px 0;padding:10px;border:1.5px dashed var(--line);border-radius:10px">
+    <div style="font-size:13px;font-weight:800;margin-bottom:4px">🏋 New machine card</div>
+    <div style="font-size:11px;color:var(--ink-soft);margin-bottom:8px">One card for everything you do on one machine. Each exercise keeps its own sets and history; the card shows the machine's total.</div>
+    <input type="text" id="stationNameInput" maxlength="40" value="Cable Machine" style="width:100%;margin-bottom:8px;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:16px;background:var(--input-bg);color:var(--ink)">
+    ${dayNames.filter(n => !taken.has(n)).length ? `<div style="font-size:12px;font-weight:700;margin:2px 0 4px">Already on today's list</div>${dayNames.filter(n => !taken.has(n)).map(n => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0"><input type="checkbox" class="station-pick" value="${escapeHtml(n)}"> ${escapeHtml(n)}</label>`).join('')}` : ''}
+    <div style="font-size:12px;font-weight:700;margin:8px 0 4px">Add cable exercises</div>
+    ${STATION_SUGGESTIONS.filter(([n]) => !onDay.has(n) && !taken.has(n)).map(([n]) => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0"><input type="checkbox" class="station-pick-new" value="${escapeHtml(n)}"> ${escapeHtml(n)}</label>`).join('')}
+    <button type="button" class="btn btn-primary btn-sm" id="stationCreateBtn" style="width:100%;margin-top:8px;padding:10px">Create machine card</button>
+  </div>`;
+}
+// Add a new exercise to the day (and the library) the same way + Add Exercise does.
+function addExerciseToDay(key, name, group) {
+  const n = cleanExerciseName(name); if (!n) return null;
+  if ((hiddenWorkoutExercises[key] || []).includes(n)) hiddenWorkoutExercises[key] = hiddenWorkoutExercises[key].filter(x => x !== n);
+  const onDay = (customWorkoutExercises[key] || []).some(e => e.name === n) || currentPlanBuiltInNames(key).includes(n);
+  if (!onDay) customWorkoutExercises[key] = [...(customWorkoutExercises[key] || []), { name: n, sets: '3 × 10–12', rest: REST_SECONDS }];
+  try { addToCustomLibrary(n, '3 × 10–12', group || muscleGroupFor(n) || ''); } catch (e) { /* library is a bonus */ }
+  return n;
+}
+function currentPlanBuiltInNames(key) { return ((globalThis.__planBuiltIns || {})[key] || []); }
+function takeOutOfGroups(key, names) {
+  if (!exerciseGroups[key]) return;
+  exerciseGroups[key] = exerciseGroups[key].map(g => ({ ...g, variants: g.variants.filter(v => !names.includes(v)) })).filter(g => g.variants.length >= 2).map(g => g.variants.includes(g.active) ? g : { ...g, active: g.variants[0] });
+}
 function autoGroupVariants(key, plan) {
   if (!key || key === QUICK_KEY) return false;
-  const off = new Set(ungroupedBases(key)), hidden = new Set(hiddenWorkoutExercises[key] || []);
-  const dayNames = plan.map(e => e.name), hist = historyExerciseNames();
+  const off = new Set(ungroupedBases(key)), onMachine = stationMemberSet(key), hidden = new Set([...(hiddenWorkoutExercises[key] || []), ...onMachine]);
+  const dayNames = plan.map(e => e.name).filter(n => !onMachine.has(n)), hist = historyExerciseNames();
   const byBase = {};
   dayNames.forEach(n => { const b = autoGroupBase(n); if (b && !off.has(b)) (byBase[b] = byBase[b] || []).push(n); });
   let changed = false;
@@ -16726,6 +16882,7 @@ function renderWorkoutPlan() {
   const hidden = hiddenWorkoutExercises[planKey] || [];
   const custom = customWorkoutExercises[planKey] || [];
   const builtInNames = new Set(plan.map(e => e.name)); // a custom exercise with the same name as a built-in one is ignored (the built-in wins)
+  (globalThis.__planBuiltIns = globalThis.__planBuiltIns || {})[currentPlanKey()] = [...builtInNames];
   plan = [...plan, ...custom.filter(e => !builtInNames.has(e.name))].filter(ex => !hidden.includes(ex.name));
 
   // Apply any saved custom order for this day — an exercise not in the
@@ -16768,6 +16925,7 @@ function renderWorkoutPlan() {
   if (skippedToday.length) plan = plan.filter(ex => !todaysSkips[ex.name]);
 
   plan = groupSupersetPartners(plan, currentPlanKey());
+  plan = orderStationMembers(plan, currentPlanKey());
   const isZoomed = zoomedExercise && plan.some(ex => ex.name === zoomedExercise);
   // Zooming into one half of a superset brings its partner along: the two are one unit.
   const zoomGroup = isZoomed ? (() => { const pn = supersetPartnerFor(currentPlanKey(), zoomedExercise); return pn && plan.some(ex => ex.name === pn) ? [zoomedExercise, pn] : [zoomedExercise]; })() : [];
@@ -16804,7 +16962,7 @@ function renderWorkoutPlan() {
     ${backToListHtml}
     ${collapseAllHtml}
     <div id="exerciseListContainer">
-    ${visiblePlan.map((ex, exIndex) => {
+    ${stationWrap(visiblePlan.map((ex, exIndex) => {
       const setCount = parseSetCount(ex.sets);
       const setState = getOrInitSetState(ex.name, setCount, ex.sets);
       const prevSets = previousSetsFor(ex.name);
@@ -16912,7 +17070,7 @@ function renderWorkoutPlan() {
         <div style="display:flex;gap:8px"><button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${ex.name}" style="flex:1;min-width:0;margin-top:2px;border-style:dashed;font-size:12px;padding:9px">+ Add set</button>${skipControl}</div>
         </div>
       </div>`;
-    }).join('')}
+    }), visiblePlan, currentPlanKey(), isZoomed || reorderingExercises)}
     </div>
     ${isZoomed ? '' : skippedStrip}
     ${isZoomed ? '' : `<div id="addExerciseRow" style="margin-top:2px">
@@ -16921,6 +17079,7 @@ function renderWorkoutPlan() {
         <button type="button" class="btn btn-ghost btn-sm" id="reorderExercisesBtn" style="flex:1">${reorderingExercises ? '✓ Done Reordering' : '⠿ Reorder'}</button>
         ${dayAllNames.length > 1 ? `<button type="button" class="btn btn-ghost btn-sm" id="groupVariantsBtn" style="flex:1">${groupPanelOpen ? '✕ Close' : '⧉ Group'}</button>` : ''}
       </div>
+      ${currentPlanKey() === QUICK_KEY ? '' : `<button type="button" class="btn btn-ghost btn-sm" id="newStationBtn" style="width:100%;margin-top:6px">${stationPanel === 'new' ? '✕ Close' : '🏋 Add a machine card'}</button>${stationPanel === 'new' ? stationNewPanelHtml(currentPlanKey(), dayAllNames) : ''}`}
       ${groupPanelOpen && dayAllNames.length > 1 ? (() => {
         const gk = currentPlanKey();
         const sug = variantSuggestions(dayAllNames, gk);
@@ -20908,6 +21067,7 @@ document.getElementById('exportJsonBtn').addEventListener('click', () => {
       exerciseOrderOverride,
       supersetPairs,
       exerciseGroups,
+      exerciseStations,
       exerciseRestOverride,
       muscleGoals,
       customRoutines,
