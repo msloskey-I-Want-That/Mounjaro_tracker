@@ -7191,6 +7191,53 @@ function muscleSessionIndex() {
   MUSCLE_MAP_GROUPS.forEach(g => idx[g].sort((a, b) => a.t - b.t));
   return idx;
 }
+// ── Walks count as leg work (recovery, details, stretch picks) — never as sets, so weekly volume,
+// set goals, balance flags and the leaderboard stay strength-only. Short strolls don't count.
+const CARDIO_MUSCLES = { 'Walk': ['Quads', 'Hamstrings', 'Calves'], 'Dog Walk': ['Quads', 'Hamstrings', 'Calves'], 'Hiking': ['Quads', 'Hamstrings', 'Calves'], 'Treadmill': ['Quads', 'Hamstrings', 'Calves'], 'Bike': ['Quads', 'Calves'] };
+const CARDIO_ICONS = { 'Walk': '🚶', 'Dog Walk': '🐕', 'Hiking': '🥾', 'Treadmill': '🚶', 'Bike': '🚴', 'Health': '🚶' };
+const HEALTH_WALK_MIN_MI = 3; // Apple Health's daily distance counts only on a big walking day with no walk logged
+function cardioMiles(c) { const d = parseFloat(c.dist), m = parseFloat(c.min); return d > 0 ? d : (m > 0 ? m / 20 : 0); } // ~3 mph when only minutes
+function cardioCounts(c) { const d = parseFloat(c.dist), m = parseFloat(c.min); return (d >= 1) || (!(d > 0) && m >= 20); }
+function cardioRecoveryHours(c) { // ~24h for 3 miles, up to 48h for a long hike
+  const h = Math.min(48, Math.max(18, 12 + 4 * cardioMiles(c)));
+  return Math.round(c.type === 'Hiking' ? Math.min(48, h * 1.25) : h);
+}
+function cardioLabel(c) {
+  const d = parseFloat(c.dist), m = parseFloat(c.min), name = c.type === 'Health' ? 'Walking (Apple Health)' : c.type;
+  return `${CARDIO_ICONS[c.type] || '🚶'} ${name}${d > 0 ? ` · ${Math.round(d * 10) / 10} mi` : ''}${m > 0 && c.type !== 'Health' ? ` · ${Math.round(m)} min` : ''}`;
+}
+// { group: [{ t, date, cardio: { type, dist, min }, recH }] } oldest first.
+function muscleCardioIndex() {
+  const idx = {}; MUSCLE_MAP_GROUPS.forEach(g => { idx[g] = []; });
+  entries.forEach(e => {
+    let walked = false;
+    (e.ex || []).forEach(x => {
+      const groups = x && CARDIO_MUSCLES[x.type]; if (!groups) return;
+      if (x.type !== 'Bike') walked = true;
+      const c = { type: x.type, dist: x.dist, min: x.min }; if (!cardioCounts(c)) return;
+      const t = (typeof x.ts === 'number' && x.ts > 1e11) ? x.ts : new Date(e.date + 'T12:00:00').getTime();
+      groups.forEach(g => idx[g].push({ t, date: e.date, cardio: c, recH: cardioRecoveryHours(c) }));
+    });
+    const hd = parseFloat(e.distanceMi);
+    if (!walked && hd >= HEALTH_WALK_MIN_MI) {
+      const c = { type: 'Health', dist: hd }, t = new Date(e.date + 'T18:00:00').getTime();
+      CARDIO_MUSCLES.Walk.forEach(g => idx[g].push({ t, date: e.date, cardio: c, recH: cardioRecoveryHours(c) }));
+    }
+  });
+  MUSCLE_MAP_GROUPS.forEach(g => idx[g].sort((a, b) => a.t - b.t));
+  return idx;
+}
+// Combine lifting recovery with the latest walk: whichever leaves the muscle tired longer wins.
+function withCardioRecovery(r, walks, now) {
+  if (!walks || !walks.length) return r;
+  const L = walks[walks.length - 1], elapsedH = Math.max(0, (now - L.t) / 3600000);
+  const w = elapsedH >= L.recH ? { state: 'ready', elapsedH, recH: L.recH, baseH: L.recH, effort: null, cardio: L }
+    : { state: 'recovering', elapsedH, recH: L.recH, baseH: L.recH, effort: null, hoursLeft: L.recH - elapsedH, cardio: L };
+  if (r.state === 'none') return w;
+  if (r.state === 'ready') return w.state === 'recovering' ? w : (w.elapsedH < r.elapsedH ? w : r);
+  if (w.state === 'recovering' && w.hoursLeft > r.hoursLeft) return { ...w, state: r.state === 'overlap' ? 'overlap' : 'recovering' };
+  return r;
+}
 // The end-of-workout effort rating (1-5) stretches or shrinks the window: a
 // max-effort session needs roughly 30% longer, a very easy one 20% less. It's
 // one rating for the whole workout, so it applies to every muscle that
@@ -7367,6 +7414,7 @@ function muscleLineHtml(plan) {
 
 function muscleStats(now) {
   const idx = muscleSessionIndex(); now = now || Date.now(); const out = {}; const prog = muscleProgress();
+  let cidx = {}; try { cidx = muscleCardioIndex(); } catch (err) { console.error('walk recovery:', err); }
   MUSCLE_MAP_GROUPS.forEach(g => {
     const s = idx[g], goal = muscleGoalFor(g), weeks = [0, 0, 0, 0], exWeek = {};
     s.forEach(x => {
@@ -7376,7 +7424,8 @@ function muscleStats(now) {
     });
     out[g] = { group: g, sets: weeks[0], goal, zone: muscleZone(weeks[0], goal), weeks,
       exercises: Object.entries(exWeek).map(([name, sets]) => ({ name, sets })).sort((a, b) => b.sets - a.sets),
-      last: s.length ? s[s.length - 1] : null, recovery: muscleRecovery(s, now), effort: muscleEffortFor(s), progress: prog[g] };
+      last: s.length ? s[s.length - 1] : null, recovery: withCardioRecovery(muscleRecovery(s, now), cidx[g], now), effort: muscleEffortFor(s), progress: prog[g],
+      walks: (cidx[g] || []).filter(x => { const d = daysAgoFor(x.date); return d >= 0 && d < 7; }).reverse() };
   });
   return out;
 }
@@ -7448,6 +7497,7 @@ function muscleDetailHtml(st, mode) {
     <div style="font-size:12px;font-weight:700;margin-bottom:2px">${status}</div>
     ${last ? `<div style="font-size:11px;color:var(--ink-soft);margin-bottom:${effortNote ? '2px' : '8px'}">${last}</div>` : '<div style="margin-bottom:8px"></div>'}
     ${effortNote ? `<div class="md-effort" style="font-size:11px;color:var(--ink-soft);margin-bottom:8px">${effortNote}</div>` : ''}
+    ${st.walks && st.walks.length ? `<div class="md-walks" style="font-size:11px;margin:-4px 0 8px">${st.walks.slice(0, 3).map(x => `<div>${escapeHtml(cardioLabel(x.cardio))} · ${fmtDate(x.date)}${x === (r.cardio || null) && r.state !== 'ready' ? ` <span style="color:var(--ink-soft)">(legs need ~${x.recH}h)</span>` : ''}</div>`).join('')}<div style="color:var(--ink-soft);margin-top:2px">Walks count toward recovery, not weekly sets.</div></div>` : ''}
     ${mode === 'progress' ? `<div class="md-label">Best set per lift · last 4 weeks vs the 4 before</div><div class="md-list">${pr && pr.exercises.length ? pr.exercises.map(r => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${escapeHtml(r.name)}</span><span class="n">${r.base != null ? r.base : '–'} → ${r.cur != null ? r.cur : '–'} lb${r.delta != null ? ` (${r.delta > 0 ? '+' : ''}${r.delta})` : ''}</span></div>`).join('') : '<div style="color:var(--ink-soft)">No weighted lifts logged for this muscle yet.</div>'}</div>` : `<div class="md-label">This week</div>
     <div class="md-list">${ex}</div>${recentHtml}`}
     <div class="md-label" style="margin-top:10px">Sets per week</div>
@@ -11132,6 +11182,7 @@ function recTrainedMuscles(days) {
     if (x.type !== 'Strength' || !x.sets || typeof x.sets !== 'object') return;
     Object.keys(x.sets).forEach(name => { const g = muscleGroupFor(name); const c = (x.sets[name] || []).filter(s => s && !s.warmup).length; if (g && c) n[g] = (n[g] || 0) + c; });
   }));
+  try { const ci = muscleCardioIndex(); MUSCLE_MAP_GROUPS.forEach(g => (ci[g] || []).forEach(x => { if (x.date >= cut) n[g] = (n[g] || 0) + 3; })); } catch (err) { /* walks are a bonus here */ }
   return Object.keys(n).sort((a, b) => n[b] - n[a]);
 }
 function recStepsFor(kind, muscles, per, hold) {
