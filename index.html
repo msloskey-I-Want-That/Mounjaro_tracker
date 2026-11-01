@@ -3114,11 +3114,11 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 
       <div class="form-card" id="weekRecapCard">
         <div class="form-section-title">This week</div>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
+        <div id="gymPassRow" style="display:none;gap:8px;margin-bottom:12px"><!-- Nov 1: removed at Mike's request (he scans in with the Planet Fitness app); kept hidden so its wiring still runs -->
           <button type="button" class="btn btn-secondary" id="gymPassBtn" style="flex:1;min-width:0;padding:12px 10px;font-weight:800">🏷️ Open gym pass</button>
           <button type="button" class="btn btn-ghost btn-sm" id="gymPassEditBtn" aria-label="Gym pass link settings" style="flex:0 0 44px;padding:0">⚙</button>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;margin:-4px 0 12px">
+        <div style="display:flex;gap:8px;align-items:center;margin:0 0 12px">
           <button type="button" class="btn btn-ghost btn-sm" id="gymCheckinBtn" style="flex:1;min-width:0;padding:10px;font-weight:800">📍 Check in at the gym</button>
           <div id="gymCheckinCount" style="flex:0 0 auto;font-size:12px;color:var(--ink-soft)"></div>
         </div>
