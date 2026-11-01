@@ -1101,6 +1101,29 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 .hist-pr { margin-left: 2px; }
 .log-ctx-card { margin-bottom: 12px !important; }
 #logSubtabRow { flex-wrap: nowrap; gap: 6px; }
+/* Food tab, Nov 1: one water control (in Daily Nutrition), one photo button (in Add Food), search-first Add Food */
+#waterCard, #foodStripPhoto, #foodTabRow, #addMethodRow, #nutritionCard #nutAppetite { display: none !important; }
+.food-quick-actions { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin: 4px 0 12px; }
+.food-quick-actions .fqa { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; padding: 8px 2px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--input-bg); color: var(--ink-soft); font: 700 10.5px/1.1 var(--font-text, inherit); cursor: pointer; }
+.food-quick-actions .fqa span { font-size: 18px; line-height: 1; }
+.food-quick-actions .fqa.on { border-color: var(--teal); color: var(--ink); background: rgba(55,198,255,0.14); }
+#foodQuickPicks .fqp-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); margin: 4px 0 6px; }
+#foodQuickPicks .fqp-row { display: flex; flex-wrap: wrap; gap: 6px; }
+#foodQuickPicks .fqp { padding: 7px 11px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--input-bg); color: var(--ink); font: 600 12.5px/1.2 inherit; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#foodQuickPicks .fqp b { color: var(--teal); font-weight: 800; margin-left: 4px; }
+#addFoodCard.af-collapsed { background: linear-gradient(135deg, #37C6FF, #5CE6C0); border: none; padding: 0; }
+#addFoodCard.af-collapsed > .form-section-title { margin: 0; padding: 16px; justify-content: center !important; gap: 8px; }
+#addFoodCard.af-collapsed > .form-section-title span:first-child { color: #04203a !important; font-size: 16px !important; letter-spacing: 0.02em !important; }
+#addFoodCard.af-collapsed > .form-section-title span:first-child::before { content: '＋ '; }
+#addFoodCard.af-collapsed #addFoodChevron { display: none; }
+.food-plan-line { font-size: 12px; color: var(--ink-soft); margin: 6px 0 10px; padding: 8px 10px; border-radius: 10px; background: rgba(55,198,255,0.08); }
+.food-plan-line b { color: var(--ink); }
+.fw-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.fw-tile { padding: 10px 12px; border-radius: 12px; background: var(--input-bg); min-width: 0; }
+.fw-tile small { display: block; font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.fw-tile b { display: block; font-size: 18px; margin-top: 2px; }
+.fw-tile i { font-style: normal; font-size: 11px; font-weight: 700; }
+.fw-up { color: var(--sage); } .fw-down { color: var(--coral); } .fw-same { color: var(--ink-soft); }
 body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display: none !important; }
 #logSubtabRow .chip { flex: 1 1 0; min-width: 0; justify-content: center; padding-left: 8px; padding-right: 8px; white-space: nowrap; }
 @media (max-width: 420px) { #logSubtabRow .chip svg { display: none; } }
@@ -2666,6 +2689,10 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
         </div>
 
 
+      <div class="form-card" id="appetiteLogCard" style="padding:12px 16px">
+        <div id="logAppetiteBody"></div>
+      </div>
+
       <div class="form-card" id="stepsOverrideCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center"><span>Steps (from Apple Health)</span><span id="stepsOverrideChevron" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
@@ -2845,21 +2872,6 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
         <div id="proteinSummaryBody"></div>
       </div>
 
-      <div class="form-card" id="whatFitsCard" style="display:none">
-        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px">
-          <div class="form-section-title" style="margin-bottom:0">What fits?</div>
-          <div id="whatFitsLeft" style="font-size:11px;color:var(--ink-soft);white-space:nowrap"></div>
-        </div>
-        <div id="whatFitsList"></div>
-      </div>
-
-      <div class="form-card">
-        <div class="form-section-title">Today's Food Log</div>
-        <div class="food-log-actions" id="foodLogActions"></div>
-        <div id="comboSuggestionBanner" style="display:none;margin-bottom:12px;padding:10px 12px;border:1.5px solid var(--teal);border-radius:10px;background:var(--teal-tint)"></div>
-        <div id="mealList"></div>
-      </div>
-
       <div class="form-card" id="addFoodCard">
         <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">Add Food</span>
@@ -2873,6 +2885,14 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
             <div class="chip mt-chip" data-mt="Dinner">Dinner</div>
             <div class="chip mt-chip" data-mt="Snack">Snack</div>
           </div>
+        </div>
+        <div class="food-quick-actions" id="foodQuickActions">
+          <button type="button" class="fqa on" data-fqa="search"><span>🔍</span>Search</button>
+          <button type="button" class="fqa" data-fqa="photo"><span>📷</span>Photo</button>
+          <button type="button" class="fqa" data-fqa="label"><span>🏷️</span>Label</button>
+          <button type="button" class="fqa" data-fqa="describe"><span>💬</span>Describe</button>
+          <button type="button" class="fqa" data-fqa="favorites"><span>⭐</span>Favorites</button>
+          <button type="button" class="fqa" data-fqa="recipe"><span>🍲</span>Recipe</button>
         </div>
         <div class="chip-row" id="foodTabRow" style="margin-bottom:12px">
           <div class="chip food-tab-chip on" data-food-tab="quick">Quick add</div>
@@ -2897,6 +2917,7 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
             </div>
           </div>
           <div id="myFoodResults"></div>
+          <div id="foodQuickPicks"></div>
           </div>
           <div class="add-method-panel" data-method="describe" style="display:none">
             <div class="field" style="margin-bottom:0">
@@ -3008,6 +3029,14 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
             </div>
           </div>
         </div>
+        <div class="field" style="margin-bottom:10px">
+          <label for="mFiber">Fiber (g, optional)</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mFiber" data-step="-1" style="padding:6px 12px">−</button>
+            <input type="number" id="mFiber" inputmode="decimal" step="any" placeholder="0" style="flex:1;min-width:0;text-align:center">
+            <button type="button" class="btn btn-secondary btn-sm stepper-btn" data-step-target="mFiber" data-step="1" style="padding:6px 12px">+</button>
+          </div>
+        </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-secondary" id="addMealBtn" style="flex:1;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800">+ Add to Day</button>
           <button class="btn btn-secondary btn-sm" id="pinCurrentBtn" title="Save as Favorite" aria-label="Save current item as favorite" style="white-space:nowrap"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 9.5 16.5 14 18 21 12 17 6 21 7.5 14 2 9.5 9 9"/></svg> Fav</button>
@@ -3040,7 +3069,27 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 
       </div>
 
+      <div class="form-card" id="whatFitsCard" style="display:none">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px">
+          <div class="form-section-title" style="margin-bottom:0">What fits?</div>
+          <div id="whatFitsLeft" style="font-size:11px;color:var(--ink-soft);white-space:nowrap"></div>
+        </div>
+        <div id="whatFitsList"></div>
+      </div>
+
       <div class="form-card">
+        <div class="form-section-title">Today's Food Log</div>
+        <div class="food-log-actions" id="foodLogActions"></div>
+        <div id="comboSuggestionBanner" style="display:none;margin-bottom:12px;padding:10px 12px;border:1.5px solid var(--teal);border-radius:10px;background:var(--teal-tint)"></div>
+        <div id="mealList"></div>
+      </div>
+
+      <div class="form-card" id="foodWeekCard">
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:baseline"><span>This week</span><span id="foodWeekRange" style="font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:none;letter-spacing:0"></span></div>
+        <div id="foodWeekBody"></div>
+      </div>
+
+      <div class="form-card" id="waterCard">
         <div class="form-section-title">Water</div>
         <div style="display:flex;align-items:center;gap:10px">
           <input type="number" inputmode="numeric" id="waterInput"
@@ -6758,7 +6807,7 @@ function topFrequentFoods(limit) {
       if (!m.desc) return;
       if (!counts[m.desc]) counts[m.desc] = { count: 0, latest: null };
       counts[m.desc].count++;
-      counts[m.desc].latest = { desc: m.desc, protein: m.protein, cal: m.cal, carbs: m.carbs, fat: m.fat };
+      counts[m.desc].latest = { desc: m.desc, protein: m.protein, cal: m.cal, carbs: m.carbs, fat: m.fat, fiber: m.fiber != null ? m.fiber : null };
     });
   });
   return Object.values(counts)
@@ -9279,6 +9328,7 @@ function showView(name) {
   views.forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
   navItems.forEach(n => n.classList.toggle('active', n.dataset.view === name));
   if (name === 'charts') setTimeout(renderCharts, 50);
+  if (name === 'log') { try { renderLogAppetite(); } catch (err) { console.error(err); } }
   if (name === 'history') { renderHistory(); try { renderWorkoutHistory(); renderActivityHistory(); } catch (err) { console.error(err); } }
   if (name === 'food') { setMealType(defaultMealType()); renderMealList(); renderWater(); }
   if (name === 'exercise') renderExList();
@@ -9782,6 +9832,7 @@ function applyFixedAmountAdd() {
   if (lookupSelection.protein100 != null) document.getElementById('mProtein').value = Math.round(lookupSelection.protein100);
   if (lookupSelection.cal100 != null)     document.getElementById('mCal').value = Math.round(lookupSelection.cal100);
   if (lookupSelection.carbs100 != null)   document.getElementById('mCarbs').value = Math.round(lookupSelection.carbs100);
+  if (lookupSelection.fiber100 != null)   document.getElementById('mFiber').value = Math.round(lookupSelection.fiber100);
   if (lookupSelection.fat100 != null)     document.getElementById('mFat').value = Math.round(lookupSelection.fat100);
   lastLookupSource = lookupSelection.source || null;
   lookupSelection = null;
@@ -9802,6 +9853,7 @@ function previewPortionMacros() {
   document.getElementById('mProtein').value = lookupSelection.protein100 != null ? Math.round(lookupSelection.protein100 * scale) : '';
   document.getElementById('mCal').value = lookupSelection.cal100 != null ? Math.round(lookupSelection.cal100 * scale) : '';
   document.getElementById('mCarbs').value = lookupSelection.carbs100 != null ? Math.round(lookupSelection.carbs100 * scale) : '';
+  document.getElementById('mFiber').value = lookupSelection.fiber100 != null ? Math.round(lookupSelection.fiber100 * scale) : '';
   document.getElementById('mFat').value = lookupSelection.fat100 != null ? Math.round(lookupSelection.fat100 * scale) : '';
 }
 
@@ -9830,6 +9882,7 @@ async function fetchUsdaFoods(q) {
       protein100: n(1003),
       cal100: n(1008),
       carbs100: n(1005),
+      fiber100: n(1079),
       fat100: n(1004),
       serving: f.servingSize && f.servingSizeUnit === 'g' ? f.servingSize : null,
       servingText: f.householdServingFullText || '',
@@ -9856,7 +9909,7 @@ async function fetchOffSearch(q) {
         brand: p.brands || '',
         protein100: n.proteins_100g != null ? parseFloat(n.proteins_100g) : null,
         cal100: n['energy-kcal_100g'] != null ? parseFloat(n['energy-kcal_100g']) : null,
-        carbs100: n.carbohydrates_100g != null ? parseFloat(n.carbohydrates_100g) : null,
+        carbs100: n.carbohydrates_100g != null ? parseFloat(n.carbohydrates_100g) : null, fiber100: n.fiber_100g != null ? parseFloat(n.fiber_100g) : null,
         fat100: n.fat_100g != null ? parseFloat(n.fat_100g) : null,
         serving: p.serving_quantity ? parseFloat(p.serving_quantity) : null,
         servingText: p.serving_size || '',
@@ -9940,7 +9993,7 @@ async function fetchFatSecretSearch(q) {
         brand: f.brand_name || '',
         protein100: parsed.protein,
         cal100: parsed.calories,
-        carbs100: parsed.carbs,
+        carbs100: parsed.carbs, fiber100: parsed.fiber != null ? parsed.fiber : null,
         fat100: parsed.fat,
         source: 'FatSecret'
       };
@@ -9984,7 +10037,7 @@ async function fetchSpoonacularSearch(q) {
         fixedLabel: 'estimated dish',
         protein100: data.protein ? data.protein.value : null,
         cal100: data.calories ? data.calories.value : null,
-        carbs100: data.carbs ? data.carbs.value : null,
+        carbs100: data.carbs ? data.carbs.value : null, fiber100: data.fiber ? data.fiber.value : null,
         fat100: data.fat ? data.fat.value : null
       }]
     };
@@ -10063,7 +10116,7 @@ async function estimateFoodFromPhoto(file) {
     const portionText = portion < 1
       ? ` The user only ate approximately ${Math.round(portion * 100)}% of what's shown in the photo — first estimate the nutrition for the FULL amount visible, then scale your final numbers down to reflect only the amount actually eaten.`
       : '';
-    const promptText = `Estimate the nutrition for the food shown in this photo, and estimate the approximate total weight of that specific amount in grams.${details ? ` Additional details from the user: "${details}".` : ''}${portionText} Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format: {"name": "short food name", "estimated_grams": number, "calories": number, "protein": number, "carbs": number, "fat": number}. The calories/protein/carbs/fat values should correspond to the estimated_grams amount, not to a 100g reference. Give your best-effort numeric estimate for every field even if uncertain — never omit a field.`;
+    const promptText = `Estimate the nutrition for the food shown in this photo, and estimate the approximate total weight of that specific amount in grams.${details ? ` Additional details from the user: "${details}".` : ''}${portionText} Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format: {"name": "short food name", "estimated_grams": number, "calories": number, "protein": number, "carbs": number, "fat": number, "fiber": number}. The calories/protein/carbs/fat values should correspond to the estimated_grams amount, not to a 100g reference. Give your best-effort numeric estimate for every field even if uncertain — never omit a field.`;
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -10114,7 +10167,7 @@ async function estimateFoodFromPhoto(file) {
       source: 'Claude Vision (estimate)',
       protein100: parsed.protein != null ? round1(parsed.protein * scale100) : null,
       cal100: parsed.calories != null ? Math.round(parsed.calories * scale100) : null,
-      carbs100: parsed.carbs != null ? round1(parsed.carbs * scale100) : null,
+      carbs100: parsed.carbs != null ? round1(parsed.carbs * scale100) : null, fiber100: parsed.fiber != null ? round1(parsed.fiber * scale100) : null,
       fat100: parsed.fat != null ? round1(parsed.fat * scale100) : null,
       serving: grams,
       servingText: "Claude's estimated portion"
@@ -10156,7 +10209,7 @@ async function scanNutritionLabel(file) {
   box.innerHTML = '<div class="lookup-status">Reading label…</div>';
   try {
     const base64 = await fileToBase64(file);
-    const promptText = `Read the Nutrition Facts label shown in this photo and transcribe the exact printed values — do not estimate or guess, only use numbers that are actually printed on the label. Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format: {"name": "product name if visible on the packaging, otherwise a short description", "serving_grams": number or null, "calories": number, "protein": number, "carbs": number, "fat": number}. serving_grams should be the gram weight of one serving as stated (e.g. "1 bar (35g)" -> 35); if the label gives serving size without any gram/oz weight at all, set serving_grams to null. If the label is too blurry or unclear to read reliably, respond with exactly: {"error": "reason"}`;
+    const promptText = `Read the Nutrition Facts label shown in this photo and transcribe the exact printed values — do not estimate or guess, only use numbers that are actually printed on the label. Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format: {"name": "product name if visible on the packaging, otherwise a short description", "serving_grams": number or null, "calories": number, "protein": number, "carbs": number, "fat": number, "fiber": number}. serving_grams should be the gram weight of one serving as stated (e.g. "1 bar (35g)" -> 35); if the label gives serving size without any gram/oz weight at all, set serving_grams to null. If the label is too blurry or unclear to read reliably, respond with exactly: {"error": "reason"}`;
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -10205,7 +10258,7 @@ async function scanNutritionLabel(file) {
         source: 'Nutrition Label (scanned)',
         protein100: parsed.protein != null ? round1(parsed.protein * scale100) : null,
         cal100: parsed.calories != null ? Math.round(parsed.calories * scale100) : null,
-        carbs100: parsed.carbs != null ? round1(parsed.carbs * scale100) : null,
+        carbs100: parsed.carbs != null ? round1(parsed.carbs * scale100) : null, fiber100: parsed.fiber != null ? round1(parsed.fiber * scale100) : null,
         fat100: parsed.fat != null ? round1(parsed.fat * scale100) : null,
         serving: parsed.serving_grams,
         servingText: 'label serving size',
@@ -10221,7 +10274,7 @@ async function scanNutritionLabel(file) {
         fixedLabel: 'per label serving',
         protein100: parsed.protein,
         cal100: parsed.calories,
-        carbs100: parsed.carbs,
+        carbs100: parsed.carbs, fiber100: parsed.fiber != null ? parsed.fiber : null,
         fat100: parsed.fat
       };
     }
@@ -10273,7 +10326,7 @@ document.getElementById('estimateRecipeBtn').addEventListener('click', async () 
 
 Estimate the TOTAL nutrition for the entire recipe as described, then divide by ${servings} to get per-serving values. Also estimate the approximate weight of one serving in grams.
 
-Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format: {"name": "short recipe name", "estimated_grams_per_serving": number, "calories": number, "protein": number, "carbs": number, "fat": number}
+Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format: {"name": "short recipe name", "estimated_grams_per_serving": number, "calories": number, "protein": number, "carbs": number, "fat": number, "fiber": number}
 
 The calories/protein/carbs/fat should be PER SERVING, not for the whole recipe. Give your best-effort numeric estimate for every field even if uncertain.`;
     const result = await callClaudeText(promptText, 300);
@@ -10292,7 +10345,7 @@ The calories/protein/carbs/fat should be PER SERVING, not for the whole recipe. 
       source: 'Claude Recipe Estimate',
       protein100: parsed.protein != null ? round1(parsed.protein * scale100) : null,
       cal100: parsed.calories != null ? Math.round(parsed.calories * scale100) : null,
-      carbs100: parsed.carbs != null ? round1(parsed.carbs * scale100) : null,
+      carbs100: parsed.carbs != null ? round1(parsed.carbs * scale100) : null, fiber100: parsed.fiber != null ? round1(parsed.fiber * scale100) : null,
       fat100: parsed.fat != null ? round1(parsed.fat * scale100) : null,
       serving: grams,
       servingText: `1 of ${servings} servings`
@@ -10324,7 +10377,7 @@ document.getElementById('estimateMealBtn').addEventListener('click', async () =>
 
 Estimate the TOTAL nutrition for the ENTIRE meal exactly as described — not per serving, the whole thing they're telling you about. Use typical, reasonable portion sizes for anything not explicitly quantified (e.g. "a slice of pizza" implies one normal-sized slice). Give your best-effort numeric estimate for every field even if uncertain.
 
-Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format: {"name": "short summary of the meal", "calories": number, "protein": number, "carbs": number, "fat": number}
+Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format: {"name": "short summary of the meal", "calories": number, "protein": number, "carbs": number, "fat": number, "fiber": number}
 
 If the description doesn't contain anything resembling food or drink, respond with exactly: {"error": "reason"}`;
     const result = await callClaudeText(promptText, 250);
@@ -10347,7 +10400,7 @@ If the description doesn't contain anything resembling food or drink, respond wi
       fixedLabel: 'as described',
       protein100: parsed.protein,
       cal100: parsed.calories,
-      carbs100: parsed.carbs,
+      carbs100: parsed.carbs, fiber100: parsed.fiber != null ? parsed.fiber : null,
       fat100: parsed.fat
     };
     box.innerHTML = '';
@@ -10815,7 +10868,7 @@ async function estimateFromTextFallback(query) {
   if (!anthropicKey) { box.innerHTML = '<div class="lookup-status">Add your Anthropic API key in Settings first to use this.</div>'; return; }
   box.innerHTML = '<div class="lookup-status">Estimating…</div>';
   try {
-    const promptText = `Estimate the nutrition for "${query}" as a typical single serving. Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format: {"name": "short food name", "calories": number, "protein": number, "carbs": number, "fat": number}. If this genuinely isn't recognizable as food or you can't make a reasonable estimate, respond with {"error": "reason"} instead. Otherwise give your best-effort numeric estimate for every field even if uncertain.`;
+    const promptText = `Estimate the nutrition for "${query}" as a typical single serving. Respond with ONLY a JSON object, no other text, no markdown fences, in exactly this format: {"name": "short food name", "calories": number, "protein": number, "carbs": number, "fat": number, "fiber": number}. If this genuinely isn't recognizable as food or you can't make a reasonable estimate, respond with {"error": "reason"} instead. Otherwise give your best-effort numeric estimate for every field even if uncertain.`;
     const result = await callClaudeText(promptText, 300);
     if (!result.ok) { box.innerHTML = `<div class="lookup-status">Estimate failed — HTTP ${result.status}. Check your Anthropic API key in Settings.</div>`; return; }
     let parsed;
@@ -10836,7 +10889,7 @@ async function estimateFromTextFallback(query) {
       fixedLabel: 'estimated serving',
       protein100: parsed.protein,
       cal100: parsed.calories,
-      carbs100: parsed.carbs,
+      carbs100: parsed.carbs, fiber100: parsed.fiber != null ? parsed.fiber : null,
       fat100: parsed.fat
     };
     box.innerHTML = '';
@@ -11540,6 +11593,7 @@ async function onBarcode(code) {
     document.getElementById('mProtein').value = '';
     document.getElementById('mCal').value = '';
     document.getElementById('mCarbs').value = '';
+    document.getElementById('mFiber').value = '';
     document.getElementById('mFat').value = '';
   }
 
@@ -11554,6 +11608,7 @@ async function onBarcode(code) {
     document.getElementById('mProtein').value = remembered.protein || '';
     document.getElementById('mCal').value = remembered.cal || '';
     document.getElementById('mCarbs').value = remembered.carbs || '';
+    document.getElementById('mFiber').value = remembered.fiber || '';
     document.getElementById('mFat').value = remembered.fat || '';
     box.innerHTML = '<div class="lookup-status">✓ Remembered from last time — tap "+ Add to Day"</div>';
     return;
@@ -11571,7 +11626,7 @@ async function onBarcode(code) {
         brand: d.product.brands || '',
         protein100: n.proteins_100g != null ? parseFloat(n.proteins_100g) : null,
         cal100: n['energy-kcal_100g'] != null ? parseFloat(n['energy-kcal_100g']) : null,
-        carbs100: n.carbohydrates_100g != null ? parseFloat(n.carbohydrates_100g) : null,
+        carbs100: n.carbohydrates_100g != null ? parseFloat(n.carbohydrates_100g) : null, fiber100: n.fiber_100g != null ? parseFloat(n.fiber_100g) : null,
         fat100: n.fat_100g != null ? parseFloat(n.fat_100g) : null,
         serving: d.product.serving_quantity ? parseFloat(d.product.serving_quantity) : null,
         servingText: d.product.serving_size || ''
@@ -11589,7 +11644,7 @@ async function onBarcode(code) {
       const foods = (data.foods || []).map(f => {
         const nn = id => { const x = (f.foodNutrients||[]).find(fn => fn.nutrientId === id); return x ? x.value : null; };
         return { name: f.description, brand: f.brandOwner || '', protein100: nn(1003), cal100: nn(1008),
-                 carbs100: nn(1005), fat100: nn(1004),
+                 carbs100: nn(1005), fat100: nn(1004), fiber100: nn(1079),
                  serving: f.servingSize && f.servingSizeUnit === 'g' ? f.servingSize : null,
                  servingText: f.householdServingFullText || '' };
       }).filter(f => f.protein100 != null || f.cal100 != null);
@@ -18347,7 +18402,7 @@ async function savePinnedFavorites() {
 
 async function pinFavorite(f) {
   if (isPinned(f)) { showUndoToast(`"${f.desc}" is already in your Favorites`, async () => {}); return; }
-  const added = { desc: f.desc, protein: f.protein || null, cal: f.cal || null, carbs: f.carbs || null, fat: f.fat || null };
+  const added = { desc: f.desc, protein: f.protein || null, cal: f.cal || null, carbs: f.carbs || null, fat: f.fat || null, fiber: f.fiber != null ? f.fiber : null };
   pinnedFavorites = [...pinnedFavorites, added];
   pendingFlashDesc = added.desc; // the new chip lights up briefly in the Favorites row
   renderFavorites();
@@ -18408,7 +18463,7 @@ async function quickAddCombo(combo) {
   // the combo indistinguishable to startEditMeal/deleteMeal.
   const baseTs = Date.now();
   const newMeals = combo.items.map((item, i) => ({
-    desc: item.desc, mt, protein: item.protein, cal: item.cal, carbs: item.carbs, fat: item.fat, ts: baseTs + i
+    desc: item.desc, mt, protein: item.protein, cal: item.cal, carbs: item.carbs, fat: item.fat, fiber: item.fiber != null ? item.fiber : null, ts: baseTs + i
   }));
   pendingFlashDesc = combo.name;
   await writeMeals(date, [...mealsForDate(date), ...newMeals]);
@@ -18449,7 +18504,7 @@ function detectRepeatedFoodGroup(date, mt) {
   });
   if (matchingDates.size < 3) return null;
 
-  const items = mealsForDate(date).filter(m => m.mt === mt).map(m => ({ desc: m.desc, protein: m.protein, cal: m.cal, carbs: m.carbs, fat: m.fat }));
+  const items = mealsForDate(date).filter(m => m.mt === mt).map(m => ({ desc: m.desc, protein: m.protein, cal: m.cal, carbs: m.carbs, fat: m.fat, fiber: m.fiber != null ? m.fiber : null }));
   return { items, mt, count: matchingDates.size, key: todaysKey };
 }
 
@@ -18506,7 +18561,7 @@ function quickAddFoodScaled(f, chipEl) {
 async function quickAddFood(f, chipEl) {
   const date = document.getElementById('foodDate').value;
   if (!date) { alert('Please select a date first.'); return; }
-  const meal = { desc: f.desc, mt: selectedMealType(), protein: f.protein, cal: f.cal, carbs: f.carbs, fat: f.fat, ts: Date.now() };
+  const meal = { desc: f.desc, mt: selectedMealType(), protein: f.protein, cal: f.cal, carbs: f.carbs, fat: f.fat, fiber: f.fiber != null ? f.fiber : null, ts: Date.now() };
   pendingFlashDesc = f.desc;
   await writeMeals(date, [...mealsForDate(date), meal]);
   showUndoToast(`Added "${f.desc}" to ${meal.mt}`, async () => { await writeMeals(date, mealsForDate(date).filter(m => m.ts !== meal.ts)); });
@@ -18681,7 +18736,7 @@ function renderFavorites() {
       const r = pinnedRecipes[Number(el.dataset.recipeAdd)];
       const servings = r.servings || 1;
       if (servings <= 1) {
-        quickAddFood({ desc: r.name, protein: r.protein, cal: r.cal, carbs: r.carbs, fat: r.fat }, el.closest('.chip'));
+        quickAddFood({ desc: r.name, protein: r.protein, cal: r.cal, carbs: r.carbs, fat: r.fat, fiber: r.fiber != null ? r.fiber : null }, el.closest('.chip'));
         return;
       }
       const eatenStr = prompt(`This recipe makes ${servings} servings. How many are you eating?`, '1');
@@ -18759,7 +18814,7 @@ function renderFavorites() {
       if (!name) { alert('Please give the combo a name.'); return; }
       const selectedIdx = [...document.querySelectorAll('.combo-item-checkbox:checked')].map(cb => Number(cb.dataset.combofav));
       if (selectedIdx.length < 2) { alert('Select at least 2 favorites to combine.'); return; }
-      const items = selectedIdx.map(i => pinnedFavorites[i]).map(f => ({ desc: f.desc, protein: f.protein || null, cal: f.cal || null, carbs: f.carbs || null, fat: f.fat || null }));
+      const items = selectedIdx.map(i => pinnedFavorites[i]).map(f => ({ desc: f.desc, protein: f.protein || null, cal: f.cal || null, carbs: f.carbs || null, fat: f.fat || null, fiber: f.fiber != null ? f.fiber : null }));
       foodCombos = [...foodCombos, { name, items, createdAt: Date.now() }];
       renderFavorites();
       await saveFoodCombosToFirestore();
@@ -18793,7 +18848,7 @@ function renderFavorites() {
       try {
         for (const dateStr of selectedDates) {
           const baseTs = Date.now();
-          const newMeals = items.map((item, i) => ({ desc: item.desc, mt, protein: item.protein, cal: item.cal, carbs: item.carbs, fat: item.fat, ts: baseTs + i }));
+          const newMeals = items.map((item, i) => ({ desc: item.desc, mt, protein: item.protein, cal: item.cal, carbs: item.carbs, fat: item.fat, fiber: item.fiber != null ? item.fiber : null, ts: baseTs + i }));
           await writeMeals(dateStr, [...mealsForDate(dateStr), ...newMeals]);
         }
       } finally {
@@ -18868,7 +18923,8 @@ function makeFoodCardCollapsible(cardId, chevronId, storageKey, defaultExpanded,
   return content;
 }
 
-try { makeFoodCardCollapsible('addFoodCard', 'addFoodChevron', 'mounjaro-foodcard-addfood', true, true); } catch (err) { console.error('addFoodCard collapsible setup failed:', err); }
+try { if (!localStorage.getItem('mounjaro-addfood-sheet-migrated')) { localStorage.setItem('mounjaro-foodcard-addfood', 'false'); localStorage.setItem('mounjaro-addfood-sheet-migrated', '1'); } } catch (err) { /* private mode */ }
+try { makeFoodCardCollapsible('addFoodCard', 'addFoodChevron', 'mounjaro-foodcard-addfood', false, true); } catch (err) { console.error('addFoodCard collapsible setup failed:', err); }
 // One-time reset — Workout Plan used to default to expanded, so anyone
 // who's already used the app likely has an explicit "true" saved for
 // this, which would silently override the new default below and never
@@ -19098,6 +19154,7 @@ function applyRecipeBoxSelection(recipe) {
   document.getElementById('mProtein').value = m.protein || '';
   document.getElementById('mCal').value = m.calories || '';
   document.getElementById('mCarbs').value = m.carbs || '';
+  document.getElementById('mFiber').value = m.fiber || '';
   document.getElementById('mFat').value = m.fat || '';
   lastLookupSource = 'Recipe Box';
   document.getElementById('recipeBoxModal').classList.add('hidden');
@@ -19226,6 +19283,7 @@ function applyIngredientPick(i, f) {
     protein: f.protein != null ? f.protein : (f.protein100 != null ? Math.round(f.protein100) : ''),
     cal:     f.cal     != null ? f.cal     : (f.cal100     != null ? Math.round(f.cal100)     : ''),
     carbs:   f.carbs   != null ? f.carbs   : (f.carbs100   != null ? Math.round(f.carbs100)   : ''),
+    fiber:   f.fiber   != null ? f.fiber   : (f.fiber100   != null ? Math.round(f.fiber100)   : ''),
     fat:     f.fat     != null ? f.fat     : (f.fat100     != null ? Math.round(f.fat100)     : '')
   };
   delete ringSearchResults[i];
@@ -19289,7 +19347,7 @@ async function saveRecipe() {
   const recipe = {
     name,
     servings,
-    ingredients: validIngredients.map(i => ({ desc: i.desc.trim(), protein: i.protein || null, cal: i.cal || null, carbs: i.carbs || null, fat: i.fat || null })),
+    ingredients: validIngredients.map(i => ({ desc: i.desc.trim(), protein: i.protein || null, cal: i.cal || null, carbs: i.carbs || null, fat: i.fat || null, fiber: i.fiber != null ? i.fiber : null })),
     protein: totals.protein, cal: totals.calories, carbs: totals.carbs, fat: totals.fat
   };
   pinnedRecipes = [...pinnedRecipes, recipe];
@@ -19401,15 +19459,16 @@ function mealsForDate(date) {
 }
 
 function mealTotals(meals) {
-  let p = 0, c = 0, cb = 0, ft = 0, hasP = false, hasC = false, hasCb = false, hasFt = false;
+  let p = 0, c = 0, cb = 0, ft = 0, fb = 0, hasP = false, hasC = false, hasCb = false, hasFt = false, hasFb = false;
   meals.forEach(m => {
+    if (m.fiber != null && m.fiber !== '' && !isNaN(parseFloat(m.fiber))) { fb += parseFloat(m.fiber); hasFb = true; }
     if (m.protein != null && m.protein !== '') { p += parseFloat(m.protein); hasP = true; }
     if (m.cal != null && m.cal !== '') { c += parseFloat(m.cal); hasC = true; }
     if (m.carbs != null && m.carbs !== '') { cb += parseFloat(m.carbs); hasCb = true; }
     if (m.fat != null && m.fat !== '') { ft += parseFloat(m.fat); hasFt = true; }
   });
   return { protein: hasP ? Math.round(p) : null, calories: hasC ? Math.round(c) : null,
-           carbs: hasCb ? Math.round(cb) : null, fat: hasFt ? Math.round(ft) : null };
+           carbs: hasCb ? Math.round(cb) : null, fat: hasFt ? Math.round(ft) : null, fiber: hasFb ? Math.round(fb) : null };
 }
 
 async function writeMeals(date, meals) {
@@ -19466,6 +19525,7 @@ function startEditMeal(date, ts) {
   document.getElementById('mProtein').value = meal.protein || '';
   document.getElementById('mCal').value = meal.cal || '';
   document.getElementById('mCarbs').value = meal.carbs || '';
+  document.getElementById('mFiber').value = meal.fiber || '';
   document.getElementById('mFat').value = meal.fat || '';
   document.getElementById('mServings').value = '';
   document.getElementById('mOffPlan').checked = !!meal.offPlan;
@@ -19481,6 +19541,7 @@ function cancelEditMeal() {
   document.getElementById('mProtein').value = '';
   document.getElementById('mCal').value = '';
   document.getElementById('mCarbs').value = '';
+  document.getElementById('mFiber').value = '';
   document.getElementById('mFat').value = '';
   document.getElementById('mOffPlan').checked = false;
   document.getElementById('addMealBtn').textContent = '+ Add to Day';
@@ -19496,7 +19557,7 @@ var manualReview = false, reviewHadContent = false;
 function syncReviewVisibility() {
   const body = document.getElementById('reviewFormBody'), btn = document.getElementById('manualEntryBtn');
   if (!body || !btn) return;
-  const filled = ['mProtein', 'mCal', 'mCarbs', 'mFat'].some(id => { const v = document.getElementById(id).value; return v !== '' && v != null; });
+  const filled = ['mProtein', 'mCal', 'mCarbs', 'mFat', 'mFiber'].some(id => { const v = document.getElementById(id).value; return v !== '' && v != null; });
   const editing = editingMealTs != null;
   if (filled || editing) reviewHadContent = true;
   else if (reviewHadContent) { manualReview = false; reviewHadContent = false; }
@@ -19512,7 +19573,7 @@ function syncReviewVisibility() {
       get() { return nativeValue.get.call(this); },
       set(v) { nativeValue.set.call(this, v); if (id === 'mDesc' && v === '') manualReview = false; try { syncReviewVisibility(); } catch (err) { /* page still loading */ } } });
   });
-  ['mProtein', 'mCal', 'mCarbs', 'mFat'].forEach(id => document.getElementById(id).addEventListener('input', () => { try { syncReviewVisibility(); } catch (err) { /* ignore */ } }));
+  ['mProtein', 'mCal', 'mCarbs', 'mFat', 'mFiber'].forEach(id => document.getElementById(id).addEventListener('input', () => { try { syncReviewVisibility(); } catch (err) { /* ignore */ } }));
   document.getElementById('manualEntryBtn').addEventListener('click', () => { manualReview = true; syncReviewVisibility(); });
 })();
 try { syncReviewVisibility(); } catch (err) { /* ignore */ }
@@ -19533,6 +19594,7 @@ document.getElementById('addMealBtn').addEventListener('click', async () => {
       cal:     (v => { const n = parseFloat(v); const s = parseFloat(document.getElementById('mServings').value) || 1; return (v !== '' && v != null && !isNaN(n)) ? String(Math.round(n * s * 100) / 100) : null; })(document.getElementById('mCal').value),
       carbs:   (v => { const n = parseFloat(v); const s = parseFloat(document.getElementById('mServings').value) || 1; return (v !== '' && v != null && !isNaN(n)) ? String(Math.round(n * s * 100) / 100) : null; })(document.getElementById('mCarbs').value),
       fat:     (v => { const n = parseFloat(v); const s = parseFloat(document.getElementById('mServings').value) || 1; return (v !== '' && v != null && !isNaN(n)) ? String(Math.round(n * s * 100) / 100) : null; })(document.getElementById('mFat').value),
+      fiber:   (v => { const n = parseFloat(v); const s = parseFloat(document.getElementById('mServings').value) || 1; return (v !== '' && v != null && !isNaN(n)) ? String(Math.round(n * s * 100) / 100) : null; })(document.getElementById('mFiber').value),
       offPlan: document.getElementById('mOffPlan').checked,
     };
     if (lastLookupSource) fields.source = lastLookupSource;
@@ -19554,7 +19616,7 @@ document.getElementById('addMealBtn').addEventListener('click', async () => {
     if (pendingUnmatchedBarcode) {
       const barcode = pendingUnmatchedBarcode;
       pendingUnmatchedBarcode = null;
-      scannedBarcodeCache[barcode] = { desc: fields.desc, protein: fields.protein, cal: fields.cal, carbs: fields.carbs, fat: fields.fat };
+      scannedBarcodeCache[barcode] = { desc: fields.desc, protein: fields.protein, cal: fields.cal, carbs: fields.carbs, fat: fields.fat, fiber: fields.fiber != null ? fields.fiber : null };
       if (syncId) {
         try {
           await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { scannedBarcodes: scannedBarcodeCache }, { merge: true });
@@ -19565,11 +19627,14 @@ document.getElementById('addMealBtn').addEventListener('click', async () => {
     document.getElementById('mProtein').value = '';
     document.getElementById('mCal').value = '';
     document.getElementById('mCarbs').value = '';
+    document.getElementById('mFiber').value = '';
     document.getElementById('mFat').value = '';
     document.getElementById('mOffPlan').checked = false;
     document.getElementById('lookupResults').innerHTML = '';
     document.getElementById('myFoodResults').innerHTML = '';
     document.getElementById('mServings').value = '';
+    try { const afc = document.getElementById('addFoodCard'); if (entryPopupCard === afc) { const t = afc.querySelector('.form-section-title'); if (t) t.click(); } } catch (err) { /* stay open */ }
+    try { showGoldToast(`✓ Added ${fields.desc} to ${fields.mt}`, 2600); } catch (err) { /* toast is optional */ }
   } finally {
     btn.disabled = false;
   }
@@ -19623,6 +19688,7 @@ document.getElementById('pinCurrentBtn').addEventListener('click', async () => {
     cal:     document.getElementById('mCal').value || null,
     carbs:   document.getElementById('mCarbs').value || null,
     fat:     document.getElementById('mFat').value || null,
+    fiber:   document.getElementById('mFiber').value || null,
   };
   await pinFavorite(f);
   const btn = document.getElementById('pinCurrentBtn');
@@ -19765,7 +19831,7 @@ function renderWhatFits() {
   const picks = whatFitsCandidates(proteinLeft, calLeft, 4);
   if (!picks.length) {
     if (!pinnedFavorites.length && !foodCombos.length && !topFrequentFoods(12).length) {
-      card.style.display = '';
+      card.style.display = 'none'; // Nov 1: no card until there is something to suggest
       if (leftEl) leftEl.textContent = `${proteinLeft}g protein · ${calLeft.toLocaleString()} cal left`;
       list.innerHTML = '<div id="whatFitsEmpty" style="font-size:12px;color:var(--ink-soft);line-height:1.45">Suggestions appear here once you have a few favorites or foods you log often. Tap ☆ on a food in Add Food to start.</div>';
     } else card.style.display = 'none';
@@ -19877,9 +19943,19 @@ function appetiteHtmlFor(date) {
   const chips = [1, 2, 3, 4, 5].map(n => `<button type="button" class="app-chip${cur === n ? ' on' : ''}" data-appetite="${n}" aria-pressed="${cur === n}" aria-label="Appetite ${n} of 5">${n}</button>`).join('');
   return `<div class="nut-appetite" id="nutAppetite"><div class="app-row"><span class="app-label"><span>🍽️ Appetite</span><small>1 very low · 5 strong</small></span><span class="app-chips">${chips}</span></div>${appetiteInsight()}</div>`;
 }
+function renderLogAppetite() {
+  const box = document.getElementById('logAppetiteBody'); if (!box) return;
+  const date = todayStr();
+  box.innerHTML = appetiteHtmlFor(date).replace('id="nutAppetite"', 'id="logAppetite"');
+  box.querySelectorAll('[data-appetite]').forEach(b => b.addEventListener('click', () => {
+    const v = Number(b.dataset.appetite), e = entries.find(x => x.date === date);
+    setAppetite(date, e && Number(e.appetite) === v ? null : v);
+  }));
+}
 async function setAppetite(date, v) {
   upsertLocalEntry(date, e => { e.appetite = v; });
   renderProteinSummary();
+  try { renderLogAppetite(); } catch (err) { /* Log tab not built yet */ }
   try { await setDoc(doc(db, 'trackers', syncId, 'entries', date), { date, appetite: v }, { merge: true }); }
   catch (err) { console.error(err); alert('Couldn\'t save — check your connection and try again.'); }
 }
@@ -19917,11 +19993,13 @@ function renderProteinSummary() {
       </div>
     </div>
     ${paceHtmlFor(date, proteinMet)}
+    ${proteinPlanHtml(date, pLeft, pTarget)}
     ${macroBarRow('Calories', totals.calories || 0, targets.calorieTarget, 'var(--ink)', `${date}:calories`)}
     ${macroBarRow('Carbs', totals.carbs || 0, targets.carbTarget, 'var(--coral)', `${date}:carbs`)}
     ${macroBarRow('Fat', totals.fat || 0, targets.fatTarget, 'var(--sage)', `${date}:fat`)}
+    ${macroBarRow('Fiber', totals.fiber || 0, 28, '#C9A3FF', `${date}:fiber`)}
     ${weekStripHtml(date)}
-    <div class="nut-water"><span>💧 Water<b id="nutWaterVal">${waterOzFor(date)} / 64 oz</b></span><span class="nut-water-btns"><button type="button" class="btn btn-secondary btn-sm" data-water-quick="8">+8</button><button type="button" class="btn btn-secondary btn-sm" data-water-quick="16">+16</button></span></div>
+    <div class="nut-water"><span>💧 Water<b id="nutWaterVal">${waterOzFor(date)} / 64 oz</b></span><span class="nut-water-btns"><button type="button" class="btn btn-ghost btn-sm" data-water-quick="-8" aria-label="Remove 8 oz">−8</button><button type="button" class="btn btn-secondary btn-sm" data-water-quick="8">+8</button><button type="button" class="btn btn-secondary btn-sm" data-water-quick="16">+16</button></span></div>
     ${appetiteHtmlFor(date)}
     ${!hasProfile && !targetsNoteDismissed() ? `<div class="targets-note"><span>Using estimated calorie/carb/fat targets — add your height and age in Settings to personalize them.</span><button type="button" class="targets-note-x" id="targetsNoteX" aria-label="Dismiss this note">✕</button></div>` : ''}
     ${targets.flooredForSafety ? `<div style="font-size:11px;color:var(--coral);margin-top:4px">Your calculated deficit target was under 1,200 cal — raised to 1,200 as a safety floor.</div>` : ''}
@@ -19944,6 +20022,53 @@ function renderProteinSummary() {
     _lastMacroDisplayValues[key] = target;
   });
   try { renderWhatFits(); } catch (err) { console.error('What fits render failed:', err); }
+  try { renderFoodWeek(date); } catch (err) { console.error('Food week render failed:', err); }
+  try { renderFoodQuickPicks(); } catch (err) { console.error('Quick picks render failed:', err); }
+  try { renderLogAppetite(); } catch (err) { /* ignore */ }
+}
+// Protein plan (today only): spread what's left over the main meals still ahead. Plain arithmetic, no advice.
+function proteinPlanHtml(date, pLeft, pTarget) {
+  if (date !== todayStr() || !(pLeft > 0)) return '';
+  const now = new Date(), h = now.getHours() + now.getMinutes() / 60;
+  const logged = new Set(mealsForDate(date).map(m => m.mt));
+  const ahead = [['Breakfast', 11], ['Lunch', 15.5], ['Dinner', 21.5]].filter(([mt, end]) => h < end && !logged.has(mt)).map(([mt]) => mt.toLowerCase());
+  if (!ahead.length) return `<div class="food-plan-line" id="foodPlanLine">🎯 A snack with about <b>${pLeft} g</b> protein gets you to ${pTarget} g.</div>`;
+  if (ahead.length === 1) return `<div class="food-plan-line" id="foodPlanLine">🎯 About <b>${pLeft} g</b> at ${ahead[0]} gets you to ${pTarget} g.</div>`;
+  const per = Math.ceil(pLeft / ahead.length);
+  return `<div class="food-plan-line" id="foodPlanLine">🎯 About <b>${per} g</b> each at ${ahead.slice(0, -1).join(', ')} and ${ahead[ahead.length - 1]} gets you to ${pTarget} g.</div>`;
+}
+// This week vs the 7 days before: averages over days with food logged; protein-goal days out of 7.
+function foodWeekStats(endDate) {
+  const days = []; for (let i = 6; i >= 0; i--) days.push(dateStrShift(endDate, -i));
+  let p = 0, c = 0, f = 0, n = 0, nf = 0, w = 0, nw = 0, goalDays = 0;
+  days.forEach(d => {
+    const ms = mealsForDate(d); const e = entries.find(x => x.date === d);
+    if (ms.length) { const t = mealTotals(ms); n++; p += t.protein || 0; c += t.calories || 0; if (t.fiber != null) { f += t.fiber; nf++; } if ((t.protein || 0) >= userProteinGoal) goalDays++; }
+    const wz = e && e.water ? parseFloat(e.water) : 0; if (wz > 0) { w += wz; nw++; }
+  });
+  return { days, logged: n, protein: n ? Math.round(p / n) : null, cal: n ? Math.round(c / n) : null, fiber: nf ? Math.round(f / nf) : null, water: nw ? Math.round(w / nw) : null, goalDays };
+}
+function renderFoodWeek(date) {
+  const box = document.getElementById('foodWeekBody'), card = document.getElementById('foodWeekCard'); if (!box || !card) return;
+  const cur = foodWeekStats(date), prev = foodWeekStats(dateStrShift(date, -7));
+  if (!cur.logged && !prev.logged) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const fmtD = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  document.getElementById('foodWeekRange').textContent = `${fmtD(cur.days[0])} – ${fmtD(cur.days[6])} vs the 7 days before`;
+  const delta = (a, b, unit, higherIsGood) => {
+    if (a == null || b == null) return '<i class="fw-same">no earlier week</i>';
+    const d = a - b; if (Math.abs(d) < 1) return '<i class="fw-same">same as before</i>';
+    const good = higherIsGood == null ? null : (d > 0) === higherIsGood;
+    return `<i class="${good == null ? 'fw-same' : good ? 'fw-up' : 'fw-down'}">${d > 0 ? '▲' : '▼'} ${Math.abs(Math.round(d)).toLocaleString('en-US')}${unit} vs before</i>`;
+  };
+  const tile = (label, val, unit, d) => `<div class="fw-tile"><small>${label}</small><b>${val == null ? '—' : val.toLocaleString('en-US') + unit}</b>${d}</div>`;
+  box.innerHTML = `<div class="fw-grid">
+    ${tile('Protein / day', cur.protein, ' g', delta(cur.protein, prev.protein, ' g', true))}
+    ${tile('Protein goal', cur.goalDays, ' of 7 days', delta(cur.goalDays, prev.logged ? prev.goalDays : null, ' days', true))}
+    ${tile('Calories / day', cur.cal, '', delta(cur.cal, prev.cal, '', null))}
+    ${tile('Water / day', cur.water, ' oz', delta(cur.water, prev.water, ' oz', true))}
+    ${cur.fiber != null || prev.fiber != null ? tile('Fiber / day', cur.fiber, ' g', delta(cur.fiber, prev.fiber, ' g', true)) : ''}
+  </div><div style="font-size:11px;color:var(--ink-soft);margin-top:8px">Averages count only days with food (or water) logged: ${cur.logged} of the last 7.</div>`;
 }
 
 
@@ -19991,6 +20116,42 @@ function updateFoodStripVisibility() {
 document.getElementById('app-main').addEventListener('scroll', updateFoodStripVisibility, { passive: true });
 document.getElementById('foodStripPhoto').addEventListener('click', () => startPhotoLog());
 document.getElementById('historyDoctorBtn').addEventListener('click', () => showDoctorSummary());
+// ── Add Food (Nov 1): a big "+ Add food" bar that opens the pop-up; search first; one row of icon buttons ──
+function syncAddFoodBar() {
+  const card = document.getElementById('addFoodCard'), content = document.getElementById('addFoodCardContent');
+  if (card && content) card.classList.toggle('af-collapsed', content.style.display === 'none');
+}
+(function wireAddFoodBar() {
+  const card = document.getElementById('addFoodCard'); if (!card) return;
+  const title = card.querySelector('.form-section-title');
+  if (title) title.addEventListener('click', () => setTimeout(syncAddFoodBar, 0));
+  syncAddFoodBar();
+  try { new MutationObserver(syncAddFoodBar).observe(document.getElementById('addFoodCardContent'), { attributes: true, attributeFilter: ['style'] }); } catch (err) { /* older browsers: the click hook above still works */ }
+})();
+function syncFoodQuickActions() {
+  const tab = (document.querySelector('.food-tab-chip.on') || {}).dataset || {}, meth = (document.querySelector('.add-method-chip.on') || {}).dataset || {};
+  const cur = tab.foodTab === 'favorites' ? 'favorites' : tab.foodTab === 'recipe' ? 'recipe' : (meth.addMethod || 'search');
+  document.querySelectorAll('#foodQuickActions .fqa').forEach(b => b.classList.toggle('on', b.dataset.fqa === cur));
+}
+document.querySelectorAll('#foodQuickActions .fqa').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.fqa;
+  const tabChip = document.querySelector(`.food-tab-chip[data-food-tab="${k === 'favorites' || k === 'recipe' ? k : 'quick'}"]`);
+  if (tabChip && !tabChip.classList.contains('on')) tabChip.click();
+  if (!['favorites', 'recipe'].includes(k)) { const m = document.querySelector(`.add-method-chip[data-add-method="${k}"]`); if (m) m.click(); }
+  syncFoodQuickActions();
+  if (k === 'photo') { try { startPhotoLog(); } catch (err) { /* the Photo panel is open either way */ } syncFoodQuickActions(); }
+  if (k === 'label') { const lb = document.getElementById('labelScanBtn'); if (lb) lb.click(); }
+}));
+document.querySelectorAll('.food-tab-chip, .add-method-chip').forEach(c => c.addEventListener('click', () => setTimeout(syncFoodQuickActions, 0)));
+// One-tap favorites and frequent foods under the search box: tap = added to the meal shown above.
+function renderFoodQuickPicks() {
+  const box = document.getElementById('foodQuickPicks'); if (!box) return;
+  const seen = new Set(), picks = [];
+  [...(pinnedFavorites || []), ...topFrequentFoods(12).map(x => x.latest || x)].forEach(f => { if (f && f.desc && !seen.has(f.desc.toLowerCase()) && picks.length < 8) { seen.add(f.desc.toLowerCase()); picks.push(f); } });
+  if (!picks.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="fqp-label">Tap to add</div><div class="fqp-row">${picks.map((f, i) => `<button type="button" class="fqp" data-fqp="${i}" title="Add to ${escapeHtml(selectedMealType())}">${escapeHtml(f.desc)}${f.protein ? `<b>${Math.round(parseFloat(f.protein))}g</b>` : ''}</button>`).join('')}</div>`;
+  box.querySelectorAll('[data-fqp]').forEach(b => b.addEventListener('click', () => quickAddFood(picks[Number(b.dataset.fqp)], b)));
+}
 document.getElementById('foodStripAdd').addEventListener('click', () => {
   ensureAddFoodOpenOnQuickTab();
   const desc = document.getElementById('mDesc');
@@ -20121,7 +20282,7 @@ function renderMealList() {
     return `<div class="meal-group-head"><span>${mt}</span><span class="meal-group-tot">${subStr}</span></div>` +
       items.map(m => {
         const name = escapeHtml(m.desc || '');
-        const macros = [m.protein ? `<span class="p">${m.protein}g P</span>` : '', m.carbs ? `<span class="c">${m.carbs}g C</span>` : '', m.fat ? `<span class="f">${m.fat}g F</span>` : ''].filter(Boolean).join('');
+        const macros = [m.protein ? `<span class="p">${m.protein}g P</span>` : '', m.carbs ? `<span class="c">${m.carbs}g C</span>` : '', m.fat ? `<span class="f">${m.fat}g F</span>` : '', (m.fiber != null && m.fiber !== '' && parseFloat(m.fiber) > 0) ? `<span class="fb" style="color:#C9A3FF">${Math.round(parseFloat(m.fiber))}g fiber</span>` : ''].filter(Boolean).join('');
         return `
         <div class="meal-swipe" data-ts="${m.ts}">
           <div class="meal-swipe-actions">
@@ -20151,9 +20312,8 @@ function renderMealList() {
   if (actions) {
     const prevDay = !meals.length ? lastDayWithAnyMeal(date) : null;
     const pCal = prevDay ? calSum(prevDay.items) : null;
-    actions.innerHTML = `<button type="button" class="food-log-action" id="foodLogPhotoBtn">📷 Log with a photo</button>` +
+    actions.innerHTML = '' +
       (prevDay ? `<button type="button" class="food-log-action" id="copyDayBtn" data-copyfrom="${prevDay.date}">↻ Copy ${dayWordFor(date, prevDay.date)} meals · ${prevDay.items.length} item${prevDay.items.length === 1 ? '' : 's'}${pCal != null ? ` · ${fmtThousands(pCal)} cal` : ''}</button>` : '');
-    document.getElementById('foodLogPhotoBtn').addEventListener('click', startPhotoLog);
     const cd = document.getElementById('copyDayBtn');
     if (cd) cd.addEventListener('click', () => repeatMeals(date, mealsForDate(cd.dataset.copyfrom), `${dayWordFor(date, cd.dataset.copyfrom)} meals`));
   }
