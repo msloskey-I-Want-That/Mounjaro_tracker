@@ -10,7 +10,7 @@ setTimeout(async () => {
   const doc = dom.window.document; const ev = s => dom.window.eval(s);
   // helper: build entries from a map of offset-days-ago -> 'log' | 'sick' | 'rest' | 'sick+log'
   const build = (map) => ev(`entries = []; const m = ${JSON.stringify(map)}; Object.entries(m).forEach(([off, kind]) => {
-      const d = new Date(); d.setDate(d.getDate() - Number(off)); const e = { date: d.toISOString().slice(0,10) };
+      const d = new Date(); d.setDate(d.getDate() - Number(off)); const e = { date: (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')) };
       if (kind.includes('log')) e.steps = '9000'; if (kind.includes('sick')) e.restDay = 'sick'; if (kind.includes('rest')) e.restDay = 'rest'; entries.push(e); });
       entries.sort((a,b)=>a.date.localeCompare(b.date));`);
   console.log('=== 1. current streak: a sick day pauses, never breaks ===');
@@ -54,7 +54,7 @@ setTimeout(async () => {
   check('no streak and no flag -> control stays out of the way', box.innerHTML === '');
   console.log('=== 5. Log tab chips, per selected date ===');
   build({0:'log'});
-  const yd = ev(`(() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0,10); })()`);
+  const yd = ev(`(() => { const d = new Date(); d.setDate(d.getDate() - 1); return (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')); })()`);
   ev(`document.getElementById('fDate').value = '${yd}'; document.getElementById('fDate').dispatchEvent(new Event('change'));`);
   click(doc.querySelector('#dayStatusRow [data-daystatus="rest"]')); await new Promise(r => setTimeout(r, 30));
   check('flags the SELECTED date (yesterday), not today', ev(`dayStatusFor('${yd}')`) === 'rest' && ev(`dayStatusFor(todayStr())`) === null);
@@ -70,7 +70,7 @@ setTimeout(async () => {
   console.log('=== 7. heatmap tint ===');
   build({0:'log', 1:'sick', 2:'log'}); ev(`document.getElementById('foodDate').value = todayStr(); showView('history'); renderConsistencyHeatmap();`);
   const rects = [...doc.querySelectorAll('#consistencyHeatmap rect[data-date]')];
-  const sickDate = ev(`(() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0,10); })()`);
+  const sickDate = ev(`(() => { const d = new Date(); d.setDate(d.getDate() - 1); return (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')); })()`);
   const sickRect = rects.find(r => r.dataset.date === sickDate);
   check('sick day cell gets the lavender pause tint, not the empty gray', sickRect && sickRect.getAttribute('fill') === '#9B7BC4');
   console.log('=== 8. badges use the bridged streak ===');

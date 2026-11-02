@@ -27,7 +27,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   console.log('=== 1. sections ===');
   draw();
   const heads = () => [...doc.querySelectorAll('#view-charts .cs-head')].filter(h => !h.hidden).map(h => h.dataset.sec);
-  check('the charts are grouped under headers, in this order (Recovery and Labs have no data, so no header)', heads().join() === 'Compare,Treatment,Body,Nutrition,Activity,Weekly summary');
+  check('the charts are grouped under headers, Body first (Recovery and Labs have no data, so no header)', heads().join() === 'Body,Treatment,Nutrition,Activity,Compare,Weekly summary');
   const exp = n => doc.querySelector(`.cs-head[data-sec="${n}"]`).getAttribute('aria-expanded') === 'true';
   check('Treatment and Body start open; the rest start folded', exp('Treatment') && exp('Body') && !exp('Nutrition') && !exp('Activity') && !exp('Recovery') && !exp('Compare'));
   check('the section cards really sit under their headers (DOM order)', (() => { const order = [...$('view-charts').children].filter(c => c.classList.contains('cs-head') || c.classList.contains('chart-card')).map(c => c.classList.contains('cs-head') ? 'H:' + c.dataset.sec : c.dataset.csec); return order.indexOf('H:Body') < order.indexOf('Body') && order.lastIndexOf('Body') < order.indexOf('H:Nutrition'); })());

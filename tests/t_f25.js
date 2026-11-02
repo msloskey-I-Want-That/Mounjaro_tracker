@@ -47,7 +47,7 @@ function boot(extra = {}) {
   check('the ✕ is only shown while editing (CSS rule is scoped to edit mode)', /\.hide-card-btn \{[^}]*display: none/.test(html) && /#view-dashboard\.editing-home \.home-extra-card \.hide-card-btn \{ display: flex; \}/.test(html));
   click(road().querySelector('.hide-card-btn')); await sleep(20);
   check('tapping ✕ on the Roadmap hides it', !shown(road()) && shown(prog()));
-  click(prog().querySelector('.hide-card-btn')); await sleep(20);
+  click(prog().querySelector(':scope > .hide-card-btn')); // its own ✕ (the Roadmap sits inside it and has its own) await sleep(20);
   check('...and on Progress', !shown(prog()));
   const tray = $('addCardMenu');
   check('the tray lists both under "Hidden — tap to bring back" with their names', /tap to bring back/.test(tray.textContent) && /Milestone Progress/.test(tray.textContent) && /Milestone Roadmap/.test(tray.textContent));

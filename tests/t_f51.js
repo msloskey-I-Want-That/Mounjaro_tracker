@@ -59,7 +59,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   console.log('=== 4. the Today card is one card ===');
   ev(`daysSinceStart = () => 16; entries = [{ date: ds(2), injection: true, dose: '5' }]; showView('dashboard'); detectDeloadNeeded = () => ({ weeksSinceDeload: null }); computeNextDoseCountdown = () => ({ daysUntil: 5 }); renderTodayCard(); renderDueToday();`);
   check('"Coming up" lives inside the Today card', $('todayCard').contains($('dueTodayCard')) && /Coming up/.test($('dueTodayCard').textContent));
-  check('and lists the dose countdown', /5 days until your next dose/.test($('dueTodayList').textContent));
+  check('the dose countdown is the Dose tile, not repeated in Coming up', /Dose/.test($('todayChips').textContent) && !/until your next dose/.test($('dueTodayList').textContent));
   check('but no longer repeats the next workout (it is a Today tile) or the deload note (moved to the Workout tab)', !/Next workout/.test($('dueTodayList').textContent) && !/deload/i.test($('dueTodayList').textContent));
   check('there is no separate "What\'s Due Today" card any more', !/What's Due Today/.test(doc.getElementById('view-dashboard').textContent));
   ev(`workoutPlanMode = 'ppl'; pplDayOverride = 'Push'; entries = [{ date: ds(3), ex: [{ type: 'Strength', ts: Date.now() - 3 * 864e5, min: 40, planDay: 'Push', sets: { 'Chest Press (machine)': [{ weight: 80, reps: 10 }] } }] }]; detectDeloadNeeded = () => ({ weeksSinceDeload: 6 }); renderWorkoutPlan();`);
@@ -83,7 +83,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   console.log('=== 6. one "This week" strip ===');
   ev(`entries = []; const mon = lbWeekStart(todayStr()); mk(ds(8), { weight: '200' }); mk(todayStr(), { weight: '199', ex: [{ type: 'Strength' }] }); entries.sort((a, b) => a.date.localeCompare(b.date)); updateStats()`);
   const recap = $('weeklyRecapBody').textContent.replace(/\s+/g, ' ');
-  check('weight, lifts, streak and challenges together', /lbs/.test(recap) && /Lifts? this week/.test(recap) && /Day Streak/.test(recap) && /\d\/3 Challenges/.test(recap));
+  check('weight, lifts, average protein and challenges together (the streak has its own card)', /lbs/.test(recap) && /Lifts? this week/.test(recap) && !/Day Streak/.test(recap) && /\d\/3 Challenges/.test(recap));
   click($('weeklyRecapBody').querySelector('[data-recap-go]')); check('the challenges tile opens the Badges tab', doc.getElementById('view-badges').classList.contains('active'));
 
   console.log('=== 7. milestones ===');

@@ -19,7 +19,7 @@ setTimeout(async () => {
     const t = todayStr();
     entries = [{ date: t, meals: [{ desc: 'PB', mt: 'Breakfast', protein: '13', cal: '280', carbs: '35', fat: '10', ts: 1 }], protein: '13', calories: '280' }];
     for (let i = 2; i <= 20; i += 6) { const d = new Date(); d.setDate(d.getDate() - i);
-      entries.push({ date: d.toISOString().slice(0,10), meals: [{ desc: 'Protein Shake', mt: 'Snack', protein: '25', cal: '150', carbs: '5', fat: '2', ts: i }] }); }
+      entries.push({ date: (d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')), meals: [{ desc: 'Protein Shake', mt: 'Snack', protein: '25', cal: '150', carbs: '5', fat: '2', ts: i }] }); }
     document.getElementById('foodDate').value = t;
     renderProteinSummary();`);
   console.log('=== 1. ranking + filtering ===');

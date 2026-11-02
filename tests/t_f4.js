@@ -8,7 +8,7 @@ setTimeout(() => {
   const doc = dom.window.document; const ev = s => dom.window.eval(s);
   const setup = `
     window.S = (n, extra = {}) => Array.from({ length: n }, () => Object.assign({ weight: 70, reps: 10 }, extra));
-    window.day = off => { const d = new Date(); d.setDate(d.getDate() - off); return d.toISOString().slice(0, 10); };
+    window.day = off => { const d = new Date(); d.setDate(d.getDate() - off); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }; // local date, like the app (toISOString is a day ahead after 7 pm ET)
     window.__mk = (off, sets, type = 'Strength') => ({ date: day(off), ex: [{ type, ts: 1, sets }] });`;
   ev(setup);
   console.log('=== 1. counting ===');

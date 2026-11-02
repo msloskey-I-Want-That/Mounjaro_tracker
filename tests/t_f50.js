@@ -33,7 +33,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   console.log('=== 1. layout ===');
   const order = [...$('view-badges').children].map(c => c.id).filter(Boolean);
-  check('cards in order: Leaderboard, Weekly challenges, Badges, Recent achievements, Milestones, PR Hall of Fame, All badges', order.slice(0, 9).join() === 'badgeCelebration,milestoneCelebration,leaderboardCard,weeklyChallengesCard,badgeSummaryCard,recentAchievementsCard,milestonesSummaryCard,prHallOfFameCard,badgeSectionsCard');
+  check('cards in order (not in a group yet, so the leaderboard pitch is last): Weekly challenges, Badges, Recent achievements, Milestones, PR Hall of Fame, All badges, Leaderboard', order.slice(0, 9).join() === 'badgeCelebration,milestoneCelebration,weeklyChallengesCard,badgeSummaryCard,recentAchievementsCard,milestonesSummaryCard,prHallOfFameCard,badgeSectionsCard,leaderboardCard');
   check('all badges start as one line per category (12 of them, including Recovery), none of the locked padlocks showing', doc.querySelectorAll('#badgeSections .bcat-head').length === 12 && doc.querySelectorAll('#badgeSections .badge-row').length === 0);
   check('each line says how many you have and shows a small bar', [...doc.querySelectorAll('#badgeSections .bcat-head')].every(h => /\d+\/\d+/.test(h.querySelector('.bcat-count').textContent) && !!h.querySelector('.bcat-bar')));
 

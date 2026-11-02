@@ -332,6 +332,8 @@ body {
 }
 .stat-grid.editing .hide-card-btn { display: flex; }
 .timeline-card.home-extra-card { position: relative; }
+#historyList + .chart-card { margin-top: 18px; }
+.ms-roadmap-inner { position: relative; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .form-card.home-extra-card { position: relative; }
 #view-dashboard.editing-home .form-card.home-extra-card { border-color: var(--teal); }
 #view-dashboard.editing-home .form-card.home-extra-card .hide-card-btn { display: flex; }
@@ -813,8 +815,19 @@ body {
   position: relative; top: -1px;
 }
 
+/* Folded cards: when everything under the title is hidden, the title's bottom margin is just empty space. */
+.form-card > .form-section-title:has(+ [style*="display: none"]:last-child),
+.form-card > .form-section-title:has(+ [style*="display:none"]:last-child) { margin-bottom: 0 !important; }
+
 /* ── SETTINGS ── */
 .settings-section { margin-bottom: 20px; }
+.settings-group { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 0 2px; margin-bottom: 16px; backdrop-filter: blur(26px) saturate(150%); -webkit-backdrop-filter: blur(26px) saturate(150%); }
+.settings-group-title { font-size: 15px; font-weight: 800; color: var(--ink); padding: 10px 16px 4px; }
+.settings-group .settings-section { margin: 0; border-top: 1px solid var(--line); }
+.settings-group .settings-group-title + .settings-section { border-top: none; }
+.settings-group .settings-title { margin: 0; padding: 13px 16px; }
+.settings-group .settings-card { border: none; border-radius: 0; border-top: 1px solid var(--line); }
+body.mode-exercise .settings-group:not(:has(.settings-section:not(.full-only))) { display: none; }
 .settings-title {
   font-size: 12px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em;
@@ -1961,7 +1974,7 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
           </div>
           <div class="sc-value" id="scChange">0 lbs</div>
           <div class="sc-bar-track"><div class="sc-bar-fill" id="scChangeBar"></div></div>
-          <div class="sc-sub" id="scChangeSub">goal: −45 lbs</div>
+          <div class="sc-sub" id="scChangeSub">goal: 45 lbs</div>
           <div class="sc-badge-hint" id="scChangeBadgeHint" style="display:none"></div>
         </div>
         <div class="stat-card" data-card-key="glucose">
@@ -2198,7 +2211,7 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
               <button type="button" class="btn btn-ghost btn-sm" id="goalPlus" aria-label="More workouts a week" style="flex:0 0 40px;padding:6px 0">+</button>
             </div>
             <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--ink-soft)"><input type="checkbox" id="goalStretch"> Count stretch days too</label>
-            <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--ink-soft)"><input type="checkbox" id="goalGym" checked> Count gym check-ins too</label>
+            <label id="goalGymRow" style="display:none;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--ink-soft)"><input type="checkbox" id="goalGym" checked> Count gym check-ins too</label>
           </div>
         </div>
       </div>
@@ -2214,14 +2227,13 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
         </div>
         <div style="font-size:11px;color:var(--ink-soft);margin-top:6px" id="msSub">—</div>
         <button type="button" class="link-btn" id="msAllBtn" style="margin-top:4px">All milestones &amp; badges →</button>
-      </div>
-
-      <div class="timeline-card home-extra-card" data-card-key="milestoneRoadmap">
-        <div class="timeline-title" id="msRoadmapHead" role="button" tabindex="0" aria-expanded="false" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0">Milestone Roadmap <span id="msRoadmapChev" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
+        <div class="home-extra-card ms-roadmap-inner" data-card-key="milestoneRoadmap">
+        <div class="timeline-title" id="msRoadmapHead" role="button" tabindex="0" aria-expanded="false" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0">Roadmap <span id="msRoadmapChev" style="font-size:11px;color:var(--ink-soft)">▶</span></div>
         <div id="msRoadmap" style="display:none;margin-top:10px"></div>
+        </div>
       </div>
 
-      <button class="btn btn-primary" id="quickLogBtn" style="margin-bottom:16px">+ Log Today's Reading</button>
+      <button class="btn btn-primary" id="quickLogBtn" style="margin-bottom:16px;display:none">+ Log Today's Reading</button>
     </div>
 
     <!-- Log -->
@@ -3263,6 +3275,14 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 
     <!-- History -->
     <div class="view" id="view-history">
+      <div class="hist-highlights" id="historyHighlights"></div>
+      <div class="hist-tools"><span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft)">Your log</span><button type="button" class="btn btn-ghost btn-sm full-only" id="historyDoctorBtn">📄 Doctor summary</button></div>
+      <div class="history-search">
+        <span style="color:var(--ink-soft)"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+        <input type="text" id="historySearch" placeholder="Search notes…">
+      </div>
+      <div class="hist-filters" id="historyFilters"></div>
+      <div id="historyList"></div>
       <div class="chart-card">
         <div class="chart-title">Consistency</div>
         <div id="consistencyHeatmap" style="overflow-x:auto;padding-bottom:4px"></div>
@@ -3295,14 +3315,6 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
         </div>
         <div id="activityHistoryList" style="display:none"></div>
       </div>
-      <div class="hist-highlights" id="historyHighlights"></div>
-      <div class="hist-tools"><span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft)">Your log</span><button type="button" class="btn btn-ghost btn-sm full-only" id="historyDoctorBtn">📄 Doctor summary</button></div>
-      <div class="history-search">
-        <span style="color:var(--ink-soft)"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-        <input type="text" id="historySearch" placeholder="Search notes…">
-      </div>
-      <div class="hist-filters" id="historyFilters"></div>
-      <div id="historyList"></div>
     </div>
 
     <!-- Charts -->
@@ -3595,12 +3607,12 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
               <div class="settings-row-sub">Food &amp; fitness drops medication and treatment screens. Workouts only also hides the Log and Food tabs. You can switch any time.</div>
             </div>
           </div>
-          <div class="chip-row" id="appModeRow" style="padding: 4px 0 8px">
+          <div class="chip-row" id="appModeRow" style="padding: 4px 16px 8px">
             <div class="chip mode-chip" data-mode-choice="full">Everything</div>
             <div class="chip mode-chip" data-mode-choice="fitness">Food &amp; fitness</div>
             <div class="chip mode-chip" data-mode-choice="exercise">Workouts only</div>
           </div>
-          <div class="settings-row-sub" id="appModeFitnessNote" style="display:none;padding:0 0 8px">Food &amp; fitness has no medication or treatment screens. Set your own starting weight and goal weight in Profile &amp; Goals below, because until you do the app shows its default numbers.</div>
+          <div class="settings-row-sub" id="appModeFitnessNote" style="display:none;padding:0 16px 8px">Food &amp; fitness has no medication or treatment screens. Set your own starting weight and goal weight in Profile &amp; Goals below, because until you do the app shows its default numbers.</div>
         </div>
       </div>
 
@@ -5933,6 +5945,14 @@ function buildBadgeCategoriesAll(d) {
 // for the Workouts category, which mixes several different underlying
 // metrics (session count, volume, PRs, exercise variety) rather than
 // one consistent unit like the streak-based categories have.
+// "1 more combos" → "1 more combo": the unit word in the singular when exactly one is left.
+function unitForCount(unit, n) {
+  if (Math.abs(Number(n) - 1) > 1e-9) return unit;
+  if (/^lbs\b/.test(unit)) return unit.replace(/^lbs/, 'lb');
+  if (/ies$/.test(unit)) return unit.replace(/ies$/, 'y');
+  if (/es$/.test(unit) && /(ss|x|ch|sh)es$/.test(unit)) return unit.replace(/es$/, '');
+  return unit.replace(/s$/, '');
+}
 function nextBadgeUnitLabel(badgeId) {
   if (badgeId.startsWith('strength_')) return 'workouts';
   if (badgeId.startsWith('volume_') || badgeId.startsWith('total_volume_')) return 'lbs of volume';
@@ -5958,7 +5978,7 @@ function nextBadgeHintText(categoryName, badgeCats) {
   const next = cat.badges.find(b => b.value < b.tier);
   if (!next) return '';
   const remaining = round1(next.tier - next.value);
-  return `${remaining} more ${nextBadgeUnitLabel(next.id)} to "${next.title}"`;
+  return `${remaining} more ${unitForCount(nextBadgeUnitLabel(next.id), remaining)} to "${next.title}"`;
 }
 
 // Renders (or hides) a single stat card's "next badge" hint line —
@@ -6204,7 +6224,7 @@ var badgeLockedOpen = new Set();     // categories whose locked badges are all s
 var milestoneLockedOpen = new Set();
 var prShowAll = false, recentShowAll = false;
 function badgeCountText(b) { const f = v => b.tier >= 1000 ? Math.round(v).toLocaleString() : round1(v); return `${f(Math.max(0, b.value))}/${f(b.tier)}`; }
-function badgeRemainingText(b) { const rem = Math.max(0, b.tier - b.value); const f = v => b.tier >= 1000 ? Math.round(v).toLocaleString() : round1(v); return `${f(rem)} more ${nextBadgeUnitLabel(b.id)}`; }
+function badgeRemainingText(b) { const rem = Math.max(0, b.tier - b.value); const f = v => b.tier >= 1000 ? Math.round(v).toLocaleString() : round1(v); return `${f(rem)} more ${unitForCount(nextBadgeUnitLabel(b.id), f(rem))}`; }
 function badgeProgressRow(b, cat, extra) {
   const pct = Math.round(Math.min(1, Math.max(0, b.value) / b.tier) * 100);
   return `<div class="badge-row" data-badge="${b.id}" role="button" tabindex="0" style="--cat-color:${cat.color}"><div class="br-icon">🔒</div><div class="br-main"><div class="br-title">${escapeHtml(b.title)}</div><div class="br-desc">${extra || escapeHtml(badgeRemainingText(b))}</div><div class="bp-bar"><span class="bp-fill" style="width:${pct}%"></span></div></div><div class="br-count">${badgeCountText(b)}</div></div>`;
@@ -6702,7 +6722,7 @@ function renderAll() {
   updateLogContextStrip();
   maybeAutoGenerateWeeklyInsights();
   document.getElementById('syncIdPill').textContent = syncId ? syncId.slice(0,8) + '…' : '—';
-  document.getElementById('scChangeSub').textContent = 'goal: −' + Math.round(baselineWeight - goalWeight) + ' lbs';
+  document.getElementById('scChangeSub').textContent = 'goal: ' + Math.round(baselineWeight - goalWeight) + ' lbs';
   document.getElementById('legendGoal').textContent = goalWeight;
   document.getElementById('stepsGoalLegend').textContent = currentStepGoal().toLocaleString();
 }
@@ -6881,7 +6901,7 @@ function updateStats() {
     weightEl.textContent  = latest.toFixed(1) + ' lbs';
     weightSub.textContent = 'as of ' + fmtDate(weightEntries[weightEntries.length - 1].date);
     const chg = latest - baselineWeight;
-    changeEl.textContent = (chg <= 0 ? '' : '+') + chg.toFixed(1) + ' lbs';
+    changeEl.textContent = chg <= 0 ? Math.abs(chg).toFixed(1) + ' lbs' : '+' + chg.toFixed(1) + ' lbs'; // a loss reads as a positive amount lost
     changeEl.style.color  = chg <= 0 ? 'var(--in)' : 'var(--out)';
     // Progress bar toward goal — baseline is 0%, goal weight is 100%.
     // Clamped both ends: no negative fill if weight's gone up from
@@ -6892,14 +6912,14 @@ function updateStats() {
     if (changeSub) {
       const eta = computeWeightGoalETA(weightEntries);
       const etaText = eta ? ` · ~${eta.etaDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} at this pace` : '';
-      changeSub.textContent = `${Math.round(pct)}% to goal (−${Math.round(goalLossTotal)} lbs)${etaText}`;
+      changeSub.textContent = `${Math.round(pct)}% to goal (${Math.round(goalLossTotal)} lbs)${etaText}`;
     }
   } else {
     weightEl.textContent  = baselineWeight + ' lbs';
     weightSub.textContent = 'baseline';
     changeEl.textContent  = '0 lbs';
     if (changeBar) changeBar.style.width = '0%';
-    if (changeSub) changeSub.textContent = `goal: −${Math.round(goalLossTotal)} lbs`;
+    if (changeSub) changeSub.textContent = `goal: ${Math.round(goalLossTotal)} lbs`;
   }
   renderWeightSparkline(weightEntries);
 
@@ -7016,9 +7036,14 @@ function updateStats() {
         loggedCount++;
         if (labStatus(item, withValue[0][item.key]) === 'out') outCount++;
       });
-      labsEl.textContent = outCount > 0 ? `${outCount} flagged` : 'All clear';
+      const lastA1c = [...labs].filter(l => l.a1c != null && l.a1c !== '').sort((a, b) => b.date.localeCompare(a.date))[0];
+      if (lastA1c) loggedCount++;
+      if (outCount > 0) labsEl.textContent = `${outCount} flagged`;
+      else if (loggedCount === 1 && lastA1c) labsEl.textContent = `A1C ${lastA1c.a1c}%`;
+      else if (loggedCount > 0) labsEl.textContent = 'All clear';
+      else labsEl.textContent = '—';
       labsSub.textContent = `${loggedCount} tracked · last drawn ${fmtDate(lastLab.date)}`;
-      labsSub.className = outCount > 0 ? 'sc-sub warn' : 'sc-sub good';
+      labsSub.className = outCount > 0 ? 'sc-sub warn' : loggedCount > 0 ? 'sc-sub good' : 'sc-sub';
     }
   }
 
@@ -7096,7 +7121,8 @@ function updateStats() {
       const workouts = weekLiftDays();
       let chDone = 0, chTotal = 0; try { const ch = weeklyChallenges(lbWeekStart(todayStr())); chTotal = ch.length; chDone = ch.filter(c => c.done).length; } catch (err) { /* ignore */ }
       const streak = currentLoggingStreak();
-      const hasRecapData = wChange !== null || workouts > 0 || streak > 0;
+      const weekProt = (() => { const cut = new Date(); cut.setDate(cut.getDate() - 6); const c = cut.getFullYear() + '-' + String(cut.getMonth() + 1).padStart(2, '0') + '-' + String(cut.getDate()).padStart(2, '0'); const v = entries.filter(e => e.date >= c && parseFloat(e.protein) > 0).map(e => parseFloat(e.protein)); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null; })();
+      const hasRecapData = wChange !== null || workouts > 0 || streak > 0 || weekProt != null;
       if (hasRecapData) {
         const weightColor = wChange === null ? 'var(--ink-soft)' : (wChange.change <= 0 ? 'var(--in)' : 'var(--out)');
         const weightText = wChange === null ? '—' : (wChange.change <= 0 ? '' : '+') + wChange.change.toFixed(1) + ' lbs';
@@ -7109,10 +7135,10 @@ function updateStats() {
             <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:#37C6FF">${workouts}</div>
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Lift${workouts === 1 ? '' : 's'} this week</div>
           </div>
-          <div>
-            <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:#FFB020">${streak}</div>
-            <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Day Streak</div>
-          </div>
+          ${weekProt != null ? `<div>
+            <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:#FFB020">${weekProt} g</div>
+            <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Avg protein</div>
+          </div>` : ''}
           ${chTotal ? `<div data-recap-go="badges" role="button" tabindex="0" style="cursor:pointer">
             <div style="font-family:var(--font-num);font-size:18px;font-weight:800;color:var(--teal)">${chDone}/${chTotal}</div>
             <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Challenges ›</div>
@@ -8226,13 +8252,13 @@ try { const r = localStorage.getItem('mounjaro-chart-range'); if (r === '4w' || 
 var chartSecOpen = {}, showEmptyCharts = false, chartMode = 'draw', chartProbe = {}, chartLabelDates = {}, compareChart = null, chartSectionsReady = false;
 try { chartSecOpen = JSON.parse(localStorage.getItem('mounjaro-chart-sections') || '{}') || {}; showEmptyCharts = localStorage.getItem('mounjaro-chart-showempty') === 'true'; } catch (err) { chartSecOpen = {}; }
 const CHART_SECTIONS = [
-  { name: 'Compare', ids: ['#compareCard'], open: false },
-  { name: 'Treatment', titles: ['Dose Escalation Timeline', 'Dose Change Comparison', 'Side Effects Near Dose Changes'], open: true },
   { name: 'Body', ids: ['weightChart', 'measurementsChart', 'glucoseChart', 'bpChart'], open: true },
+  { name: 'Treatment', titles: ['Dose Escalation Timeline', 'Dose Change Comparison', 'Side Effects Near Dose Changes'], open: true },
   { name: 'Nutrition', ids: ['proteinChart', 'waterChart', 'carbsChart', 'caloriesChart', 'fatChart'], open: false },
   { name: 'Activity', ids: ['stepsChart', 'exChart', 'activeCalChart', 'distanceChart', 'paceChart', 'inclineChart', 'volumeChart', 'weightProgressChart', 'e1rmChart'], open: false },
   { name: 'Recovery', ids: ['hrChart', 'hrvChart', 'sleepChart', 'sleepScoreChart'], open: false },
   { name: 'Labs', ids: ['a1cChart', 'ldlChart', 'egfrChart', 'altChart'], open: false },
+  { name: 'Compare', ids: ['#compareCard'], open: false },
   { name: 'Weekly summary', titles: ['Weekly Summary'], open: false }
 ];
 const CHART_META = {
@@ -11848,7 +11874,7 @@ function renderWorkoutHistory() {
         <div style="font-weight:800;font-size:15px;margin-bottom:2px">${s.label}</div>
         <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">${dayLabel}</div>
         <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:var(--ink)">
-          <span>⏱ ${s.duration}m</span>
+          ${s.duration > 0 ? `<span>⏱ ${s.duration}m</span>` : ''}
           <span>🏋️ ${s.totalVolume.toLocaleString()} lb</span>
           ${s.prCount ? `<span>🏆 ${s.prCount} PR${s.prCount === 1 ? '' : 's'}</span>` : ''}
         </div>
@@ -16040,6 +16066,10 @@ function renderLeaderboard() {
       ${mine.length ? `<div class="lb-note">👏 Cheered by ${escapeHtml(mine.join(', '))} this week</div>` : ''}
       <button type="button" class="btn btn-secondary btn-sm" data-lb="open" style="width:100%;margin-top:10px">Open leaderboard</button>`;
   }
+  try { // in a group: the board leads the tab; not yet: the sign-up pitch waits at the bottom
+    const card = document.getElementById('leaderboardCard'), anchor = document.getElementById(lbConfig && lbConfig.code ? 'milestoneCelebration' : 'badgeSectionsCard');
+    if (card && anchor && anchor.parentNode === card.parentNode && anchor.nextElementSibling !== card) anchor.insertAdjacentElement('afterend', card);
+  } catch (err) { /* ignore */ }
   if (lbSheetOpen()) renderLbSheet();
 }
 function lbSheetOpen() { const el = document.getElementById('lbSheet'); return !!el && el.style.display !== 'none'; }
@@ -18058,7 +18088,7 @@ function updateMilestone() {
   document.getElementById('msBar').style.width = pct.toFixed(0) + '%';
   const toGo = Math.max(0, currentW - targetW);
   document.getElementById('msSub').textContent = pct >= 100
-    ? `✓ Milestone hit — ${(currentW - targetW).toFixed(1)} lbs ahead of target`
+    ? `✓ Milestone hit — ${Math.abs(targetW - currentW).toFixed(1)} lbs ahead of target`
     : `${toGo.toFixed(1)} lbs to go · ${daysLeft} days left · ${pct.toFixed(0)}% there`;
 }
 
@@ -19095,6 +19125,29 @@ try {
   });
 })();
 } catch (err) { console.error('initSettingsSectionsCollapse failed:', err); }
+
+// The 14 sections, gathered into 4 groups so the list reads at a glance.
+const SETTINGS_GROUPS = [
+  { name: 'You & goals', titles: ['Profile & Goals', 'Calorie Calculator', 'AI Coach', 'Rest Timer Alert'] },
+  { name: 'App & screens', titles: ['App Mode', 'Screens', 'Appearance'] },
+  { name: 'Data & backup', titles: ['Your Data', 'Data Export', 'Full Backup', 'Doctor Visit', 'Print'] },
+  { name: 'Connections', titles: ['Integrations', 'Food Search APIs'] }
+];
+try {
+(function groupSettingsSections() {
+  const view = document.getElementById('view-settings'); if (!view || view.querySelector('.settings-group')) return;
+  const byTitle = {};
+  view.querySelectorAll(':scope > .settings-section').forEach(sec => { const t = sec.querySelector('.settings-title'); if (t) byTitle[t.firstChild ? t.firstChild.textContent.trim() : t.textContent.trim()] = sec; });
+  // groups go above the untitled Save Changes footer; any section not listed stays where it was
+  const footer = [...view.querySelectorAll(':scope > .settings-section')].find(sec => !sec.querySelector('.settings-title')) || null;
+  SETTINGS_GROUPS.forEach(g => {
+    const box = document.createElement('div'); box.className = 'settings-group'; box.dataset.group = g.name;
+    const h = document.createElement('div'); h.className = 'settings-group-title'; h.textContent = g.name; box.appendChild(h);
+    g.titles.forEach(t => { if (byTitle[t]) { box.appendChild(byTitle[t]); delete byTitle[t]; } });
+    if (box.children.length > 1) view.insertBefore(box, footer);
+  });
+})();
+} catch (err) { console.error('groupSettingsSections failed:', err); }
 
 // Add Food is now one card with 3 tabs (Quick add / Favorites / Recipe)
 // instead of 4 separate cards — this just switches which panel shows;
@@ -20884,7 +20937,8 @@ function renderDueToday() {
   const card = document.getElementById('dueTodayCard');
   const list = document.getElementById('dueTodayList');
   if (!card || !list) return;
-  const items = computeDueTodayItems().filter(i => i.icon !== '🏋️' && i.icon !== '📉'); // next workout is a Today tile; the deload note moved to the Workout tab
+  let doseTile = false; try { doseTile = !!todayDoseStatus(); } catch (err) { /* ignore */ }
+  const items = computeDueTodayItems().filter(i => i.icon !== '🏋️' && i.icon !== '📉' && !(doseTile && i.icon === '💉')); // next workout and the dose are Today tiles; the deload note moved to the Workout tab
   if (!items.length) { card.style.display = 'none'; return; }
   card.style.display = '';
   list.innerHTML = items.map(i => `
