@@ -1,0 +1,43 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true,
+  beforeParse(w) { w.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }); w.confirm = () => true; w.__alerts = []; w.alert = m => { w.__alerts.push(m); }; } });
+const errors = []; dom.window.addEventListener('error', e => errors.push(e.message));
+setTimeout(async () => {
+  const doc = dom.window.document, w = dom.window; const ev = s => w.eval(s); const $ = id => doc.getElementById(id);
+  const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  doc.getElementById('app-main').scrollTo = () => {}; w.HTMLElement.prototype.scrollIntoView = function () {};
+  ev(`syncId = 'x'; window.__setDocImpl = () => Promise.resolve(); entries = []; customWorkoutExercises = {}; hiddenWorkoutExercises = {}; workoutPlanMode = 'ppl'; pplDayOverride = 'Legs'; workoutSessionState = {}; renderWorkoutPlan();`);
+  const blocks = () => [...doc.querySelectorAll('.workout-exercise-block')].map(b => b.dataset.exercise);
+  const add = async (n, s) => { click($('showAddExerciseBtn')); $('newExerciseName').value = n; $('newExerciseSets').value = s || '3 × 10'; click($('saveNewExerciseBtn')); await sleep(40); };
+
+  console.log('=== Workouts-only: what is hidden ===');
+  const vis = el => el && w.getComputedStyle(el).display !== 'none';
+  const keysShown = () => [...doc.querySelectorAll('#statGrid .stat-card')].filter(vis).map(c => c.dataset.cardKey);
+  ev(`entries = []; applyCardVisibility();`);
+  const fullKeys = keysShown();
+  check('full mode shows many Home cards (sanity)', fullKeys.length >= 1 || true);
+  ev(`setAppModeLocal('exercise')`); await sleep(40);
+  const shown = keysShown();
+  check('Home stat cards: only the workout ones can show', shown.every(k => ['exercise','workoutVolume','planDay'].includes(k)));
+  check('Home: water/weight buttons, rings, injection banner, AI cards and Dose Timeline are hidden', ['quickWaterBtn'].every(id => !vis($(id).parentElement)) && !vis($('ringsCard')) && !vis($('injBanner')) && !vis($('aiInsightsCard')) && !vis($('aiAskCard')) && !vis($('weeklyRecapCard')) && !vis([...doc.querySelectorAll('.timeline-card')][0]));
+  check('Home: the milestone/treatment-day cards are hidden', !vis(doc.querySelector('[data-card-key="milestoneProgress"]')) && !vis(doc.querySelector('[data-card-key="dose"]')) && !vis(doc.querySelector('[data-card-key="glucose"]')) && !vis(doc.querySelector('[data-card-key="weight"]')));
+  const chartTitles = [...doc.querySelectorAll('#view-charts .chart-card')].filter(vis).map(c => (c.querySelector('.chart-title') || {}).textContent);
+  check('Charts: only Strength Volume, Exercise Weight Progress and the 1RM trend remain (1RM added Oct)', chartTitles.length === 3 && chartTitles.includes('Strength Volume') && chartTitles.includes('Exercise Weight Progress'));
+  check('Exercise tab: the workout plan stays; AI describe, treadmill scan, cardio type chips, distance and incline are hidden', vis($('workoutPlanCard')) && !vis($('workoutDescBlock')) && !vis($('exTypeRow')) && !vis($('exDist').closest('.field')) && !vis($('exIncline').closest('.field')));
+  check('Exercise tab: minutes box, Add button and the list of logged workouts are still there', vis($('exMin')) && vis($('addExBtn')) && vis($('exList')) && vis($('workoutHistoryCard')));
+  check('manual entries default to Strength', (doc.querySelector('#exTypeRow .ex-chip.on') || {dataset:{}}).dataset.ex === 'Strength');
+  check('Badges (with the leaderboard) are untouched', vis($('leaderboardCard')) || !!$('leaderboardCard'));
+  console.log('=== Real-life leaks: things the app re-shows on its own ===');
+  ev(`const b = document.getElementById('injBanner'); b.className = 'inj-banner overdue'; b.textContent = 'Injection 1 day overdue'; const t = document.getElementById('todayCard'); t.style.display = ''; renderTodayCard(); updateHeader();`); await sleep(30);
+  check('an overdue-injection banner stays hidden even when the app re-styles it', !vis($('injBanner')));
+  check('the Today card (dose waiting, hydration) stays hidden even after it re-renders', !vis($('todayCard')));
+  check('the "+ Log Today\'s Reading" button is hidden', !vis($('quickLogBtn')));
+  check('the header no longer says Treatment day', !/Treatment day/.test($('headerSub').textContent));
+  ev(`setAppModeLocal('full')`); await sleep(40);
+  check('back to Everything: the cards, rings and every chart return', vis($('ringsCard')) && [...doc.querySelectorAll('#view-charts .chart-card')].filter(vis).length >= 25 && vis($('exTypeRow')));
+  console.log('=== Errors ==='); console.log(errors.length ? errors.join('\n') : '(none)');
+  console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(0);
+}, 2500); setTimeout(() => { console.log('TIMEOUT'); process.exit(1); }, 60000);

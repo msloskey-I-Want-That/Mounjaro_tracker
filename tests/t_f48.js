@@ -1,0 +1,124 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true,
+    beforeParse(w) { w.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }); w.confirm = () => true; w.alert = () => {};
+      w.localStorage.setItem('mounjaro-sync-id', 'x'); w.__settingsData = {}; w.HTMLElement.prototype.scrollIntoView = () => {}; } });
+  dom.errors = []; dom.window.addEventListener('error', e => dom.errors.push(e.message)); await sleep(2000);
+  const doc = dom.window.document, w = dom.window; const ev = s => w.eval(s); const $ = id => doc.getElementById(id);
+  const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  ev(`syncId = 'x'; window.__setDocImpl = () => Promise.resolve(); workoutPlanMode = 'ppl'; pplDayOverride = null; muscleGoals = {}; muscleMapMode = 'volume'; muscleMapRange = 'this'; muscleMapSelected = null;
+      window.ds = n => lbAddDays(todayStr(), -n);
+      const rep = (n, w) => Array.from({ length: n }, () => ({ weight: w, reps: 10 }));
+      window.S = (daysAgo, sets) => ({ date: ds(daysAgo), ex: [{ type: 'Strength', ts: Date.now() - daysAgo * 864e5 - 5000, min: 40, planDay: 'Push', sets }] });
+      window.R = rep; window.setE = list => { entries = list.sort((a, b) => a.date.localeCompare(b.date)); renderMuscleMap(); };`);
+  const map = $('muscleMap');
+  const chip = g => map.querySelector(`[data-musclechip="${g}"]`);
+  const ctext = g => chip(g).textContent.replace(/\s+/g, ' ').trim();
+  const fillW = g => chip(g).querySelector('.mc-fill').style.width;
+  const head = () => $('muscleHeadline').textContent.replace(/\s+/g, ' ');
+  const mode = m => { click(map.querySelector(`[data-musclemode="${m}"]`)); };
+  const CP = 'Chest Press (machine)', PD = 'Pec Deck (machine)', SP = 'Shoulder Press (machine)', TP = 'Triceps Pushdown (cable)';
+
+  console.log('=== 1. the figure ===');
+  ev(`setE([S(1, { '${CP}': R(3, 100), '${PD}': R(3, 60), '${SP}': R(3, 50), '${TP}': R(3, 40) }), S(40, { '${CP}': R(3, 90), '${PD}': R(3, 60) })])`);
+  const count = g => map.querySelectorAll(`svg [data-muscle="${g}"]`).length;
+  check('every muscle shape is there (front: chest 2, shoulders 2, core 1, biceps 2, forearms 2, quads 2)', ['Chest', 'Shoulders', 'Biceps', 'Quads'].every(g => count(g) === 2) && count('Core') === 1);
+  check('(back: rear delts 2, back 1, triceps 2, hamstrings 2, calves 2, forearms 4 in all)', count('Rear Delts') === 2 && count('Back') === 1 && count('Triceps') === 2 && count('Hamstrings') === 2 && count('Calves') === 2 && count('Forearms') === 4);
+  check('the shapes are real outlines (paths) rather than ovals', map.querySelectorAll('svg path[data-muscle]').length >= 20);
+  check('each has an invisible wider edge so a fingertip can hit it', map.querySelector('svg path[data-muscle]').getAttribute('stroke') === 'transparent');
+
+  console.log('=== 2. scoreboard bars + headline ===');
+  check('eleven rows, each with a bar', map.querySelectorAll('.muscle-chip').length === 11 && map.querySelectorAll('.muscle-chip .mc-fill').length === 11);
+  check('text still reads "Chest 6/10" with the bar at 60%', ctext('Chest') === 'Chest 6/10' && fillW('Chest') === '60%');
+  check('Shoulders 3/8 is 38%', ctext('Shoulders') === 'Shoulders 3/8' && fillW('Shoulders') === '38%');
+  check('an untrained muscle has an empty bar', fillW('Calves') === '0%');
+  check('headline: "0 of 11 muscles on goal this week · 12 sets"', /^0 of 11 muscles on goal this week · 12 sets$/.test(head()));
+  ev(`setE(entries.concat([S(2, { '${CP}': R(4, 100) })]))`);
+  check('add 4 more chest sets: 1 of 11 on goal, 16 sets', /^1 of 11 muscles on goal this week · 16 sets$/.test(head()) && fillW('Chest') === '100%');
+
+  console.log('=== 3. this week / last week / 4-week average ===');
+  ev(`setE(entries.concat([S(9, { '${CP}': R(5, 100) })]))`);
+  check('the range buttons are on Volume', [...map.querySelectorAll('[data-musclerange]')].map(c => c.textContent).join() === 'This week,Last week,4-wk avg');
+  click(map.querySelector('[data-musclerange="last"]'));
+  check('Last week: retitled, Chest 5/10, headline says last week', $('muscleMapTitle').textContent === 'Muscles trained · previous 7 days' && ctext('Chest') === 'Chest 5/10' && /last week/.test(head()));
+  click(map.querySelector('[data-musclerange="avg"]'));
+  const avg = ev(`Math.round(muscleStats().Chest.weeks.reduce((a, b) => a + b, 0) / 4 * 10) / 10`);
+  check('4-wk avg: the weekly average (chest ' + avg + ')', $('muscleMapTitle').textContent === 'Muscles trained · 4-week average' && ctext('Chest') === `Chest ${avg}/10` && /4-week average/.test(head()));
+  check('the choice is remembered', w.localStorage.getItem('mounjaro-musclemap-range') === 'avg');
+  click(map.querySelector('[data-musclerange="this"]'));
+  check('back to This week', $('muscleMapTitle').textContent === 'Muscles trained · last 7 days' && ctext('Chest') === 'Chest 10/10');
+  mode('recovery'); check('the range buttons belong to Volume only', !map.querySelector('[data-musclerange]')); mode('volume');
+
+  console.log('=== 4. details are a bottom sheet ===');
+  click(chip('Chest'));
+  const det = () => map.querySelector('.muscle-detail');
+  check('tapping a muscle opens the detail with a dimmed backdrop behind it', !!det() && !!map.querySelector('.muscle-sheet-bd'));
+  check('the sheet is pinned to the bottom of the screen (fixed), so the card does not balloon', w.getComputedStyle(det()).position === 'fixed' && w.getComputedStyle(map.querySelector('.muscle-sheet-bd')).position === 'fixed');
+  click(map.querySelector('.muscle-sheet-bd'));
+  check('tapping the backdrop closes it', !det());
+  click(chip('Chest')); click(map.querySelector('.md-close')); check('✕ closes it too', !det());
+
+  console.log('=== 5. train next ===');
+  ev(`setE([S(1, { '${CP}': R(3, 100), '${PD}': R(3, 60), '${SP}': R(3, 50), '${TP}': R(3, 40) })]); pplDayOverride = 'Legs'; renderMuscleMap()`);
+  const tn = () => $('muscleTrainNext') ? $('muscleTrainNext').textContent.replace(/\s+/g, ' ') : '';
+  check('with yesterday\'s Push still recovering it suggests a day that hits what is behind', /Train next: (Pull|Legs)/.test(tn()) && /Hits /.test(tn()));
+  const sugDay = (tn().match(/Train next: (Push|Pull|Legs)/) || [])[1];
+  const other = sugDay === 'Pull' ? 'Legs' : 'Pull';
+  ev(`pplDayOverride = '${other}'; renderMuscleMap()`);
+  check('it lists the muscles with how far along they are (e.g. "Back 0/10")', /\w[\w ]* 0\/\d+/.test(tn()));
+  check('when it is not today\'s plan there is a button to switch today to it', !!$('muscleTrainBtn') && new RegExp(`Set today's workout to ${sugDay}`).test($('muscleTrainBtn').textContent));
+  click($('muscleTrainBtn'));
+  check('the button sets the day, shows the plan, and goes to the Workout tab', ev('pplDayOverride') === sugDay && doc.getElementById('view-exercise').classList.contains('active'));
+  ev(`showView('history'); renderMuscleMap()`);
+  check('once it is today\'s plan it says so and drops the button', !$('muscleTrainBtn') && /already today's workout/.test(tn()));
+  mode('recovery'); check('the suggestion also shows under Recovery', !!$('muscleTrainNext')); mode('effort'); check('but not under Effort', !$('muscleTrainNext')); mode('volume');
+  ev(`setE([])`); check('with no strength history there is nothing to suggest, so no block', !$('muscleTrainNext'));
+
+  console.log('=== 6. recovery: ready vs never trained ===');
+  ev(`setE([S(5, { 'Lat Pulldown': R(3, 80) })])`); mode('recovery');
+  const note = () => map.textContent.replace(/\s+/g, ' ');
+  check('a muscle that finished recovering shows how long ago ("✓ 5d")', /Back ✓ 5d/.test(ctext('Back')) || /✓ 5d/.test(ctext('Back')));
+  check('"Ready to train" lists only muscles that were trained and recovered', /Ready to train: Back/.test(note()) && !/Ready to train:[^N]*Calves/.test(note()));
+  check('muscles never trained are listed separately as "Not trained yet"', /Not trained yet: .*Calves/.test(note()));
+  check('headline counts recovering / ready / not trained', /0 recovering · 1 ready · 10 not trained yet/.test(head()));
+  mode('volume');
+
+  console.log('=== 7. progress mode ===');
+  ev(`setE([S(3, { '${CP}': R(3, 100), '${PD}': R(3, 66), '${SP}': R(3, 50) }), S(35, { '${CP}': R(3, 90), '${PD}': R(3, 60) })])`); mode('progress');
+  check('a fourth tab, "Progress", and the card is retitled', $('muscleMapTitle').textContent === 'Progress · lifts vs a month ago' && map.querySelector('.chip.on').textContent === 'Progress');
+  check('chest is up 11% (average of two lifts, +11.1% and +10%)', ctext('Chest') === 'Chest +11%');
+  check('a muscle trained only this month says "new" (nothing to compare)', ctext('Shoulders') === 'Shoulders new');
+  check('an untrained one is a dash', ctext('Calves') === 'Calves –');
+  check('it sorts the biggest gain first', map.querySelector('.muscle-chip').dataset.musclechip === 'Chest');
+  check('headline: 1 up, 0 steady, 0 down', /^1 muscles up · 0 steady · 0 down vs the 4 weeks before$/.test(head()));
+  check('green paint on the chest shapes', map.querySelector('svg [data-muscle="Chest"]').getAttribute('fill') === 'var(--sage)' || /5CE6C0|green/i.test(map.querySelector('svg [data-muscle="Chest"]').getAttribute('fill')) || map.querySelector('svg [data-muscle="Chest"]').getAttribute('fill') !== 'var(--line)');
+  click(chip('Chest'));
+  check('the sheet lists each lift: "Chest Press (machine) 90 → 100 lb (+10)"', /Chest Press \(machine\)/.test(det().textContent) && /90 → 100 lb \(\+10\)/.test(det().textContent.replace(/\s+/g, ' ')));
+  click(map.querySelector('.md-close'));
+  ev(`setE([S(3, { '${CP}': R(3, 80) }), S(35, { '${CP}': R(3, 100) })])`);
+  check('lighter lifts show a minus sign (amber), stated plainly', ctext('Chest') === 'Chest −20%');
+  mode('volume');
+
+  console.log('=== 8. the moment every muscle is on goal ===');
+  ev(`window.fake = on => { const o = {}; MUSCLE_MAP_GROUPS.forEach((g, i) => { const sets = on || i > 0 ? 10 : 2; o[g] = { group: g, sets, goal: 10, zone: sets >= 10 ? 'solid' : 'build', weeks: [sets, 0, 0, 0], exercises: [], last: null, recovery: { state: 'ready', elapsedH: 100, recH: 50 }, effort: { sessions: 0, rated: 0, avg: null, recent: [] }, progress: { exercises: [], pct: null, trained: false } }; }); return o; };
+      window.__origStats = muscleStats; localStorage.removeItem('mounjaro-muscles-celebrated'); lastMuscleOnGoal = undefined; document.getElementById('prToast').style.display = 'none';
+      muscleStats = () => fake(false); renderMuscleMap();`);
+  check('10 of 11 on goal: no celebration', $('prToast').style.display !== 'block');
+  ev(`muscleStats = () => fake(true); renderMuscleMap()`);
+  check('the render that makes it 11 of 11 shows the toast', $('prToast').style.display === 'block' && /Every muscle on goal this week/.test($('prToast').textContent));
+  check('with confetti on the card', doc.querySelectorAll('#muscleMapCard .confetti-piece').length > 0);
+  ev(`document.getElementById('prToast').style.display = 'none'; lastMuscleOnGoal = 10; renderMuscleMap()`);
+  check('only once per week', $('prToast').style.display !== 'block');
+  ev(`muscleStats = window.__origStats`);
+
+  console.log('=== 9. the Workout tab line ===');
+  ev(`setE([S(1, { '${CP}': R(3, 100), '${PD}': R(3, 60) })]); pplDayOverride = 'Push'; workoutStartedAt = null; renderWorkoutPlan()`);
+  check('today\'s plan shows its muscles: recovering ones with hours, others with ✓', !!$('twMuscles') && /Muscles: /.test($('twMuscles').textContent) && /Chest \d+h/.test($('twMuscles').textContent.replace(/\s+/g, ' ')) && /Triceps ✓/.test($('twMuscles').textContent.replace(/\s+/g, ' ')));
+  ev(`entries = []; renderWorkoutPlan()`);
+  check('with no strength history it stays out of the way', !$('twMuscles'));
+  check('no script errors', dom.errors.length === 0);
+  console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(fails ? 1 : 0);
+})();

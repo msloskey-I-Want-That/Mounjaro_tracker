@@ -1,0 +1,38 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true,
+  beforeParse(w) { w.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }); w.confirm = () => true; w.alert = () => {}; } });
+const errors = []; dom.window.addEventListener('error', e => errors.push(e.message));
+setTimeout(async () => {
+  const doc = dom.window.document, w = dom.window; const ev = s => w.eval(s); const $ = id => doc.getElementById(id);
+  const txt = el => el.textContent.replace(/\s+/g, ' ').trim();
+  console.log('=== 1. the formatter ===');
+  check('1828 -> "1,828", 1000 -> "1,000", 999 stays "999", 2213 -> "2,213"', [1828, 1000, 999, 2213].map(n => ev(`fmtThousands(${n})`)).join() === '1,828,1,000,999,2,213');
+  check('numeric strings from storage work too ("1240" -> "1,240")', ev(`fmtThousands('1240')`) === '1,240');
+  check('non-numbers pass through untouched, empty stays empty', ev(`fmtThousands('~300')`) === '~300' && ev(`fmtThousands(null)`) === '' && ev(`fmtThousands('')`) === '');
+  console.log('=== 2. Daily Nutrition bars ===');
+  ev(`window.M = (desc, mt, p, cal, cb, f, ts) => ({ desc, mt, protein: String(p), cal: String(cal), carbs: String(cb), fat: String(f), ts });
+      syncId = 'x'; entries = [{ date: todayStr(), meals: [M('Big breakfast', 'Breakfast', 40, 1240, 100, 50, 1), M('Lunch', 'Lunch', 30, 400, 40, 10, 2)] }];
+      document.getElementById('foodDate').value = todayStr(); showView('food'); renderMealList(); renderProteinSummary();`);
+  const T = ev('computeCalorieTargets()'); const calRow = () => txt($('proteinSummaryBody').querySelector('.macro-logged-value[data-macro-key$=":calories"]').parentElement);
+  const logged = 1640, left = T.calorieTarget - logged;
+  check(`the very first paint already has commas ("1,640 / ${T.calorieTarget.toLocaleString('en-US')}"; the calories-left number is shown once, in the ring card, not repeated here)`, calRow() === `${logged.toLocaleString('en-US')} / ${T.calorieTarget.toLocaleString('en-US')}`);
+  await sleep(800);
+  check('and the count-up lands on the formatted number too', calRow().startsWith('1,640 / '));
+  check('the ring card says "… cal left" and the calories bar no longer repeats it', txt($('proteinSummaryBody').querySelector('.nut-hero-cal')) === `${left.toLocaleString('en-US')} cal left` && !/left/.test(calRow()));
+  check('carbs and fat (under 1,000) look exactly as before', /^140 \/ \d+g · \d+g left$/.test(txt($('proteinSummaryBody').querySelector('.macro-logged-value[data-macro-key$=":carbs"]').parentElement)));
+  ev(`entries = [{ date: todayStr(), meals: [M('Feast', 'Dinner', 50, ${T.calorieTarget + 200}, 5, 5, 1)] }]; renderProteinSummary();`); await sleep(800);
+  check('over target still reads "met ✓" with the logged number formatted', /met ✓$/.test(calRow()) && calRow().startsWith(`${(T.calorieTarget + 200).toLocaleString('en-US')} / `));
+  console.log('=== 3. log rows, meal totals, What fits ===');
+  ev(`entries = [{ date: todayStr(), meals: [M('Huge brunch plate', 'Breakfast', 55, 1240, 90, 60, 1), M('Toast', 'Breakfast', 5, 150, 25, 3, 2)] }]; renderMealList();`);
+  check('meal header total: "1,390 cal · …"', txt(doc.querySelector('#mealList .meal-group-tot')).startsWith('1,390 cal · '));
+  check('a single food over 999 cal: "1,240"', txt(doc.querySelector('#mealList .meal-swipe[data-ts="1"] .meal-cal')) === '1,240cal' || txt(doc.querySelector('#mealList .meal-swipe[data-ts="1"] .meal-cal')) === '1,240 cal');
+  check('foods under 1,000 are unchanged ("150")', txt(doc.querySelector('#mealList .meal-swipe[data-ts="2"] .meal-cal')).replace(/\s/g, '') === '150cal');
+  ev(`entries = [1, 2, 3, 4].map(i => ({ date: ds(i), meals: [M('Steakhouse dinner', 'Dinner', 80, 1050, 40, 60, i * 10)] })); entries.push({ date: todayStr(), meals: [] }); renderMealList(); renderProteinSummary();`.replace("ds(i)", "(() => { const d = new Date(); d.setDate(d.getDate() - i); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })()"));
+  const fitsMacros = [...doc.querySelectorAll('#whatFitsList .fits-macros')].map(txt);
+  check('What fits: "80g · 1,050 cal"', fitsMacros.includes('80g · 1,050 cal'));
+  console.log('=== Errors ==='); console.log(errors.length ? errors.join('\n') : '(none)');
+  console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(0);
+}, 2000); setTimeout(() => { console.log('TIMEOUT'); process.exit(1); }, 40000);

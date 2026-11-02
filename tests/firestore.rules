@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Each person's tracker lives under trackers/<their private sync ID>/...
+    // The sync ID is a long random code (128 bits), so it works like a password:
+    // you can read or write a tracker only if you know its exact ID. There is
+    // deliberately NO rule for the trackers collection itself or for a tracker's
+    // top-level document, so nobody can list or browse all the trackers.
+    match /trackers/{syncId}/meta/{doc}      { allow read, write: if true; }
+    match /trackers/{syncId}/entries/{date}  { allow read, write: if true; }
+    match /trackers/{syncId}/labs/{date}     { allow read, write: if true; }
+
+    // Leaderboard groups. The group code is the secret. As above, the groups
+    // collection itself cannot be listed.
+    match /groups/{code}/members/{memberId}  { allow read, write: if true; }
+    match /groups/{code}/cheers/{cheerId}    { allow read, write: if true; }
+
+    // Anything else is denied by default.
+  }
+}

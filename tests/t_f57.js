@@ -1,0 +1,65 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true,
+    beforeParse(w) { w.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }); w.confirm = () => true; w.alert = () => {};
+      w.localStorage.setItem('mounjaro-sync-id', 'x'); w.__settingsData = {}; w.HTMLElement.prototype.scrollIntoView = () => {}; w.scrollTo = () => {}; } });
+  dom.errors = []; dom.window.addEventListener('error', e => dom.errors.push(e.message)); await sleep(2000);
+  const doc = dom.window.document, w = dom.window; const ev = s => w.eval(s); const $ = id => doc.getElementById(id);
+  const SECRET = 'SECRET-sync-id-0123456789';
+  ev(`syncId = '${SECRET}'; localStorage.removeItem('mounjaro-inbox-applied-' + syncId); entries = []; window.__writes = []; window.__setDocImpl = (r, d, o) => { window.__writes.push({ r, d, o }); return Promise.resolve(); };`);
+  const ISO = '2026-10-10T11:45:01-04:00';
+
+  console.log('=== 1. reading the inbox, in plain terms ===');
+  w.__a = { q: `HTTPS://host/Tracker/?steps=5&restHR=50&sleepHrs=7.34&healthMin=&activeCal=1&distanceMi=&hrv=49.35&t=${ISO}&sync=${SECRET}` };
+  let i = ev(`inspectHealthInbox(window.__a)`);
+  check('it lists the numbers that have a value, and the ones sent blank', i.numbers.join() === 'steps,restHR,sleepHrs,activeCal,hrv' && i.blanks.join() === 'healthMin,distanceMi');
+  check('it reads the sync time the way the app will', i.stamp === new Date(ISO).toISOString() && i.tRaw === ISO);
+  check('and it never carries the sync id', !JSON.stringify(i).includes(SECRET));
+  w.__a = { q: 'steps=5&t=Friday-ish' }; i = ev(`inspectHealthInbox(window.__a)`);
+  check('an unreadable time is reported as such (the likely cause of "last synced" not moving)', i.stamp === null && i.tRaw === 'Friday-ish');
+  w.__a = { q: 'steps=5' }; i = ev(`inspectHealthInbox(window.__a)`);
+  check('no time at all is reported too', i.stamp === null && i.tRaw === '');
+  w.__a = { fields: 'x' }; i = ev(`inspectHealthInbox(window.__a)`);
+  check('rubbish does not break it', i.numbers.length === 0);
+
+  console.log('=== 2. what the app says it did ===');
+  const run = async p => { w.__p = p; await ev(`processHealthInbox(window.__p)`); return ev('healthInboxOutcome.text'); };
+  const NOW = new Date().toISOString();
+  check('filed, with its day', /^filed 3 numbers under \d{4}-\d{2}-\d{2}$/.test(await run({ q: `steps=5&restHR=50&hrv=49&t=${NOW}` })));
+  check('the same message again: nothing new written', /already filed on this phone/.test(await run({ q: `steps=5&restHR=50&hrv=49&t=${NOW}` })));
+  ev(`localStorage.removeItem('mounjaro-inbox-applied-' + syncId)`);
+  check('filed with no readable time: says "last synced" cannot update', /filed 1 number under .* \(no readable sync time came with it, so "last synced" could not update\)/.test(await run({ q: 'steps=7' })));
+  ev(`localStorage.removeItem('mounjaro-inbox-applied-' + syncId); entries = [{ date: '${ev('todayStr()')}', healthSyncedAt: new Date(Date.now() + 3600e3).toISOString() }]`);
+  check('a newer sync already saved: says so', /a sync from .* or later was already saved for/.test(await run({ q: `steps=9&t=${NOW}` })));
+  ev(`localStorage.removeItem('mounjaro-inbox-applied-' + syncId); entries = []`);
+  check('no usable numbers: says so', /no usable numbers/.test(await run({ q: `steps=&t=${new Date(Date.now() + 1000).toISOString()}` })));
+
+  console.log('=== 3. the Check button ===');
+  const today = ev('todayStr()');
+  const serve = (inboxData, entryData) => { w.__getDocImpl = async ref => /healthInbox$/.test(ref._path) ? (inboxData ? { exists: () => true, data: () => inboxData } : { exists: () => false, data: () => ({}) }) : (entryData ? { exists: () => true, data: () => entryData } : { exists: () => false, data: () => ({}) }); };
+  const checkText = async () => { await ev('testHealthSync()'); return $('healthSyncTestResults').textContent.replace(/\s+/g, ' '); };
+  serve({ q: `HTTPS://host/Tracker/?steps=5&restHR=50&hrv=49.35&t=${ISO}&sync=${SECRET}` }, { steps: '5', restHR: '50', hrv: '49.35' });
+  ev(`localStorage.removeItem('mounjaro-inbox-applied-' + syncId); entries = []`); await run({ q: `steps=5&restHR=50&hrv=49.35&t=${ISO}` });
+  let t = await checkText();
+  check('it shows the numbers the Shortcut sent', /Last message from your Shortcut: numbers sent: steps, restHR, hrv/.test(t));
+  check('it shows the sync time as sent and as understood', new RegExp(`Its sync time: sent as "${ISO.replace(/[+]/g, '\\+')}" and read as `).test(t));
+  check('it says what this phone did with it', /What this phone did with it: filed 3 numbers under/.test(t));
+  check('and still shows what is really saved today', new RegExp(`Today's entry \\(${today}\\), read fresh from server: steps=5, restHR=50, hrv=49\\.35`).test(t));
+  check('the old, misleading "received NO sync params" warning is gone', !/received NO sync params/.test(t) && /normal now that the Shortcut sends silently/.test(t));
+  check('your sync id never appears on screen', !doc.body.textContent.includes(SECRET));
+  serve({ q: 'steps=5&t=Friday-ish' }, null); t = await checkText();
+  check('an unreadable time gets the fix: set Date Format to ISO 8601', /Its sync time: sent as "Friday-ish", which the app cannot read\. In the Shortcut, tap the Current Date bubble after t= and set Date Format to ISO 8601\./.test(t));
+  serve({ q: 'steps=5&t=2026-10-10 ' }, null); t = await checkText();
+  check('a time that is only a date is explained, not shown as yesterday evening', /Its sync time: sent as "2026-10-10", a date with no time of day\./.test(t) && /uses the moment this phone received the message/.test(t) && !/yesterday 8:00 PM/.test(t));
+  ev(`localStorage.removeItem('mounjaro-inbox-applied-' + syncId); entries = []`); await run({ q: 'steps=5&t=2026-10-10 ' });
+  check('and the outcome says the same', /\(its time was only a date, so "last synced" uses the moment it arrived\)/.test(ev('healthInboxOutcome.text')));
+  serve({ q: 'steps=5' }, null); t = await checkText();
+  check('no time sent: it says what to add to the Shortcut text', /none was sent, so "last synced" cannot update\. The Shortcut text needs &t= followed by the Current Date/.test(t));
+  serve(null, null); t = await checkText();
+  check('nothing in the inbox: it says nothing has arrived', /nothing has arrived in the inbox yet/.test(t));
+  check('no script errors', dom.errors.length === 0);
+  console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(fails ? 1 : 0);
+})();

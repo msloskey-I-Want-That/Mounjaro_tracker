@@ -1,0 +1,38 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true,
+    beforeParse(w) { w.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }); w.confirm = () => true; w.alert = () => {};
+      w.localStorage.setItem('mounjaro-sync-id', 'x'); w.__settingsData = {}; w.HTMLElement.prototype.scrollIntoView = () => {}; } });
+  dom.errors = []; dom.window.addEventListener('error', e => dom.errors.push(e.message)); await sleep(2000);
+  const doc = dom.window.document, w = dom.window; const ev = s => w.eval(s); const $ = id => doc.getElementById(id);
+  const fire = (el, t) => el.dispatchEvent(new w.Event(t, { bubbles: true }));
+  const today = ev('todayStr()');
+  console.log('=== the big "Exercise Log" date card is now a small chip ===');
+  check('the old full-size "Exercise Log" card with a Date box is gone', ![...doc.querySelectorAll('#view-exercise .form-section-title')].some(t => /^Exercise Log$/.test(t.textContent.trim())));
+  check('there is a small "Logging for" chip instead, and it starts on Today', /Logging for/.test($('exDateRow').textContent) && $('exDateChipText').textContent === 'Today' && !$('exDateChip').classList.contains('not-today'));
+  check('the real date field still exists inside the chip, so every save and list still reads it', $('exDateChip').contains($('exDate')) && $('exDate').type === 'date');
+  console.log('=== the chip follows the date ===');
+  $('exDate').value = ev(`lbAddDays('${today}', -1)`); fire($('exDate'), 'change');
+  check('yesterday reads "Yesterday" and turns the warning colour (so you know it is not today)', $('exDateChipText').textContent === 'Yesterday' && $('exDateChip').classList.contains('not-today'));
+  $('exDate').value = ev(`lbAddDays('${today}', -9)`); fire($('exDate'), 'input');
+  check('an older date shows as a short date', $('exDateChipText').textContent === ev(`fmtDate(lbAddDays('${today}', -9))`) && $('exDateChip').classList.contains('not-today'));
+  $('exDate').value = today; fire($('exDate'), 'change');
+  check('back to today: reads Today, normal colour', $('exDateChipText').textContent === 'Today' && !$('exDateChip').classList.contains('not-today'));
+  console.log('=== programmatic changes keep the chip honest ===');
+  ev(`document.getElementById('exDate').value = lbAddDays(todayStr(), -3); syncExDateChip();`);
+  check('after code changes the date (e.g. tapping a day in Activity History) the chip updates', $('exDateChip').classList.contains('not-today'));
+  ev(`showView('dashboard'); showView('exercise')`);
+  let picked = 0; $('exDate').showPicker = () => { picked++; };
+  $('exDateChip').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  check('tapping the chip opens the date picker', picked >= 1);
+  console.log('=== saving still uses the chosen date ===');
+  ev(`entries = []; syncId = 'x'; window.__setDocImpl = () => Promise.resolve();`);
+  const y = ev(`lbAddDays('${today}', -2)`); $('exDate').value = y; fire($('exDate'), 'change');
+  ev(`setExType('Walk')`); $('exMin').value = '30'; $('addExBtn').click(); await sleep(100);
+  check('a walk logged while the chip says an earlier date is saved on that date, not today', ev(`entries.some(e => e.date === '${y}' && (e.ex || []).some(x => x.type === 'Walk'))`) && !ev(`entries.some(e => e.date === '${today}')`));
+  check('no script errors', dom.errors.length === 0);
+  console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(fails ? 1 : 0);
+})();

@@ -1,0 +1,51 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true });
+dom.window.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} });
+const errors = []; dom.window.addEventListener('error', e => errors.push(e.message));
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const near = (a, b) => Math.abs(a - b) < 0.05;
+setTimeout(() => {
+  const doc = dom.window.document; const ev = s => dom.window.eval(s);
+  console.log('=== 1. the math ===');
+  check('70 x 10 -> 93.3 (Epley)', near(ev('estimatedOneRepMax(70, 10)'), 93.333));
+  check('a single is itself', ev('estimatedOneRepMax(100, 1)') === 100);
+  check('12 reps is the last trusted count', near(ev('estimatedOneRepMax(100, 12)'), 140));
+  check('13+ reps -> not estimated', ev('estimatedOneRepMax(100, 13)') === null && ev('estimatedOneRepMax(100, 30)') === null);
+  check('no weight (e.g. a plank) -> not estimated', ev('estimatedOneRepMax(0, 10)') === null && ev('estimatedOneRepMax("", 10)') === null);
+  check('no reps -> not estimated', ev('estimatedOneRepMax(100, 0)') === null && ev('estimatedOneRepMax(100, "")') === null);
+  check('strings from the form work', near(ev('estimatedOneRepMax("70", "10")'), 93.333));
+  console.log('=== 2. per-session best ===');
+  const t = ev(`oneRepMaxTrend([
+    { date: '2026-09-01', sets: [{ weight: 60, reps: 12 }, { weight: 70, reps: 8 }, { weight: 30, reps: 10, warmup: true }] },
+    { date: '2026-09-08', sets: [{ weight: 200, reps: 15 }] },
+    { date: '2026-09-15', sets: [{ weight: 80, reps: 10 }, { weight: 500, reps: 5, warmup: true }] } ])`);
+  check('picks the best working set (70x8 = 88.7 beats 60x12 = 84)', near(t[0].e1rm, 88.667));
+  check('a session with only unusable sets (15 reps) is skipped entirely', t.length === 2 && t[1].date === '2026-09-15');
+  check('warm-ups never win, however heavy', near(t[1].e1rm, 106.667));
+  console.log('=== 3. the modal ===');
+  const mk = (d, sets) => ({ date: d, ex: [{ type: 'Strength', ts: 1, sets: { 'Chest Press (machine)': sets } }] });
+  ev(`entries = [ ${JSON.stringify(mk('2026-09-01', [{weight:60,reps:10}]))}, ${JSON.stringify(mk('2026-09-08', [{weight:70,reps:10}]))}, ${JSON.stringify(mk('2026-09-15', [{weight:80,reps:10}]))} ]; showExerciseHistory('Chest Press (machine)');`);
+  const modal = doc.getElementById('exerciseHistoryModal');
+  const block = modal.querySelector('.e1rm-block');
+  check('block appears with 2+ sessions', !!block);
+  check('shows the latest estimate (80x10 -> 107)', block.querySelector('.e1rm-value').textContent.trim().startsWith('107'));
+  check('shows change since the first session (+27 lb) and the session count', block.querySelector('.e1rm-delta').textContent === '+27 lb' && /over 3 sessions/.test(block.textContent));
+  check('has a trend line', !!block.querySelector('polyline') && block.querySelectorAll('polyline')[0].getAttribute('points').split(' ').length === 3);
+  check('is honest that it is only an estimate', /rough estimate/.test(block.textContent));
+  check('the existing best-weight chart is still there', modal.querySelectorAll('svg polyline').length === 2);
+  check('and the session list is intact', /Sep|9\//.test(modal.textContent) && modal.textContent.includes('80'));
+  ev(`entries = [ ${JSON.stringify(mk('2026-09-01', [{weight:80,reps:10}]))}, ${JSON.stringify(mk('2026-09-08', [{weight:60,reps:10}]))} ]; showExerciseHistory('Chest Press (machine)');`);
+  const down = doc.getElementById('exerciseHistoryModal').querySelector('.e1rm-delta').textContent;
+  check('a drop shows a proper minus sign, no alarm', down === '−27 lb');
+  ev(`entries = [ ${JSON.stringify(mk('2026-09-01', [{weight:70,reps:10}]))}, ${JSON.stringify(mk('2026-09-08', [{weight:70,reps:10}]))} ]; showExerciseHistory('Chest Press (machine)');`);
+  check('flat -> "no change"', doc.getElementById('exerciseHistoryModal').querySelector('.e1rm-delta').textContent === 'no change');
+  ev(`entries = [ ${JSON.stringify(mk('2026-09-01', [{weight:70,reps:10}]))} ]; showExerciseHistory('Chest Press (machine)');`);
+  check('one session -> no trend block (nothing to trend yet)', !doc.getElementById('exerciseHistoryModal').querySelector('.e1rm-block'));
+  ev(`entries = [ ${JSON.stringify(mk('2026-09-01', [{weight:0,reps:30}]))}, ${JSON.stringify(mk('2026-09-08', [{weight:0,reps:45}]))} ]; showExerciseHistory('Chest Press (machine)');`);
+  check('timed/weightless exercise -> no block, no crash', !doc.getElementById('exerciseHistoryModal').querySelector('.e1rm-block'));
+  ev(`entries = []; showExerciseHistory('Chest Press (machine)');`);
+  check('no history at all -> the empty message still shows', /No sessions logged yet/.test(doc.getElementById('exerciseHistoryModal').textContent));
+  console.log('=== Errors ==='); console.log(errors.length ? errors.join('\n') : '(none)');
+  console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(0);
+}, 2000); setTimeout(() => process.exit(1), 20000);

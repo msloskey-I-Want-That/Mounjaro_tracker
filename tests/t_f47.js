@@ -1,0 +1,112 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true,
+    beforeParse(w) { w.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }); w.confirm = () => true; w.alert = () => {};
+      w.localStorage.setItem('mounjaro-sync-id', 'x'); w.__settingsData = {}; w.HTMLElement.prototype.scrollIntoView = () => {}; } });
+  dom.errors = []; dom.window.addEventListener('error', e => dom.errors.push(e.message)); await sleep(2000);
+  const doc = dom.window.document, w = dom.window; const ev = s => w.eval(s); const $ = id => doc.getElementById(id);
+  const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  const fire = (el, t) => el.dispatchEvent(new w.Event(t, { bubbles: true }));
+  ev(`syncId = 'x'; window.__calls = []; window.__setDocImpl = (r, d, o) => { window.__calls.push({ d, o }); return Promise.resolve(); };
+      window.ds = n => lbAddDays(todayStr(), -n); showView('log'); document.getElementById('fDate').value = todayStr();`);
+  const toast = () => $('prToast').style.display === 'block' ? $('prToast').textContent : null;
+
+  console.log('=== 1. layout ===');
+  // Since Nov 1 the Medications / Results / Daily log chips lead the tab and the daily tools sit under Daily log.
+  const kids = [...$('logSub-daily').children].map(c => c.id);
+  check('the "where things stand" line is the first card under Daily log', [...$('view-log').children][0].id === 'logSubtabRow' && kids[0] === 'logContextCard' && kids[1] === 'quickLogCard');
+  check('Current Medications comes before the Add form', (() => { const p = $('logSub-meds'); return p.children[0].contains($('medList')) && p.children[1].id === 'addMedCard'; })());
+  check('the Add Medication form starts collapsed', $('addMedCardContent') && $('addMedCardContent').style.display === 'none');
+  check('Latest Results comes first in Results', $('logSub-results').children[0].contains($('labPanelSummary')));
+  check('the duplicate glucose boxes are gone from the long form', !$('fGlucoseFull') && !$('fGlucose2hrFull') && !/stay in sync/.test($('fullLogCard').textContent));
+  check('glucose is still in Quick Log', $('quickLogCard').contains($('fGlucose')) && $('quickLogCard').contains($('fGlucose2hr')));
+  check('weight and dose now live in Quick Log, not the long form', $('quickLogCard').contains($('fWeight')) && $('quickLogCard').contains($('fDose')) && !$('fullLogCard').contains($('fWeight')) && !$('fullLogCard').contains($('fDose')));
+  check('the long form still has measurements, side effects and notes', ['fWaist', 'fNotes'].every(id => $('fullLogCard').contains($(id))) && /Side Effects/.test($('fullLogCard').textContent));
+  check('dose has all its options', [...$('fDose').options].map(o => o.value).join() === ',2.5,5,7.5,10,12.5,15');
+
+  console.log('=== 2. weight: hint, and weigh-in day ===');
+  ev(`entries = [{ date: ds(8), weight: '200.4' }, { date: ds(2), weight: '199.8' }]; weighInDay = 'any'; weightManuallyShown = false; document.getElementById('fWeight').value = ''; syncLogHelpers()`);
+  check('the weight box is there on any day by default', $('quickWeightField').style.display !== 'none' && $('addWeightLink').style.display === 'none');
+  check('and says what you weighed last time', /last 199\.8/.test($('weightHint').textContent));
+  $('fWeight').value = '199.2'; fire($('fWeight'), 'input');
+  check('typing a weight shows the change as you type ("· −0.6 vs last")', /−0\.6 vs last/.test($('weightHint').textContent));
+  $('fWeight').value = '199.8'; fire($('fWeight'), 'input'); check('same weight says "same as last"', /same as last/.test($('weightHint').textContent));
+  ev(`document.getElementById('fWeight').value = ''`);
+  const dow = ev('new Date(todayStr() + "T00:00:00").getDay()');
+  ev(`weighInDay = '${(dow + 1) % 7}'; syncLogHelpers()`);
+  check('with a weigh-in day set to another weekday, the box is hidden and a "＋ Add weight" link shows', $('quickWeightField').style.display === 'none' && $('addWeightLink').style.display !== 'none' && $('quickWeightDoseRow').classList.contains('single'));
+  click($('addWeightLink'));
+  check('the link brings it back for that entry', $('quickWeightField').style.display !== 'none' && !$('quickWeightDoseRow').classList.contains('single'));
+  ev(`document.getElementById('fWeight').value = ''`);
+  check('and it goes away again after the form is cleared', $('quickWeightField').style.display === 'none');
+  ev(`weighInDay = '${dow}'; syncLogHelpers()`);
+  check('on the weigh-in day itself it shows', $('quickWeightField').style.display !== 'none');
+  ev(`weighInDay = '${(dow + 1) % 7}'; document.getElementById('fWeight').value = '190'; syncLogHelpers()`);
+  check('a weight that is already in the box is never hidden', $('quickWeightField').style.display !== 'none');
+  ev(`document.getElementById('fWeight').value = ''; weighInDay = 'any'; syncLogHelpers()`);
+
+  console.log('=== 3. dose-day banner ===');
+  ev(`todayDoseStatus = () => ({ kind: 'due', val: 'Due today' }); syncDoseDayBanner()`);
+  check('injection day (due): a big prompt appears', $('doseDayBanner').style.display !== 'none' && /Injection day: tap to log your dose/.test($('doseDayText').textContent));
+  ev(`todayDoseStatus = () => ({ kind: 'overdue', val: '2 days late' }); syncDoseDayBanner()`);
+  check('late: it says how late', /Your dose is 2 days late: tap to log it/.test($('doseDayText').textContent));
+  ev(`todayDoseStatus = () => ({ kind: 'upcoming', val: 'in 4 days' }); syncDoseDayBanner()`);
+  check('not due: no banner', $('doseDayBanner').style.display === 'none');
+  ev(`todayDoseStatus = () => ({ kind: 'due', val: 'Due today' }); document.getElementById('fDate').value = ds(1); syncDoseDayBanner()`);
+  check('looking at a past date: no banner', $('doseDayBanner').style.display === 'none');
+  ev(`document.getElementById('fDate').value = todayStr(); syncDoseDayBanner()`);
+  click($('doseDayBtn'));
+  check('tapping it ticks Injection day and opens the site picker', $('fInjection').checked && $('injSiteWrap').style.display !== 'none');
+  check('the banner steps aside and Save becomes "Save injection"', $('doseDayBanner').style.display === 'none' && $('quickSaveBtn').textContent === 'Save injection');
+  $('fInjection').checked = false; fire($('fInjection'), 'change');
+  check('unticking puts the label back', $('quickSaveBtn').textContent === 'Save');
+
+  console.log('=== 4. what the save says ===');
+  ev(`entries = [{ date: ds(1), weight: '199.8' }, { date: ds(9), weight: '200.4' }]; window.__calls = []; document.getElementById('prToast').style.display = 'none'; document.getElementById('fDate').value = todayStr()`);
+  $('fWeight').value = '199.2'; click($('quickSaveBtn')); await sleep(120);
+  check('a weight save reports the weight and the change since last time', toast() !== null && /^✓ Weight 199\.2 lb \(−0\.6 vs /.test(toast()));
+  check('and the logging streak (yesterday + today = 2 days)', /🔥 2-day streak/.test(toast()));
+  check('the entry really was saved', ev('window.__calls').some(c => c.d && c.d.weight === '199.2'));
+  ev(`entries = []; document.getElementById('prToast').style.display = 'none'; document.getElementById('fDate').value = todayStr()`);
+  $('fInjection').checked = true; fire($('fInjection'), 'change'); $('fDose').value = '5'; ev(`setSite('L Abdomen')`); click($('quickSaveBtn')); await sleep(120);
+  check('an injection save says so, with site and dose', /💉 Injection logged · L Abdomen · 5 mg/.test(toast()));
+  ev(`entries = []; document.getElementById('prToast').style.display = 'none'`);
+  $('fGlucose').value = '121'; click($('quickSaveBtn')); await sleep(120);
+  check('a glucose-only save says "Glucose 121"', /Glucose 121/.test(toast()));
+  check('after a save the button reads Save again', (await sleep(1900), $('quickSaveBtn').textContent === 'Save'));
+
+  console.log('=== 5. one Save, plus one inside the long form ===');
+  check('the old bottom "Save Entry" is gone from view', $('saveBtn').style.display === 'none');
+  check('the long form has its own Save at the end of it', $('fullLogCard').contains($('fullLogSaveBtn')));
+  click(doc.querySelector('#fullLogCard .form-section-title'));
+  check('opening the long form is the full-screen popup', $('fullLogCard').classList.contains('entry-popup-fullscreen') && $('fullLogCardContent').style.display !== 'none');
+  ev(`entries = []; window.__calls = []; document.getElementById('prToast').style.display = 'none'; document.getElementById('fDate').value = todayStr()`);
+  $('fNotes').value = 'slept poorly'; click($('fullLogSaveBtn')); await sleep(150);
+  check('saving from inside it saves the entry', ev('window.__calls').some(c => c.d && c.d.notes === 'slept poorly'));
+  check('and puts the popup away afterwards', !$('fullLogCard').classList.contains('entry-popup-fullscreen') && $('fullLogCardContent').style.display === 'none');
+  click(doc.querySelector('#fullLogCard .form-section-title')); ev(`confirm = () => false`); ev(`document.getElementById('fWeight').value = '5'`);
+  click($('fullLogSaveBtn')); await sleep(150);
+  check('if a save is declined it does NOT close the popup', $('fullLogCard').classList.contains('entry-popup-fullscreen'));
+  ev(`confirm = () => true`); click(doc.querySelector('#fullLogCard .form-section-title')); ev(`document.getElementById('fWeight').value = ''`);
+
+  console.log('=== 6. Apple Health, one line ===');
+  check('the Apple Health card starts collapsed to a single line', !!$('appleHealthCard') && $('appleHealthCardContent').style.display === 'none');
+  check('with nothing synced it says so', /not synced yet/.test($('appleHealthSummary').textContent));
+  ev(`document.getElementById('exViewSteps').textContent = '8,500'; document.getElementById('exViewSleep').textContent = '7.1h'; document.getElementById('exViewHrv').textContent = '42 ms'; updateAppleHealthSummary()`);
+  check('with data the one line shows it ("Steps 8,500 · Sleep 7.1h · HRV 42 ms")', $('appleHealthSummary').textContent === 'Steps 8,500 · Sleep 7.1h · HRV 42 ms');
+  click(doc.querySelector('#appleHealthCard .form-section-title'));
+  check('tapping the line opens the six tiles', $('appleHealthCardContent').style.display !== 'none' && $('appleHealthCardContent').querySelectorAll('[role="button"]').length >= 6);
+  check('and the choice is remembered', w.localStorage.getItem('mounjaro-applehealth-expanded') === 'true');
+
+  console.log('=== 7. settings ===');
+  check('Settings has a weigh-in day with Any day + seven weekdays', $('setWeighInDay').options.length === 8 && $('setWeighInDay').options[0].value === 'any');
+  ev(`weighInDay = '5'; syncSettingsInputs()`); check('it shows the saved choice', $('setWeighInDay').value === '5');
+  ev(`document.getElementById('setBaseline').value = 200; document.getElementById('setGoal').value = 180; window.__calls = []`);
+  $('setWeighInDay').value = '3'; click($('saveSettingsBtn')); await sleep(80);
+  check('saving stores it', ev('window.__calls').some(c => c.d && String(c.d.weighInDay) === '3'));
+  check('no script errors', dom.errors.length === 0);
+  console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(fails ? 1 : 0);
+})();

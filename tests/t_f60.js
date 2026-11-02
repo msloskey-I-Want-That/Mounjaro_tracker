@@ -1,0 +1,36 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true,
+  beforeParse(w) { w.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }); w.confirm = () => true; w.__alerts = []; w.alert = m => { w.__alerts.push(m); }; } });
+const errors = []; dom.window.addEventListener('error', e => errors.push(e.message));
+setTimeout(async () => {
+  const doc = dom.window.document, w = dom.window; const ev = s => w.eval(s); const $ = id => doc.getElementById(id);
+  const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  doc.getElementById('app-main').scrollTo = () => {}; w.HTMLElement.prototype.scrollIntoView = function () {};
+  ev(`syncId = 'x'; window.__setDocImpl = () => Promise.resolve(); entries = []; customWorkoutExercises = {}; hiddenWorkoutExercises = {}; workoutPlanMode = 'ppl'; pplDayOverride = 'Legs'; workoutSessionState = {}; renderWorkoutPlan();`);
+  const blocks = () => [...doc.querySelectorAll('.workout-exercise-block')].map(b => b.dataset.exercise);
+  const add = async (n, s) => { click($('showAddExerciseBtn')); $('newExerciseName').value = n; $('newExerciseSets').value = s || '3 × 10'; click($('saveNewExerciseBtn')); await sleep(40); };
+  console.log('=== 1. no gym name in the plan title ===');
+  console.log('TITLE:', $('workoutPlanTitle').textContent); check('the plan card title has no gym name', !/Planet|Crunch/i.test($('workoutPlanTitle').textContent) && /^Workout Plan · /.test($('workoutPlanTitle').textContent));
+  check('the AI plan description has no gym name', !/Planet Fitness/.test(ev(`typeof describeWorkoutPlanForAI === 'function' ? describeWorkoutPlanForAI() : ''`) || ''));
+  console.log('=== 2. adding an exercise: muscle group ===');
+  check('a known name is filed by its name (Hammer Curl -> Biceps)', ev(`muscleGroupFor('Hammer Curl')`) === 'Biceps');
+  await add('Zottman Thing');
+  check('an unrecognised name with no muscle picked is refused with a message', /Pick the muscle/.test(w.__alerts.pop() || '') && !blocks().includes('Zottman Thing'));
+  $('newExerciseGroup').value = 'Back'; click($('saveNewExerciseBtn')); await sleep(40);
+  check('with a muscle picked it is added and filed under Back', blocks().includes('Zottman Thing') && ev(`muscleGroupFor('Zottman Thing')`) === 'Back');
+  check('it is remembered in the library with that muscle', ev(`customLibrary.some(e => e.name === 'Zottman Thing' && e.group === 'Back')`));
+  console.log('=== 3. favorites show a confirmation ===');
+  ev(`pinnedFavorites = []; savePinnedFavorites = async () => {};`);
+  await ev(`pinFavorite({ desc: 'Greek yogurt', protein: 20 })`);
+  const toast = () => ({ shown: $('undoToast').style.display !== 'none', msg: $('undoToastMsg').textContent });
+  check('a toast says the item was added to Favorites', toast().shown && /Added "Greek yogurt" to Favorites/.test(toast().msg) && ev('pinnedFavorites.length') === 1);
+  click($('undoToastBtn')); await sleep(30);
+  check('Undo removes it again', ev('pinnedFavorites.length') === 0);
+  await ev(`pinFavorite({ desc: 'Greek yogurt', protein: 20 })`); await ev(`pinFavorite({ desc: 'Greek yogurt', protein: 20 })`);
+  check('adding the same one twice says it is already there, and keeps one copy', /already in your Favorites/.test(toast().msg) && ev('pinnedFavorites.length') === 1);
+  console.log('=== Errors ==='); console.log(errors.length ? errors.join('\n') : '(none)');
+  console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(0);
+}, 2500); setTimeout(() => { console.log('TIMEOUT'); process.exit(1); }, 60000);

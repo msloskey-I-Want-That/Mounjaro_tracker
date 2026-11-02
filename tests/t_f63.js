@@ -1,0 +1,48 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true,
+  beforeParse(w) { w.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }); w.confirm = () => true; w.__alerts = []; w.alert = m => { w.__alerts.push(m); }; } });
+const errors = []; dom.window.addEventListener('error', e => errors.push(e.message));
+setTimeout(async () => {
+  const doc = dom.window.document, w = dom.window; const ev = s => w.eval(s); const $ = id => doc.getElementById(id);
+  const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  doc.getElementById('app-main').scrollTo = () => {}; w.HTMLElement.prototype.scrollIntoView = function () {};
+  ev(`syncId = 'x'; window.__setDocImpl = () => Promise.resolve(); entries = []; customWorkoutExercises = {}; hiddenWorkoutExercises = {}; workoutPlanMode = 'ppl'; pplDayOverride = 'Legs'; workoutSessionState = {}; renderWorkoutPlan();`);
+  const blocks = () => [...doc.querySelectorAll('.workout-exercise-block')].map(b => b.dataset.exercise);
+  const add = async (n, s) => { click($('showAddExerciseBtn')); $('newExerciseName').value = n; $('newExerciseSets').value = s || '3 × 10'; click($('saveNewExerciseBtn')); await sleep(40); };
+
+  console.log('=== Exercise-only mode ===');
+  const navDisp = v => w.getComputedStyle(doc.querySelector(`.nav-item[data-view="${v}"]`)).display;
+  const active = () => (doc.querySelector('.view.active') || {}).id;
+  check('starts in full mode: Everything is selected, nothing hidden', !doc.body.classList.contains('mode-exercise') && doc.querySelector('.mode-chip[data-mode-choice="full"]').classList.contains('on') && navDisp('food') !== 'none');
+  ev(`window.__calls = []; window.__setDocImpl = (r, d) => { window.__calls.push({ d }); return Promise.resolve(); }`);
+  click(doc.querySelector('.mode-chip[data-mode-choice="exercise"]')); await sleep(60);
+  check('Workouts only turns the mode on', doc.body.classList.contains('mode-exercise') && doc.querySelector('.mode-chip[data-mode-choice="exercise"]').classList.contains('on'));
+  check('the Log and Food tabs are hidden, the other five stay', navDisp('log') === 'none' && navDisp('food') === 'none' && ['dashboard','exercise','history','charts','badges'].every(v => navDisp(v) !== 'none'));
+  check('the choice is remembered on this phone and saved to her settings', w.localStorage.getItem('fit-app-mode') === 'exercise' && ev('window.__calls').some(c => c.d && c.d.appMode === 'exercise'));
+  ev(`showView('food')`); await sleep(30);
+  check('anything that tries to open Food or Log lands on Exercise instead', active() === 'view-exercise');
+  ev(`showView('log')`); await sleep(30);
+  check('...including Log', active() === 'view-exercise');
+  click(doc.querySelector('.mode-chip[data-mode-choice="full"]')); await sleep(60);
+  check('switching back restores every tab', !doc.body.classList.contains('mode-exercise') && navDisp('food') !== 'none' && navDisp('log') !== 'none');
+  ev(`showView('food')`); await sleep(30);
+  check('and Food opens again', active() === 'view-food');
+  ev(`setAppModeLocal('exercise')`); await sleep(30);
+  check('switching to workouts-only while on Food moves her off it', active() !== 'view-food' && active() !== 'view-log');
+  ev(`setAppModeLocal('full')`);
+  console.log('=== Welcome screen ===');
+  ev(`document.getElementById('syncModal').classList.remove('hidden'); showSyncModal(true)`); await sleep(30);
+  check('the welcome screen no longer says Mike', $('modalTitle').textContent === 'Welcome' && !/Mike/.test($('syncModal').textContent));
+  check('it asks for her name and offers Everything / Food & fitness / Workouts only (3 modes since Oct)', !!$('welcomeName') && doc.querySelectorAll('.welcome-mode-chip').length === 3 && [...doc.querySelectorAll('.welcome-mode-chip')].some(c => /Workouts only/.test(c.textContent)));
+  $('welcomeName').value = 'Stacy'; click(doc.querySelector('.welcome-mode-chip[data-mode-choice="exercise"]')); await sleep(20);
+  check('choosing a mode highlights it and un-highlights the other', doc.querySelector('.welcome-mode-chip[data-mode-choice="exercise"]').classList.contains('on') && !doc.querySelector('.welcome-mode-chip[data-mode-choice="full"]').classList.contains('on'));
+  click($('useNewIdBtn')); await sleep(80);
+  check('starting sets workouts-only mode and keeps her name', ev('appMode') === 'exercise' && ev('userDisplayName') === 'Stacy' && doc.body.classList.contains('mode-exercise'));
+  check('...and starts her on the build-your-own routine, not the A/B split', ev('workoutPlanMode') === 'custom');
+  ev(`setAppModeLocal('full', '')`);
+  console.log('=== Errors ==='); console.log(errors.length ? errors.join('\n') : '(none)');
+  console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(0);
+}, 2500); setTimeout(() => { console.log('TIMEOUT'); process.exit(1); }, 60000);

@@ -1,0 +1,48 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true,
+  beforeParse(w) { w.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }); w.confirm = () => true; w.__alerts = []; w.alert = m => { w.__alerts.push(m); }; } });
+const errors = []; dom.window.addEventListener('error', e => errors.push(e.message));
+setTimeout(async () => {
+  const doc = dom.window.document, w = dom.window; const ev = s => w.eval(s); const $ = id => doc.getElementById(id);
+  const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  doc.getElementById('app-main').scrollTo = () => {}; w.HTMLElement.prototype.scrollIntoView = function () {};
+  ev(`syncId = 'x'; window.__setDocImpl = () => Promise.resolve(); entries = []; customWorkoutExercises = {}; hiddenWorkoutExercises = {}; workoutPlanMode = 'ppl'; pplDayOverride = 'Legs'; workoutSessionState = {}; renderWorkoutPlan();`);
+  const blocks = () => [...doc.querySelectorAll('.workout-exercise-block')].map(b => b.dataset.exercise);
+  const add = async (n, s) => { click($('showAddExerciseBtn')); $('newExerciseName').value = n; $('newExerciseSets').value = s || '3 × 10'; click($('saveNewExerciseBtn')); await sleep(40); };
+
+  console.log('=== Workouts-only: History, Charts, Badges ===');
+  const vis = el => el && w.getComputedStyle(el).display !== 'none' && !el.hidden;
+  ev(`entries = []; setAppModeLocal('exercise')`); await sleep(40);
+  ev(`showView('history')`); await sleep(80);
+  const chips = [...doc.querySelectorAll('#historyFilters .chip')].map(c => c.textContent.trim());
+  check('History filters: only Workouts and Notes (no Injection days / Side effects)', chips.length === 2 && /Workouts/.test(chips[0]) && /Notes/.test(chips[1]));
+  check('History: the Doctor summary button is hidden', !vis($('historyDoctorBtn')));
+  check('History: the empty message talks about workouts, not readings', /workouts/i.test($('historyList').textContent) && !/reading/i.test($('historyList').textContent));
+  check('the header print-for-doctor button is hidden', !vis($('printBtn')));
+  ev(`showView('charts')`); await sleep(200);
+  const heads = [...doc.querySelectorAll('#view-charts .cs-head')].filter(vis).map(h => h.textContent.replace(/\s+/g,' ').trim());
+  console.log('HEADS:', JSON.stringify(heads));
+  check('Charts: Compare, Treatment, Weekly summary and the other health sections have no header', heads.every(h => /^Activity/.test(h)) && !heads.some(h => /Compare|Treatment|Weekly|Body|Nutrition|Recovery|Labs/.test(h)));
+  const emptyBtn = doc.querySelector('#view-charts .cs-emptyrow');
+  console.log('EMPTYROW:', emptyBtn ? emptyBtn.textContent.trim() : '(none)');
+  check('Charts: the "no data yet" count only counts the two strength charts', !emptyBtn || !/\b(\d{2})\b/.test(emptyBtn.textContent));
+  ev(`showView('badges')`); await sleep(150);
+  const cats = [...doc.querySelectorAll('#badgeSections .bcat-head')].map(b => b.dataset.bcat);
+  console.log('CATS:', cats.join(','));
+  check('Badges: only Workouts, Recovery, Consistency and Challenges categories', cats.length === 4 && ['Workouts','Recovery','Consistency','Challenges'].every(c => cats.includes(c)));
+  const badgeText = doc.getElementById('view-badges').textContent;
+  check('Badges: no steps / protein / weight / treatment / blood sugar badges or milestones', !/Step Starter|Protein Starter|Treatment Day|Weight Lost|Blood Sugar|Weigh-in|Sleep|Hydration/i.test(badgeText));
+  check('Badges: this week has one lifting challenge, no step goal / log weight / log something', /Lift \d+ times/.test(badgeText) && !/step goal|Log your weight|Log something/.test(badgeText));
+  check('Badges: the workout milestones and PRs are still there', /Workouts Logged/i.test(badgeText) && /Personal Records/i.test(badgeText));
+  ev(`setAppModeLocal('full')`); await sleep(100);
+  ev(`showView('badges')`); await sleep(150);
+  const catsFull = [...doc.querySelectorAll('#badgeSections .bcat-head')].map(b => b.dataset.bcat);
+  check('back to Everything: every badge category returns', catsFull.length >= 9);
+  ev(`showView('history')`); await sleep(60);
+  check('back to Everything: all five history filters return', doc.querySelectorAll('#historyFilters .chip').length === 4 || doc.querySelectorAll('#historyFilters .chip').length >= 4);
+  console.log('=== Errors ==='); console.log(errors.length ? errors.join('\n') : '(none)');
+  console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(0);
+}, 2500); setTimeout(() => { console.log('TIMEOUT'); process.exit(1); }, 60000);

@@ -1,0 +1,42 @@
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true,
+  beforeParse(w) { w.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }); w.confirm = () => true; w.alert = () => {}; } });
+const errors = []; dom.window.addEventListener('error', e => errors.push(e.message));
+setTimeout(async () => {
+  const doc = dom.window.document, w = dom.window; const ev = s => w.eval(s); const $ = id => doc.getElementById(id);
+  const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  doc.getElementById('app-main').scrollTo = () => {}; w.HTMLElement.prototype.scrollIntoView = function () {};
+  const norm = s => s.replace(/\s+/g, ' ').trim();
+  ev(`window.ds = n => { const d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }; syncId = 'x'; window.__setDocImpl = () => Promise.resolve();`);
+  console.log('=== 1. the config ===');
+  const opts = ev(`Object.entries(EXERCISE_VARIATION_CONFIG['Bicep Curl'].options).map(([k, v]) => k + '|' + v.label + '|' + v.targets)`);
+  check('Bicep Curl grip now has the three grips, standard first', JSON.stringify(opts) === JSON.stringify(['supinated|Underhand (standard)|Biceps Brachii (default)', 'neutral|Neutral / Hammer|Brachialis & Forearm', 'reverse|Overhand / Reverse|Forearms & Brachioradialis']));
+  check('the existing exercises\' pickers are untouched (Leg Press 4, Chest Press 3, Triceps 3, Lat Pulldown 3, Seated Row 3, Calf Raise 3)', ['Leg Press:4', 'Chest Press (machine):3', 'Triceps Pushdown (cable):3', 'Lat Pulldown:3', 'Seated Row:3', 'Calf Raise (machine):3'].every(s => { const [n, k] = s.split(/:(\d)$/).filter(Boolean); return ev(`Object.keys(EXERCISE_VARIATION_CONFIG[${JSON.stringify(n)}].options).length`) === +k; }));
+  console.log('=== 2. on the Pull day screen ===');
+  ev(`workoutPlanMode = 'ppl'; pplDayOverride = 'Pull'; workoutSessionState = {}; workoutVariationState = {}; entries = []; renderWorkoutPlan();`);
+  const chips = () => [...doc.querySelectorAll('.exercise-variation-chip[data-exercise="Bicep Curl"]')];
+  check('the Bicep Curl picker shows three choices, the new one last', chips().map(c => c.dataset.option).join() === 'supinated,neutral,reverse' && /Overhand \/ Reverse/.test(chips()[2].textContent));
+  click(chips()[2]); await sleep(20);
+  const block = () => doc.querySelector('.workout-exercise-block[data-exercise="Bicep Curl"]');
+  check('choosing it shows the caption with the muscle it targets', /Overhand \/ Reverse/.test(norm(block().querySelector('.variation-caption').textContent)) && /Forearms & Brachioradialis/.test(norm(block().querySelector('.variation-caption').textContent)) && ev(`workoutVariationState['Bicep Curl']`) === 'reverse');
+  check('the picker highlights it', block().querySelector('.exercise-variation-chip[data-option="reverse"]').classList.contains('on'));
+  console.log('=== 3. saving ===');
+  ev(`workoutSessionState['Bicep Curl'] = [{ weight: '20', reps: '12', done: true }, { weight: '20', reps: '11', done: true }, { weight: '', reps: '', done: false }]; window.__saved = null; writeEx = (d, list) => { window.__saved = { d, list }; return Promise.resolve(); }; document.getElementById('exDate').value = todayStr();`);
+  await ev(`logExercise('Strength', 30, '', '')`); await sleep(40);
+  const item = ev('window.__saved') && ev('window.__saved.list.find(x => x.type === "Strength")');
+  check('the grip is saved with the workout', !!item && item.exerciseVariations && item.exerciseVariations['Bicep Curl'] === 'reverse' && item.sets['Bicep Curl'].length === 2);
+  console.log('=== 4. remembering and reporting it ===');
+  ev(`entries = [{ date: ds(9), ex: [{ type: 'Strength', ts: Date.now() - 9 * 864e5, min: 40, exerciseVariations: { 'Bicep Curl': 'neutral' }, sets: { 'Bicep Curl': [{ weight: 25, reps: 12 }] } }] }, { date: ds(2), ex: [{ type: 'Strength', ts: Date.now() - 2 * 864e5, min: 40, exerciseVariations: { 'Bicep Curl': 'reverse' }, sets: { 'Bicep Curl': [{ weight: 20, reps: 12 }, { weight: 20, reps: 11 }] } }] }]`); // oldest first, like the app's own entries
+  check('"last time" remembers the most recent grip (reverse), not an older one', ev(`lastVariationFor('Bicep Curl')`) === 'reverse');
+  ev(`pplDayOverride = 'Pull'; workoutSessionState = {}; workoutVariationState = {}; renderWorkoutPlan();`);
+  check('next session the plan shows "last: Overhand / Reverse" as a nudge to rotate', /last: Overhand \/ Reverse/.test(norm(doc.querySelector('.workout-exercise-block[data-exercise="Bicep Curl"]').textContent)));
+  const rows = ev(`gatherRecentHealthData(120)`); const line = rows.find(r => r.date === ev('ds(2)')).strength_sets.join(' | ');
+  check('the AI summary includes the grip next to the sets ("Bicep Curl [reverse]: 20x12, 20x11")', /Bicep Curl \[reverse\]: 20x12, 20x11/.test(line));
+  check('an older session still reads correctly ("[neutral]")', /Bicep Curl \[neutral\]: 25x12/.test(rows.find(r => r.date === ev('ds(9)')).strength_sets.join(' | ')));
+  check('the muscle map is unaffected by grip (Bicep Curl is still Biceps)', ev(`muscleGroupFor('Bicep Curl')`) === 'Biceps');
+  console.log('=== Errors ==='); console.log(errors.length ? errors.join('\n') : '(none)');
+  console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(0);
+}, 2500); setTimeout(() => { console.log('TIMEOUT'); process.exit(1); }, 60000);
