@@ -15,14 +15,14 @@ The scripts expect to live in `/home/claude` (paths are hard-coded).
 
 ## Run
 
-Edit `/home/claude/five/index.html`, then `python3 prep.py`, then run the gate one part per command (each ~3–4 min):
+Edit `/home/claude/five/index.html`, then run the whole gate in one command (~5–6 min on 2 cores; give the command a 10-minute timeout):
 
 ```bash
-./run_all_tests.sh 1
-./run_all_tests.sh 2
-./run_all_tests.sh 3
-./gate_verified.sh   # passes only if all three parts passed on the current code
+./run_all_tests.sh     # runs prep.py, then every suite in parallel (gate_runner.js)
+./gate_verified.sh     # passes only if all three parts passed on the current code
 ```
+
+`./run_all_tests.sh 1|2|3` still runs one third. `JOBS=n` overrides how many suites run at once (default: cores + 1). A suite that fails is re-run once on its own; t_f23, t_f55 and t_f74 are timing-sensitive and usually need that re-run under parallel load. To run one suite by hand: `node t_fN.js`.
 
 Ship: copy `five/index.html` into the repo, check `origin/main` has not moved, commit, `git push origin HEAD:main`, then confirm the pushed file's sha256 matches. When tests change, copy them back into `tests/` and commit them too.
 
