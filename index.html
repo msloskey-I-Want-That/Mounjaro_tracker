@@ -1177,6 +1177,11 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 .set-row.set-pr { border-color: #FFB020; }
 .set-row.set-pr-flash { animation: set-pr-flash 1.4s ease-out; }
 @keyframes set-pr-flash { 0% { box-shadow: 0 0 0 0 rgba(255,176,32,.0); background: rgba(255,176,32,.35); } 30% { box-shadow: 0 0 0 6px rgba(255,176,32,.45); } 100% { box-shadow: 0 0 0 0 rgba(255,176,32,0); } }
+.chip-added, .fqp.chip-added { position: relative; border-color: var(--in, #10B981) !important; background: rgba(16,185,129,0.16) !important; }
+.chip-added::after { content: '✓ Added'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: inherit; background: var(--in, #10B981); color: #fff; font-weight: 800; font-size: 12px; animation: chipAddedIn 1.6s ease forwards; pointer-events: none; }
+@keyframes chipAddedIn { 0% { opacity: 0; transform: scale(0.9); } 12% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
+#undoToast.toast-nudge { animation: toastNudge 0.4s ease; }
+@keyframes toastNudge { 0%, 100% { transform: translateX(-50%); } 25% { transform: translateX(calc(-50% - 6px)); } 75% { transform: translateX(calc(-50% + 6px)); } }
 .pr-toast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 14px); transform: translateX(-50%); z-index: 900; background: linear-gradient(135deg,#FFB020,#FFD66B); color: #0d0d0f; font-weight: 800; font-size: 14px; padding: 10px 16px; border-radius: 999px; box-shadow: 0 6px 24px rgba(0,0,0,.35); max-width: calc(100% - 32px); text-align: center; }
 .progress-lines { margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--input-bg); font-size: 12.5px; line-height: 1.5; color: var(--ink); display: flex; flex-direction: column; gap: 4px; }
 .exercise-sets-target { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1681,7 +1686,7 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 </div>
 
 <!-- ── UNDO TOAST ── -->
-<div id="prToast" class="pr-toast" role="status" style="display:none"></div><div id="undoToast" style="display:none;position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 16px;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:500;max-width:90vw">
+<div id="prToast" class="pr-toast" role="status" style="display:none"></div><div id="undoToast" style="display:none;position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 16px;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:800;max-width:90vw">
   <span id="undoToastMsg" style="font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
   <button class="btn btn-secondary btn-sm" id="undoToastBtn" style="white-space:nowrap">Undo</button>
 </div>
@@ -7788,7 +7793,7 @@ function renderConsistencyHeatmap() {
 
   const numWeeks = 16;
   const cellSize = 16, gap = 3;
-  const today = new Date(todayStr());
+  const today = new Date(todayStr() + 'T00:00:00'); // local midnight (a bare 'YYYY-MM-DD' parses as UTC)
   const todayDow = today.getDay(); // 0 = Sunday
   const gridEnd = new Date(today); gridEnd.setDate(gridEnd.getDate() + (6 - todayDow));
   const totalDays = numWeeks * 7;
@@ -7810,7 +7815,7 @@ function renderConsistencyHeatmap() {
     for (let row = 0; row < 7; row++) {
       const cellDate = new Date(gridStart); cellDate.setDate(cellDate.getDate() + col * 7 + row);
       if (cellDate > today) { cells.push(null); continue; }
-      const dateStr = cellDate.toISOString().slice(0, 10);
+      const dateStr = ymdOf(cellDate); // local date: toISOString skipped Nov 1 (the 25-hour day clocks went back)
       const level = computeDailyActivityLevel(entriesByDate[dateStr]);
       cells.push({ dateStr, level, col, row, isToday: dateStr === todayStr(), restDay: !!(entriesByDate[dateStr] && entriesByDate[dateStr].restDay) });
     }
@@ -18515,9 +18520,11 @@ async function deleteCombo(idx) {
   await saveFoodCombosToFirestore();
 }
 
-async function quickAddCombo(combo) {
+async function quickAddCombo(combo, chipEl) {
   const date = document.getElementById('foodDate').value;
   if (!date) { alert('Please select a date first.'); return; }
+  if (quickAddIsRepeat('combo|' + date + '|' + String(combo.name || '').toLowerCase())) return;
+  markChipAdded(chipEl);
   const mt = selectedMealType();
   // Each item needs its own unique ts (it's what edit/delete key off of)
   // — a shared Date.now() across all of them would make every item in
@@ -18619,13 +18626,34 @@ function quickAddFoodScaled(f, chipEl) {
   }, chipEl);
 }
 
+// A quick double-tap on the same food used to add it twice with no sign the first tap worked.
+var lastQuickAdd = { key: '', at: 0 };
+function quickAddIsRepeat(key) {
+  const now = Date.now();
+  if (lastQuickAdd.key === key && now - lastQuickAdd.at < 2000) { flashAddedToast(); return true; }
+  lastQuickAdd = { key, at: now };
+  return false;
+}
+function flashAddedToast() {
+  const t = document.getElementById('undoToast');
+  if (!t || t.style.display === 'none') return;
+  t.classList.remove('toast-nudge'); void t.offsetWidth; t.classList.add('toast-nudge');
+}
+function markChipAdded(el) {
+  if (!el || !el.classList) return;
+  el.classList.add('chip-added');
+  try { if (navigator.vibrate) navigator.vibrate(15); } catch (err) { /* not supported */ }
+  setTimeout(() => { if (el.classList) el.classList.remove('chip-added'); }, 1600);
+}
 async function quickAddFood(f, chipEl) {
   const date = document.getElementById('foodDate').value;
   if (!date) { alert('Please select a date first.'); return; }
+  if (quickAddIsRepeat('food|' + date + '|' + String(f.desc || '').toLowerCase())) return;
+  markChipAdded(chipEl);
   const meal = { desc: f.desc, mt: selectedMealType(), protein: f.protein, cal: f.cal, carbs: f.carbs, fat: f.fat, fiber: f.fiber != null ? f.fiber : null, ts: Date.now() };
   pendingFlashDesc = f.desc;
   await writeMeals(date, [...mealsForDate(date), meal]);
-  showUndoToast(`Added "${f.desc}" to ${meal.mt}`, async () => { await writeMeals(date, mealsForDate(date).filter(m => m.ts !== meal.ts)); });
+  showUndoToast(`✓ Added "${f.desc}" to ${meal.mt}`, async () => { await writeMeals(date, mealsForDate(date).filter(m => m.ts !== meal.ts)); });
 }
 
 function renderFavorites() {
@@ -18817,7 +18845,7 @@ function renderFavorites() {
   });
 
   box.querySelectorAll('[data-combo-add]').forEach(el => {
-    el.addEventListener('click', () => quickAddCombo(foodCombos[Number(el.dataset.comboAdd)]));
+    el.addEventListener('click', () => quickAddCombo(foodCombos[Number(el.dataset.comboAdd)], el.closest('.chip')));
   });
   box.querySelectorAll('[data-combo-remove]').forEach(el => {
     el.addEventListener('click', (ev) => { ev.stopPropagation(); deleteCombo(Number(el.dataset.comboRemove)); });
