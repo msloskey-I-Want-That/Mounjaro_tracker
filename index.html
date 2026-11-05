@@ -17744,6 +17744,15 @@ function renderRings(t, tSteps, tOz, stepGoal) {
   document.getElementById('ringProteinSub').textContent = `Protein · goal ${userProteinGoal}g`;
   document.getElementById('ringStepsVal').textContent = steps ? steps.toLocaleString() : '—';
   document.getElementById('ringStepsSub').textContent = `Steps · goal ${stepGoal.toLocaleString()}`;
+  // When the steps came from Apple Health, say how fresh they are — Zepp keeps counting between syncs.
+  try {
+    const sub = document.getElementById('ringStepsSub');
+    let asOf = document.getElementById('ringStepsAsOf');
+    if (!asOf && sub) { asOf = document.createElement('div'); asOf.id = 'ringStepsAsOf'; asOf.style.cssText = 'font-size:10px;color:var(--ink-soft);opacity:.8;margin-top:1px'; sub.insertAdjacentElement('afterend', asOf); }
+    const at = t && t.healthSyncedAt ? new Date(t.healthSyncedAt) : null;
+    const fresh = at && !isNaN(at) && ymdOf(at) === todayStr() && steps > 0;
+    if (asOf) { asOf.textContent = fresh ? 'as of ' + at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase() : ''; asOf.style.display = fresh ? '' : 'none'; }
+  } catch (err) { /* the label is optional */ }
   document.getElementById('ringWaterVal').textContent = water ? water + 'oz' : '—';
   document.getElementById('ringWaterSub').textContent = `Water · goal 64oz`;
 
