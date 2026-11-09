@@ -1333,6 +1333,22 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 .rest-inline-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(55,198,255,0.5); transition: width 1s linear; }
 .rest-inline.done .rest-inline-fill { background: rgba(92,230,192,0.55); transition: none; }
 .rest-inline-time { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; height: 100%; font-family:var(--font-num); font-weight: 800; font-size: 16px; color: var(--ink); }
+/* Nov 9: a bigger countdown you can read from the bench */
+.rest-inline-bar { height: 52px !important; }
+.rest-inline-adj { height: 52px !important; }
+.rest-inline-time { font-size: 26px !important; }
+.rest-inline-note { position: absolute; z-index: 1; right: 8px; bottom: 3px; font-size: 10px; font-weight: 800; color: var(--ink); opacity: .75; }
+.ex-pace { display: flex; align-items: baseline; gap: 6px; font-size: 12.5px; font-weight: 800; color: var(--ink-soft); margin: -4px 0 8px; }
+.ex-pace span { font-weight: 600; font-size: 11px; opacity: .8; }
+.ex-pace.up { color: var(--sage, #5CE6C0); }
+.ex-pace.down { color: var(--coral, #FF6FA5); }
+.pace-bar { height: 6px; border-radius: 3px; background: var(--input-bg); margin: 5px 18% 0; overflow: hidden; }
+.pace-bar > div { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #37C6FF, #5CE6C0); }
+.stall-box { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; border: 1.5px solid rgba(255,176,32,0.55); background: rgba(255,176,32,0.10); }
+.stall-title { font-size: 13px; font-weight: 800; color: #E09400; }
+.stall-sub { font-size: 12px; color: var(--ink-soft); margin: 3px 0 0; }
+.stall-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.stall-actions button { flex: 1 1 auto; min-height: 38px; padding: 0 10px; border-radius: 10px; border: 1.5px solid rgba(255,176,32,0.6); background: var(--card); color: var(--ink); font-size: 12.5px; font-weight: 800; cursor: pointer; font-family: inherit; touch-action: manipulation; }
 .rest-inline-skip { width: 30px; height: 36px; flex-shrink: 0; background: none; border: none; color: var(--ink-soft); font-size: 15px; cursor: pointer; }
 .effort-legend { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; font-size: 10px; font-weight: 700; color: var(--ink-soft); }
 .effort-bar { flex: 1; height: 8px; border-radius: 5px; background: linear-gradient(90deg, hsl(190, 85%, 58%), hsl(143, 85%, 58%), hsl(95, 85%, 58%), hsl(48, 85%, 58%), hsl(0, 85%, 58%)); }
@@ -14124,6 +14140,18 @@ function fmtRestTime(sec) {
 // same timer as the corner pill — same beep/vibrate, same ±15 that
 // remembers your preferred rest per exercise — just presented in the list.
 // The pill is kept as a fallback for when that row isn't on screen.
+// After "Reps left?": a failure set gets 30 s more rest, an easy one (3+ left) 15 s less. This rest only; the saved rest time is untouched.
+var restEffortNote = '';
+function nudgeRestForEffort(key, rir) {
+  if (restTimerEndTime == null || restTimerTotalSeconds == null || restInlineKey !== key) return 0;
+  const want = Number(rir) === 0 ? 30 : Number(rir) >= 3 ? -15 : 0;
+  if (!want) { restEffortNote = ''; return 0; }
+  const newTotal = Math.max(15, restTimerTotalSeconds + want), d = newTotal - restTimerTotalSeconds;
+  restTimerTotalSeconds = newTotal; restTimerEndTime += d * 1000;
+  restEffortNote = d > 0 ? `+${d}s · failure set` : `${d}s · easy set`;
+  updateRestTimerDisplay();
+  return d;
+}
 function restInlineHtml(exerciseName, idx) {
   if (restInlineKey !== `${exerciseName}:${idx}`) return '';
   const running = restTimerEndTime != null;
@@ -14132,7 +14160,7 @@ function restInlineHtml(exerciseName, idx) {
   const pct = running ? Math.min(100, Math.max(0, (remaining / total) * 100)) : 100; // drains with the countdown; the done state flashes full green
   return `<div class="rest-inline${running ? '' : ' done'}" data-exercise="${exerciseName}" data-set-idx="${idx}">
     ${running ? '<button type="button" class="rest-inline-adj" data-delta="-15" aria-label="15 seconds less rest">−15</button>' : ''}
-    <div class="rest-inline-bar"><div class="rest-inline-fill" style="width:${pct}%"></div><span class="rest-inline-time">${running ? fmtRestTime(remaining) : 'Go!'}</span></div>
+    <div class="rest-inline-bar"><div class="rest-inline-fill" style="width:${pct}%"></div><span class="rest-inline-time">${running ? fmtRestTime(remaining) : 'Go!'}</span>${running && restEffortNote ? `<span class="rest-inline-note">${restEffortNote}</span>` : ''}</div>
     ${running ? '<button type="button" class="rest-inline-adj" data-delta="15" aria-label="15 seconds more rest">+15</button>' : ''}
     <button type="button" class="rest-inline-skip" aria-label="${running ? 'Skip rest' : 'Dismiss'}">✕</button>
   </div>`;
@@ -14170,6 +14198,7 @@ function syncRestTimerPresentation() {
 
 function startRestTimer(seconds) {
   const duration = seconds || REST_SECONDS;
+  restEffortNote = '';
   restTimerEndTime = Date.now() + duration * 1000;
   restTimerTotalSeconds = duration;
   clearTimeout(restTimerAutoHideTimer);
@@ -14519,9 +14548,49 @@ function todayTargetFor(exerciseName, setsTarget) {
     const last = sessions[0], lastW = Math.max(...last.map(q => q.weight || 0));
     if (step && step.kind === 'weight') return `🎯 Today: go up to ${step.weight} lb × ${step.reps}${range && range.max !== range.min ? '–' + range.max : ''} (last time ${lastW} lb)`;
     const top = last.filter(q => q.weight === lastW);
+    const st = stallFor(exerciseName, setsTarget);
+    if (st) return stallResetApplied(exerciseName, st) ? `🎯 Today: ${st.reset} lb × ${st.reps}, then build back up` : `🎯 Today: beat ${top.map(q => q.reps).join(' / ')} at ${lastW} lb, or take the reset below`;
     if (top.some(q => q.rir === 0) && range && top.some(q => q.reps < range.min)) return `🎯 Today: ${lastW} lb again · get every set to ${range.min}+ reps`;
     return `🎯 Today: ${lastW} lb · beat ${top.map(q => q.reps).join(' / ')} reps`;
   } catch (err) { return ''; }
+}
+// 5) Live "vs last time": your finished working sets against the same number of sets from last time, so it is fair mid-workout.
+function exercisePaceVsLast(exerciseName) {
+  try {
+    if (exerciseMode(exerciseName) !== 'weighted') return null;
+    const cur = (workoutSessionState[exerciseName] || []).filter(q => q.done && !q.warmup && parseFloat(q.weight) > 0 && parseInt(q.reps, 10) > 0);
+    if (!cur.length) return null;
+    const prev = (previousSetsFor(exerciseName) || []).filter(q => q && !q.warmup && !q.timed && q.weight > 0 && q.reps > 0);
+    if (!prev.length) return null;
+    const curVol = cur.reduce((t, q) => t + parseFloat(q.weight) * parseInt(q.reps, 10), 0);
+    const lastVol = prev.slice(0, cur.length).reduce((t, q) => t + q.weight * q.reps, 0);
+    return { delta: Math.round(curVol - lastVol), curVol: Math.round(curVol), lastVol: Math.round(lastVol), sets: cur.length };
+  } catch (err) { return null; }
+}
+function sessionPaceVsLast() {
+  let delta = 0, n = 0;
+  Object.keys(workoutSessionState || {}).forEach(name => { const p = exercisePaceVsLast(name); if (p) { delta += p.delta; n++; } });
+  return n ? { delta, exercises: n } : null;
+}
+function paceText(delta) { const a = Math.abs(delta).toLocaleString(); return delta > 0 ? `▲ ${a} lb ahead of last time` : delta < 0 ? `▼ ${a} lb behind last time` : '= even with last time'; }
+// 6) Stall: the best set (estimated 1-rep max) of the last 3 sessions is no better than the session before them.
+function stallFor(exerciseName, setsTarget) {
+  try {
+    if (exerciseMode(exerciseName) !== 'weighted') return null;
+    const sessions = recentWorkingSetsFor(exerciseName, 4); if (sessions.length < 4) return null;
+    const e1 = sets => Math.max(...sets.map(q => (q.weight || 0) * (1 + (q.reps || 0) / 30)));
+    const base = e1(sessions[3]), recent = Math.max(e1(sessions[0]), e1(sessions[1]), e1(sessions[2]));
+    if (!(base > 0) || recent > base * 1.005) return null;
+    const lastW = Math.max(...sessions[0].map(q => q.weight || 0)); if (!(lastW > 0)) return null;
+    const range = parseRepRange(String(setsTarget || ''));
+    const reset = Math.max(5, Math.round(lastW * 0.9 / 5) * 5);
+    const reps = range ? range.max : Math.max(...sessions[0].map(q => q.reps || 0));
+    return { lastW, reset, reps, text: `⏸ Stalled: no progress in 3 sessions at about ${lastW} lb` };
+  } catch (err) { return null; }
+}
+function stallResetApplied(exerciseName, st) {
+  const open = (workoutSessionState[exerciseName] || []).filter(q => !q.done && !q.warmup);
+  return open.length > 0 && open.every(q => Number(q.weight) === st.reset && Number(q.reps) === st.reps);
 }
 function renderSetRowHtml(exerciseName, idx, setData, prevData, accent, nextUp) {
   const mode = exerciseMode(exerciseName), hasWeight = mode === 'weighted' || mode === 'timedLoaded', isTimed = mode === 'timed' || mode === 'timedLoaded';
@@ -14993,6 +15062,18 @@ function wireWorkoutPlanEvents() {
       input.value = String(next);
       workoutSessionState[exName][idx].weight = String(next);
       updatePRProximityHint(row);
+    });
+  });
+  document.querySelectorAll('.stall-reset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.exercise, st = stallFor(name, btn.dataset.sets); if (!st) return;
+      (workoutSessionState[name] || []).forEach(q => { if (!q.done && !q.warmup) { q.weight = st.reset; q.reps = st.reps; } });
+      renderWorkoutPlan();
+    });
+  });
+  document.querySelectorAll('.stall-swap-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const block = btn.closest('.workout-exercise-block'); const t = block && block.querySelector('.swap-toggle-btn'); if (t) t.click();
     });
   });
   document.querySelectorAll('.set-reps-minus, .set-reps-plus').forEach(btn => {
@@ -17191,7 +17272,8 @@ function renderWorkoutPlan() {
       const nextStep = nextStepFor(ex.name, ex.sets);
       const showStep = !!nextStep && !nextStepApplied(ex.name, nextStep);
       const warmOffer = warmupOfferFor(ex.name);
-      const plateau = nextStep ? null : plateauHintFor(ex.name);
+      const stall = nextStep ? null : stallFor(ex.name, ex.sets);
+      const exPace = exercisePaceVsLast(ex.name);
       const doneCount = setState.filter(s => s.done).length;
       const allDone = setState.length > 0 && doneCount === setState.length;
       const accent = workoutAccentColor(exIndex);
@@ -17272,6 +17354,7 @@ function renderWorkoutPlan() {
           <button type="button" class="remove-exercise-btn" data-exercise="${ex.name}" title="Remove from today's list" aria-label="Remove ${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:17px;line-height:1;cursor:pointer;padding:4px;margin-left:2px;flex-shrink:0">✕</button>
         </div>
         ${segHtml}
+        ${exPace ? `<div class="ex-pace ${exPace.delta > 0 ? 'up' : exPace.delta < 0 ? 'down' : ''}">${paceText(exPace.delta)} <span>(${exPace.sets} set${exPace.sets === 1 ? '' : 's'} in)</span></div>` : ''}
         ${lastSessionsTrendHtml(ex.name)}
         ${collapsedSummary}
         <div class="exercise-body"${isCollapsed ? ' style="display:none" data-collapsed="1"' : ''}>
@@ -17287,7 +17370,7 @@ function renderWorkoutPlan() {
         </div>
         ${(() => { const t = todayTargetFor(ex.name, ex.sets); return t && doneCount < setState.length ? `<div class="ex-today-target">${escapeHtml(t)}</div>` : ''; })()}
         ${(showStep || warmOffer) ? `<div class="coach-chips">${showStep ? `<button type="button" class="coach-chip next-step-chip" data-exercise="${ex.name}" data-sets="${ex.sets}">⬆ ${nextStep.text}</button>` : ''}${warmOffer ? `<button type="button" class="coach-chip warmup-chip" data-exercise="${ex.name}">🔥 ${warmOffer.text}</button>` : ''}</div>` : ''}
-        ${plateau ? `<div style="font-size:12px;color:#FFB020;font-weight:700;margin-bottom:8px">${plateau}</div>` : ''}
+        ${stall ? `<div class="stall-box"><div class="stall-title">${escapeHtml(stall.text)}</div>${stallResetApplied(ex.name, stall) ? `<div class="stall-sub">✓ Reset set: ${stall.reset} lb × ${stall.reps}. Add weight again once every set hits ${stall.reps}.</div>` : `<div class="stall-sub">Pick a fix:</div><div class="stall-actions"><button type="button" class="stall-reset-btn" data-exercise="${ex.name}" data-sets="${escapeHtml(String(ex.sets || ''))}">↓ Reset to ${stall.reset} lb × ${stall.reps}</button>${swapSuggestions.length && !ex.swappedFrom ? `<button type="button" class="stall-swap-btn" data-exercise="${ex.name}">🔄 Swap exercise</button>` : ''}</div>`}</div>` : ''}
         <div class="set-rows-container" data-exercise-name="${ex.name}">
           ${setState.map((s, i) => renderSetRowHtml(ex.name, i, s, prevSetAligned(setState, prevSets, i), accent, i === ssNextIdx)).join('')}
         </div>
@@ -17345,7 +17428,9 @@ function renderWorkoutPlan() {
              const currentVolume = currentSets ? totalSessionWeight(currentSets) : 0;
              const lastSession = lastSessionVolumeForPlanDay(currentPlanKey());
              const setsSoFar = currentSets ? Object.values(currentSets).reduce((t, a) => t + a.filter(q => !q.warmup).length, 0) : 0;
-             return `<div id="workoutLiveLine" style="font-size:13px;font-weight:700;color:var(--ink);margin-top:4px">${setsSoFar} set${setsSoFar === 1 ? '' : 's'} · ${Math.round(currentVolume).toLocaleString()} lb so far</div>${lastSession ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:2px">Last time: ${lastSession.volume.toLocaleString()} lb</div>` : ''}`;
+             const pace = sessionPaceVsLast();
+             const pct = lastSession && lastSession.volume > 0 ? Math.min(100, Math.round(currentVolume / lastSession.volume * 100)) : null;
+             return `<div id="workoutLiveLine" style="font-size:13px;font-weight:700;color:var(--ink);margin-top:4px">${setsSoFar} set${setsSoFar === 1 ? '' : 's'} · ${Math.round(currentVolume).toLocaleString()} lb so far</div>${pace ? `<div id="workoutPaceLine" class="ex-pace ${pace.delta > 0 ? 'up' : pace.delta < 0 ? 'down' : ''}" style="justify-content:center;font-size:14px;margin:4px 0 0">${paceText(pace.delta)}</div>` : ''}${lastSession ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:2px">Last time: ${lastSession.volume.toLocaleString()} lb${pct != null ? ` · ${pct}% of it so far` : ''}</div>${pct != null ? `<div class="pace-bar"><div style="width:${pct}%"></div></div>` : ''}` : ''}`;
            })()}
          </div>
          <button type="button" class="btn btn-primary btn-sm" id="finishPlanBtn" style="margin-top:8px;width:100%;padding:12px;font-size:14px;background:linear-gradient(135deg,#37C6FF,#5CE6C0);color:#0a2e28;font-weight:800;text-transform:uppercase;letter-spacing:0.02em">Finish Workout</button>`
