@@ -1185,7 +1185,26 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 .pr-toast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 14px); transform: translateX(-50%); z-index: 900; background: linear-gradient(135deg,#FFB020,#FFD66B); color: #0d0d0f; font-weight: 800; font-size: 14px; padding: 10px 16px; border-radius: 999px; box-shadow: 0 6px 24px rgba(0,0,0,.35); max-width: calc(100% - 32px); text-align: center; }
 .progress-lines { margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--input-bg); font-size: 12.5px; line-height: 1.5; color: var(--ink); display: flex; flex-direction: column; gap: 4px; }
 .exercise-sets-target { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Nov 9: one-thumb entry — reps steppers sit beside the reps box; the weight steppers stay. */
+.set-row-main { gap: 5px; }
+.set-step-btn { width: 34px; height: 44px; }
+.set-field input { height: 44px; }
+.set-check-btn { height: 44px; width: 46px; }
+.set-weight-group { gap: 3px; }
+.set-reps-field { flex: 0 0 42px; }
+.set-reps-minus, .set-reps-plus { width: 30px; }
+.set-same-btn { flex-shrink: 0; height: 26px; padding: 0 10px; border-radius: 13px; border: 1.5px solid var(--teal, #37C6FF); background: rgba(55,198,255,0.12); color: var(--teal, #37C6FF); font-size: 11.5px; font-weight: 800; cursor: pointer; touch-action: manipulation; white-space: nowrap; font-family: inherit; }
+.set-rir-badge { flex-shrink: 0; height: 22px; padding: 0 8px; border-radius: 11px; border: none; background: var(--input-bg); color: var(--ink-soft); font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap; font-family: inherit; }
+.set-rir-badge.fail { background: rgba(255,111,165,0.18); color: var(--coral); }
+.rir-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.rir-q { font-size: 12px; font-weight: 800; color: var(--ink-soft); margin-right: 2px; white-space: nowrap; }
+.rir-btn { flex: 1; min-width: 0; height: 38px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); font-size: 14px; font-weight: 800; cursor: pointer; touch-action: manipulation; font-family: inherit; }
+.rir-btn.fail { border-color: var(--coral); color: var(--coral); }
+.rir-btn:active { transform: scale(0.94); }
+.rir-skip { flex: 0 0 30px; height: 38px; border: none; background: none; color: var(--ink-soft); font-size: 14px; cursor: pointer; }
+.ex-today-target { font-size: 13px; font-weight: 800; color: var(--ink); margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; background: rgba(55,198,255,0.10); border: 1px solid rgba(55,198,255,0.28); }
 @media (max-width: 350px) {
+  .set-reps-minus, .set-reps-plus { display: none; }
   .set-row { padding: 8px 8px 9px; }
   .set-step-btn { width: 26px; }
   .set-check-btn { width: 38px; }
@@ -11785,6 +11804,7 @@ function gatherWorkoutSets() {
         else if (mode === 'timed') { if (reps > 0) out = { weight: 0, secs: reps, timed: true }; }
         else if (mode === 'timedLoaded') { if (reps > 0) out = { weight: weight > 0 ? weight : 0, secs: reps, timed: true }; }
         if (out && s.warmup) out.warmup = true;
+        if (out && !out.timed && !s.warmup && s.rir != null && s.rir !== '' && !isNaN(Number(s.rir))) out.rir = Math.max(0, Math.min(3, Number(s.rir)));
         return out;
       })
       .filter(Boolean);
@@ -13812,10 +13832,12 @@ function nextStepFor(exerciseName, setsTarget) {
     const range = parseRepRange(setsTarget); if (!range) return null;
     const sessions = recentWorkingSetsFor(exerciseName, 1); if (!sessions.length) return null;
     const last = sessions[0], lastWeight = Math.max(...last.map(x => x.weight || 0));
-    if (!lastWeight || !last.every(x => x.reps >= range.max)) return null; // otherwise: repeat the weight (already pre-filled)
+    const allTop = last.every(x => x.reps >= range.max);
+    const easy = last.every(x => x.rir != null && Number(x.rir) >= 2 && x.reps >= range.min); // reps left on every set, at least the low end of the range
+    if (!lastWeight || !(allTop || easy)) return null; // otherwise: repeat the weight (already pre-filled)
     if (lastEffortFor(exerciseName) === 5 || detectDeloadNeeded()) return null; // reasons to hold, not push
     const weight = lastWeight + (lastWeight >= 100 ? 10 : 5);
-    return { kind: 'weight', weight, reps: range.min, text: `Every set hit ${range.max}+ reps at ${lastWeight} lb. Try ${weight} lb × ${range.min} · tap to use` };
+    return { kind: 'weight', weight, reps: range.min, text: allTop ? `Every set hit ${range.max}+ reps at ${lastWeight} lb. Try ${weight} lb × ${range.min} · tap to use` : `2+ reps left on every set at ${lastWeight} lb. Try ${weight} lb × ${range.min} · tap to use` };
   } catch (err) { return null; }
 }
 function nextStepApplied(exerciseName, step) {
@@ -14467,6 +14489,40 @@ function toggleSetStopwatch(exerciseName, idx) {
   try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) {}
 }
 
+// ── Workout tab, Nov 9: reps left, today's target, faster entry ──
+// "Reps left" (reps in reserve) is asked right after a working set is checked: 0 = to failure, 3 = 3 or more.
+var rirAskKey = null;
+function rirEligible(exerciseName, setData) { const m = exerciseMode(exerciseName); return !!setData && !setData.warmup && (m === 'weighted' || m === 'bodyweight'); }
+function rirLabel(r) { r = Number(r); return r === 0 ? '💀 failure' : r >= 3 ? '3+ left' : r + ' left'; }
+// The set "Same again" copies: the last finished working set of this exercise, if the row is the next one to do.
+function sameAgainSourceFor(exerciseName, idx) {
+  const sets = workoutSessionState[exerciseName] || [];
+  const firstOpen = sets.findIndex(q => !q.done);
+  if (firstOpen !== idx || sets[idx].warmup) return null;
+  for (let i = idx - 1; i >= 0; i--) { const q = sets[i]; if (q.done && !q.warmup && String(q.reps) !== '' && Number(q.reps) > 0) return { i, set: q }; }
+  return null;
+}
+// One line on every open card: what to do today, from last time's sets (and how hard they felt).
+function todayTargetFor(exerciseName, setsTarget) {
+  try {
+    const mode = exerciseMode(exerciseName);
+    const range = parseRepRange(String(setsTarget || ''));
+    if (mode === 'bodyweight') {
+      const prev = (previousSetsFor(exerciseName) || []).filter(q => q && !q.warmup && q.reps > 0);
+      if (!prev.length) return range ? `🎯 Today: ${range.min}${range.max !== range.min ? '–' + range.max : ''} reps a set` : '';
+      return `🎯 Today: beat ${prev.map(q => q.reps).join(' / ')} reps`;
+    }
+    if (mode !== 'weighted') return '';
+    const sessions = recentWorkingSetsFor(exerciseName, 1);
+    if (!sessions.length) return range ? `🎯 First time: pick a weight you can lift ${range.min}${range.max !== range.min ? '–' + range.max : ''} times with 2 reps left` : '';
+    const step = nextStepFor(exerciseName, setsTarget);
+    const last = sessions[0], lastW = Math.max(...last.map(q => q.weight || 0));
+    if (step && step.kind === 'weight') return `🎯 Today: go up to ${step.weight} lb × ${step.reps}${range && range.max !== range.min ? '–' + range.max : ''} (last time ${lastW} lb)`;
+    const top = last.filter(q => q.weight === lastW);
+    if (top.some(q => q.rir === 0) && range && top.some(q => q.reps < range.min)) return `🎯 Today: ${lastW} lb again · get every set to ${range.min}+ reps`;
+    return `🎯 Today: ${lastW} lb · beat ${top.map(q => q.reps).join(' / ')} reps`;
+  } catch (err) { return ''; }
+}
 function renderSetRowHtml(exerciseName, idx, setData, prevData, accent, nextUp) {
   const mode = exerciseMode(exerciseName), hasWeight = mode === 'weighted' || mode === 'timedLoaded', isTimed = mode === 'timed' || mode === 'timedLoaded';
   const prevText = prevData ? `last ${fmtPrevSet(prevData)}${prevData.warmup ? ' (W)' : ''}` : 'no history yet';
@@ -14482,6 +14538,8 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent, nextUp) 
         ${nextUp ? '<span class="set-next-badge">⚡ UP NEXT</span>' : ''}
         ${setData.warmup ? '' : '<span class="pr-proximity-hint" style="display:none"></span>'}
         ${isPR ? '<span class="set-pr-badge">🏆 NEW PR</span>' : ''}
+        ${setData.done && setData.rir != null && setData.rir !== '' && rirEligible(exerciseName, setData) ? `<button type="button" class="set-rir-badge${Number(setData.rir) === 0 ? ' fail' : ''}" title="Change reps left" aria-label="Reps left: ${rirLabel(setData.rir)}. Tap to change">${rirLabel(setData.rir)}</button>` : ''}
+        ${(() => { if (setData.done || isTimed) return ''; const src = sameAgainSourceFor(exerciseName, idx); return src ? `<button type="button" class="set-same-btn" aria-label="Log the same as set ${src.i + 1}">↻ Same again</button>` : ''; })()}
         ${isTimed && !setData.done ? (() => { const run = setStopwatch && setStopwatch.exercise === exerciseName && setStopwatch.idx === idx; return `<button type="button" class="set-timer-btn${run ? ' running' : ''}" aria-label="${run ? 'Stop timer' : 'Start timer'}" title="${run ? 'Stop timer' : 'Start timer'}">${run ? '■ Stop' : '▶ Start'}</button>`; })() : ''}
         <button type="button" class="set-remove-btn" data-exercise="${exerciseName}" data-set-idx="${idx}" aria-label="Remove this set">✕</button>
       </div>
@@ -14491,9 +14549,12 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent, nextUp) 
           <div class="set-field"><input type="number" class="set-weight-input" inputmode="decimal" step="2.5" value="${setData.weight}" placeholder="0"><span class="unit">lb</span></div>
           <button type="button" class="set-step-btn set-weight-plus" aria-label="Increase weight by 5 pounds">+</button>
         </div>` : ''}
+        ${isTimed ? '' : '<button type="button" class="set-step-btn set-reps-minus" aria-label="One rep less">−</button>'}
         <div class="set-field set-reps-field"><input type="number" class="set-reps-input" inputmode="numeric" value="${setData.reps}" placeholder="0"><span class="unit">${isTimed ? 'sec' : 'reps'}</span></div>
+        ${isTimed ? '' : '<button type="button" class="set-step-btn set-reps-plus" aria-label="One rep more">+</button>'}
         <button type="button" class="set-check-btn${justDone ? ' set-just-done' : ''}" aria-label="${setData.done ? 'Mark set not done' : 'Mark set done'}">✓</button>
       </div>
+      ${setData.done && rirAskKey === `${exerciseName}:${idx}` && rirEligible(exerciseName, setData) && (setData.rir == null || setData.rir === '') ? `<div class="rir-row" role="group" aria-label="Reps left in the tank"><span class="rir-q">Reps left?</span>${[0, 1, 2, 3].map(r => `<button type="button" class="rir-btn${r === 0 ? ' fail' : ''}" data-rir="${r}">${r === 0 ? '0 💀' : r === 3 ? '3+' : r}</button>`).join('')}<button type="button" class="rir-skip" aria-label="Skip">✕</button></div>` : ''}
     </div>${restInlineHtml(exerciseName, idx)}`;
 }
 
@@ -14860,6 +14921,7 @@ function wireWorkoutPlanEvents() {
       if (!wasDone) {
         lastCheckedSetKey = `${exName}:${idx}`;
         workoutSessionState[exName][idx].checkedAt = Date.now();
+        rirAskKey = rirEligible(exName, workoutSessionState[exName][idx]) ? `${exName}:${idx}` : null;
         gotLivePR = checkLiveSetPR(exName, idx);
         if (gotLivePR) lastPRSetKey = `${exName}:${idx}`;
         // Superset pairs share one rest period across both exercises —
@@ -14882,7 +14944,8 @@ function wireWorkoutPlanEvents() {
           zoomedExercise = null; reorderingExercises = false;
         }
       } else {
-        delete workoutSessionState[exName][idx].checkedAt;
+        delete workoutSessionState[exName][idx].checkedAt; delete workoutSessionState[exName][idx].rir;
+        if (rirAskKey === `${exName}:${idx}`) rirAskKey = null;
         delete workoutSessionState[exName][idx].prBadge; delete workoutSessionState[exName][idx].prPrev;
       }
       let scrollToName = null;
@@ -14931,6 +14994,45 @@ function wireWorkoutPlanEvents() {
       workoutSessionState[exName][idx].weight = String(next);
       updatePRProximityHint(row);
     });
+  });
+  document.querySelectorAll('.set-reps-minus, .set-reps-plus').forEach(btn => {
+    const row = btn.closest('.set-row');
+    const exName = row.dataset.exercise, idx = Number(row.dataset.setIdx);
+    const delta = btn.classList.contains('set-reps-plus') ? 1 : -1;
+    btn.addEventListener('click', () => {
+      const input = row.querySelector('.set-reps-input');
+      let cur = parseInt(input.value, 10);
+      if (isNaN(cur)) { const p = (previousSetsFor(exName) || [])[idx]; cur = p && p.reps > 0 ? p.reps : 0; }
+      const next = Math.max(0, cur + delta);
+      input.value = String(next); workoutSessionState[exName][idx].reps = String(next);
+    });
+  });
+  document.querySelectorAll('.set-same-btn').forEach(btn => {
+    const row = btn.closest('.set-row');
+    const exName = row.dataset.exercise, idx = Number(row.dataset.setIdx);
+    btn.addEventListener('click', () => {
+      const src = sameAgainSourceFor(exName, idx); if (!src) return;
+      const st = workoutSessionState[exName][idx];
+      st.weight = src.set.weight; st.reps = src.set.reps;
+      const w = row.querySelector('.set-weight-input'), r = row.querySelector('.set-reps-input');
+      if (w) w.value = String(st.weight); if (r) r.value = String(st.reps);
+      const chk = row.querySelector('.set-check-btn'); if (chk) chk.click(); // logs it like a normal check (rest timer, PRs, reps left)
+    });
+  });
+  document.querySelectorAll('.rir-btn, .rir-skip').forEach(btn => {
+    const row = btn.closest('.set-row');
+    const exName = row.dataset.exercise, idx = Number(row.dataset.setIdx);
+    btn.addEventListener('click', () => {
+      const st = workoutSessionState[exName] && workoutSessionState[exName][idx]; if (!st) return;
+      if (btn.classList.contains('rir-btn')) { st.rir = Number(btn.dataset.rir); if (typeof nudgeRestForEffort === 'function') nudgeRestForEffort(`${exName}:${idx}`, st.rir); }
+      rirAskKey = null;
+      renderWorkoutPlan();
+    });
+  });
+  document.querySelectorAll('.set-rir-badge').forEach(btn => {
+    const row = btn.closest('.set-row');
+    const exName = row.dataset.exercise, idx = Number(row.dataset.setIdx);
+    btn.addEventListener('click', () => { const st = workoutSessionState[exName][idx]; delete st.rir; rirAskKey = `${exName}:${idx}`; renderWorkoutPlan(); });
   });
   document.querySelectorAll('.variation-toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -17183,6 +17285,7 @@ function renderWorkoutPlan() {
         <div class="exercise-note-wrap" data-exercise="${ex.name}" style="display:${workoutNotesState[ex.name] ? '' : 'none'};margin-bottom:8px">
           <textarea class="exercise-note-input" data-exercise="${ex.name}" placeholder="e.g. left shoulder felt off today" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;background:var(--input-bg);color:var(--ink);resize:vertical">${escapeHtml(workoutNotesState[ex.name] || '')}</textarea>
         </div>
+        ${(() => { const t = todayTargetFor(ex.name, ex.sets); return t && doneCount < setState.length ? `<div class="ex-today-target">${escapeHtml(t)}</div>` : ''; })()}
         ${(showStep || warmOffer) ? `<div class="coach-chips">${showStep ? `<button type="button" class="coach-chip next-step-chip" data-exercise="${ex.name}" data-sets="${ex.sets}">⬆ ${nextStep.text}</button>` : ''}${warmOffer ? `<button type="button" class="coach-chip warmup-chip" data-exercise="${ex.name}">🔥 ${warmOffer.text}</button>` : ''}</div>` : ''}
         ${plateau ? `<div style="font-size:12px;color:#FFB020;font-weight:700;margin-bottom:8px">${plateau}</div>` : ''}
         <div class="set-rows-container" data-exercise-name="${ex.name}">
