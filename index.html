@@ -1197,14 +1197,17 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 .pr-toast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 14px); transform: translateX(-50%); z-index: 900; background: linear-gradient(135deg,#FFB020,#FFD66B); color: #0d0d0f; font-weight: 800; font-size: 14px; padding: 10px 16px; border-radius: 999px; box-shadow: 0 6px 24px rgba(0,0,0,.35); max-width: calc(100% - 32px); text-align: center; }
 .progress-lines { margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--input-bg); font-size: 12.5px; line-height: 1.5; color: var(--ink); display: flex; flex-direction: column; gap: 4px; }
 .exercise-sets-target { flex: 1; min-width: 0; font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* Nov 9: one-thumb entry — reps steppers sit beside the reps box; the weight steppers stay. */
-.set-row-main { gap: 5px; }
-.set-step-btn { width: 34px; height: 44px; }
-.set-field input { height: 44px; }
-.set-check-btn { height: 44px; width: 46px; }
+/* Nov 9: one-thumb entry — reps steppers sit beside the reps box; the weight steppers stay.
+   Kept slim so the weight box has room for "142.5"; fitSetNumbers() shrinks the font if a number still doesn't fit. */
+.set-row-main { gap: 4px; }
+.set-step-btn { width: 28px; height: 44px; font-size: 18px; }
+.set-field input { height: 44px; padding: 0 2px 4px; }
+.set-check-btn { height: 44px; width: 40px; }
 .set-weight-group { gap: 3px; }
-.set-reps-field { flex: 0 0 42px; }
-.set-reps-minus, .set-reps-plus { width: 30px; }
+.set-weight-group .set-field { min-width: 56px; }
+.set-reps-field { flex: 0 0 40px; }
+.set-reps-minus, .set-reps-plus { width: 26px; }
+.set-reps-minus { margin-left: 5px; }
 .set-same-btn { flex-shrink: 0; height: 26px; padding: 0 10px; border-radius: 13px; border: 1.5px solid var(--teal, #37C6FF); background: rgba(55,198,255,0.12); color: var(--teal, #37C6FF); font-size: 11.5px; font-weight: 800; cursor: pointer; touch-action: manipulation; white-space: nowrap; font-family: inherit; }
 .set-rir-badge { flex-shrink: 0; height: 22px; padding: 0 8px; border-radius: 11px; border: none; background: var(--input-bg); color: var(--ink-soft); font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap; font-family: inherit; }
 .set-rir-badge.fail { background: rgba(255,111,165,0.18); color: var(--coral); }
@@ -14604,6 +14607,30 @@ function stallResetApplied(exerciseName, st) {
   const open = (workoutSessionState[exerciseName] || []).filter(q => !q.done && !q.warmup);
   return open.length > 0 && open.every(q => Number(q.weight) === st.reset && Number(q.reps) === st.reps);
 }
+// Numbers in the set boxes must never be cut off: measure each value with the box's real font and shrink it to fit.
+var _fitCanvas = null;
+function fitSetNumber(inp) {
+  try {
+    if (!inp || !inp.isConnected) return;
+    inp.style.fontSize = '';
+    const v = String(inp.value || ''); if (!v) return;
+    const cs = getComputedStyle(inp);
+    const avail = inp.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - 4; // a little slack for rounding
+    if (!(avail > 0)) return;
+    _fitCanvas = _fitCanvas || document.createElement('canvas').getContext('2d');
+    if (!_fitCanvas) return;
+    const base = parseFloat(cs.fontSize) || 18;
+    _fitCanvas.font = `${cs.fontWeight} ${base}px ${cs.fontFamily}`;
+    const tw = _fitCanvas.measureText(v).width;
+    if (tw > avail) inp.style.fontSize = Math.max(10, Math.floor(base * avail / tw * 10) / 10) + 'px';
+  } catch (err) { /* layout only */ }
+}
+function fitSetNumbers(root) { (root || document).querySelectorAll('.set-field input').forEach(fitSetNumber); }
+if (typeof window !== 'undefined' && !window.__fitSetNumbersWired) {
+  window.__fitSetNumbersWired = true;
+  window.addEventListener('resize', () => fitSetNumbers());
+  document.addEventListener('input', e => { if (e.target && e.target.closest && e.target.closest('.set-field')) fitSetNumber(e.target); }, true);
+}
 function renderSetRowHtml(exerciseName, idx, setData, prevData, accent, nextUp) {
   const mode = exerciseMode(exerciseName), hasWeight = mode === 'weighted' || mode === 'timedLoaded', isTimed = mode === 'timed' || mode === 'timedLoaded';
   const prevText = prevData ? `last ${fmtPrevSet(prevData)}${prevData.warmup ? ' (W)' : ''}` : 'no history yet';
@@ -15071,7 +15098,7 @@ function wireWorkoutPlanEvents() {
         current = !isNaN(prevInSession) ? prevInSession : (!isNaN(lastSessionWeight) ? lastSessionWeight : 0);
       }
       const next = Math.max(0, Math.round((current + delta) * 2) / 2);
-      input.value = String(next);
+      input.value = String(next); fitSetNumber(input);
       workoutSessionState[exName][idx].weight = String(next);
       updatePRProximityHint(row);
     });
@@ -15097,7 +15124,7 @@ function wireWorkoutPlanEvents() {
       let cur = parseInt(input.value, 10);
       if (isNaN(cur)) { const p = (previousSetsFor(exName) || [])[idx]; cur = p && p.reps > 0 ? p.reps : 0; }
       const next = Math.max(0, cur + delta);
-      input.value = String(next); workoutSessionState[exName][idx].reps = String(next);
+      input.value = String(next); fitSetNumber(input); workoutSessionState[exName][idx].reps = String(next);
     });
   });
   document.querySelectorAll('.set-same-btn').forEach(btn => {
@@ -17458,6 +17485,7 @@ function renderWorkoutPlan() {
   if (planTip) planTip.addEventListener('toggle', () => { try { localStorage.setItem(PLAN_TIP_KEY, planTip.open ? '1' : '0'); } catch (err) { /* storage unavailable */ } });
 
   const sfBlock = document.getElementById('workoutStartFinishBlock'); if (sfBlock && box.firstChild !== sfBlock) box.insertBefore(sfBlock, box.firstChild); wireWorkoutPlanEvents(); wireCollapseControls();
+  try { fitSetNumbers(box); requestAnimationFrame(() => fitSetNumbers(box)); } catch (err) { /* layout only */ }
   syncRestTimerPresentation();
   updateWorkoutElapsedDisplay(); // avoids a flash back to 0:00 until the next interval tick, since this element is rebuilt fresh on every render
 
