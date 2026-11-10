@@ -1177,6 +1177,18 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 .set-row.set-pr { border-color: #FFB020; }
 .set-row.set-pr-flash { animation: set-pr-flash 1.4s ease-out; }
 @keyframes set-pr-flash { 0% { box-shadow: 0 0 0 0 rgba(255,176,32,.0); background: rgba(255,176,32,.35); } 30% { box-shadow: 0 0 0 6px rgba(255,176,32,.45); } 100% { box-shadow: 0 0 0 0 rgba(255,176,32,0); } }
+.mp-pill { display: inline-block; margin: 0 auto 0 8px; white-space: nowrap; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 800; vertical-align: 1px; text-transform: none; letter-spacing: 0; }
+.mp-pill.good { background: rgba(92,230,192,0.16); color: var(--sage, #5CE6C0); }
+.mp-pill.low { background: rgba(255,176,32,0.16); color: #E09400; }
+.low-app { margin: 10px 0 4px; padding: 10px 12px; border-radius: 12px; border: 1.5px solid rgba(255,176,32,0.5); background: rgba(255,176,32,0.08); }
+.low-app-title { font-size: 13px; font-weight: 800; color: var(--ink); }
+.low-app-sub { font-size: 12px; color: var(--ink-soft); margin: 3px 0 8px; }
+.low-app-picks { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+.low-app-pick { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); text-align: left; cursor: pointer; font-family: inherit; touch-action: manipulation; min-width: 0; }
+.low-app-pick b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.low-app-pick span { font-size: 11px; color: var(--ink-soft); font-weight: 700; }
+.fvw { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink); line-height: 1.45; }
+.fvw-insight { margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: rgba(55,198,255,0.10); }
 .chip-added, .fqp.chip-added { position: relative; border-color: var(--in, #10B981) !important; background: rgba(16,185,129,0.16) !important; }
 .chip-added::after { content: '✓ Added'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: inherit; background: var(--in, #10B981); color: #fff; font-weight: 800; font-size: 12px; animation: chipAddedIn 1.6s ease forwards; pointer-events: none; }
 @keyframes chipAddedIn { 0% { opacity: 0; transform: scale(0.9); } 12% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
@@ -20312,12 +20324,15 @@ function renderProteinSummary() {
     ${weekStripHtml(date)}
     <div class="nut-water"><span>💧 Water<b id="nutWaterVal">${waterOzFor(date)} / 64 oz</b></span><span class="nut-water-btns"><button type="button" class="btn btn-ghost btn-sm" data-water-quick="-8" aria-label="Remove 8 oz">−8</button><button type="button" class="btn btn-secondary btn-sm" data-water-quick="8">+8</button><button type="button" class="btn btn-secondary btn-sm" data-water-quick="16">+16</button></span></div>
     ${appetiteHtmlFor(date)}
+    ${lowAppetiteHtml(date, pLeft)}
     ${!hasProfile && !targetsNoteDismissed() ? `<div class="targets-note"><span>Using estimated calorie/carb/fat targets — add your height and age in Settings to personalize them.</span><button type="button" class="targets-note-x" id="targetsNoteX" aria-label="Dismiss this note">✕</button></div>` : ''}
     ${targets.flooredForSafety ? `<div style="font-size:11px;color:var(--coral);margin-top:4px">Your calculated deficit target was under 1,200 cal — raised to 1,200 as a safety floor.</div>` : ''}
   `;
   const nx = document.getElementById('targetsNoteX');
   if (nx) nx.addEventListener('click', () => { try { localStorage.setItem('mounjaro-targets-note-dismissed', '1'); } catch (err) { /* ignore */ } nx.closest('.targets-note').remove(); });
   box.querySelectorAll('[data-water-quick]').forEach(b => b.addEventListener('click', () => adjustWater(Number(b.dataset.waterQuick))));
+  { const picks = box.querySelector('#lowAppetiteCard') ? lowAppetitePicks(4) : [];
+    box.querySelectorAll('[data-lowapp]').forEach(b => b.addEventListener('click', () => { const c = picks[Number(b.dataset.lowapp)]; if (!c) return; if (c.kind === 'combo') quickAddCombo(c.combo, b); else quickAddFood(c.item, b); })); }
   box.querySelectorAll('[data-wkdate]').forEach(b => b.addEventListener('click', () => { const el = document.getElementById('foodDate'); el.value = b.dataset.wkdate; el.dispatchEvent(new Event('change')); }));
   box.querySelectorAll('[data-appetite]').forEach(b => b.addEventListener('click', () => {
     const v = Number(b.dataset.appetite), e = entries.find(x => x.date === date);
@@ -20379,7 +20394,12 @@ function renderFoodWeek(date) {
     ${tile('Calories / day', cur.cal, '', delta(cur.cal, prev.cal, '', null))}
     ${tile('Water / day', cur.water, ' oz', delta(cur.water, prev.water, ' oz', true))}
     ${cur.fiber != null || prev.fiber != null ? tile('Fiber / day', cur.fiber, ' g', delta(cur.fiber, prev.fiber, ' g', true)) : ''}
-  </div><div style="font-size:11px;color:var(--ink-soft);margin-top:8px">Averages count only days with food (or water) logged: ${cur.logged} of the last 7.</div>`;
+  </div>${(() => {
+    const wc = weekWeightChange(date), ins = foodVsWeightInsight(date);
+    const line = wc != null ? `<div class="fvw-line">⚖️ Weight these 7 days: <b class="${wc < 0 ? 'fw-up' : wc > 0 ? 'fw-down' : ''}">${fmtLbChange(wc)}</b>${cur.protein != null ? ` on ${cur.protein} g protein a day` : ''}</div>` : '';
+    const insight = ins ? `<div class="fvw-insight">Weeks you averaged <b>${ins.goal}+ g protein</b>, you ${fmtLbChange(ins.hit)} a week on average (${ins.nHit} weeks). Other weeks: ${fmtLbChange(ins.miss)} (${ins.nMiss} weeks).</div>` : '';
+    return line || insight ? `<div class="fvw">${line}${insight}</div>` : '';
+  })()}<div style="font-size:11px;color:var(--ink-soft);margin-top:8px">Averages count only days with food (or water) logged: ${cur.logged} of the last 7.</div>`;
 }
 
 
@@ -20574,6 +20594,50 @@ function startPhotoLog() {
   document.getElementById('photoFileInput').click();
 }
 
+// ── Food tab, Nov 9 ──
+// 3) Protein per meal: breakfast, lunch and dinner each aim for about 30% of the day's protein goal (25–40 g).
+function mealProteinTarget() { const g = Number(userProteinGoal) || 100; return Math.max(25, Math.min(40, Math.round(g * 0.3 / 5) * 5)); }
+function mealProteinPillHtml(mt, items) {
+  if (!['Breakfast', 'Lunch', 'Dinner'].includes(mt) || !items.length) return '';
+  const p = Math.round(items.reduce((t, m) => t + (parseFloat(m.protein) || 0), 0)), tgt = mealProteinTarget();
+  return p >= tgt ? `<span class="mp-pill good" title="Protein goal for a meal: ${tgt} g">${p} g protein ✓</span>` : `<span class="mp-pill low" title="Protein goal for a meal: ${tgt} g">${p} g protein · ${tgt - p} short</span>`;
+}
+// 5) Low appetite (1–2): small, protein-dense picks from your own foods (most protein per calorie, 250 cal or less).
+function lowAppetitePicks(limit) {
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+  const pool = [], seen = new Set();
+  const add = c => { const k = String(c.label || '').trim().toLowerCase(); if (!k || seen.has(k)) return; seen.add(k); pool.push(c); };
+  pinnedFavorites.forEach(f => add({ kind: 'food', label: f.desc, item: f, p: num(f.protein), cal: num(f.cal) }));
+  foodCombos.forEach(c => { let p = 0, cal = 0, ok = true; c.items.forEach(i => { p += num(i.protein) || 0; const ic = num(i.cal); if (ic == null) ok = false; else cal += ic; }); add({ kind: 'combo', label: c.name, combo: c, p, cal: ok ? cal : null }); });
+  topFrequentFoods(20).forEach(f => add({ kind: 'food', label: f.desc, item: f, p: num(f.protein), cal: num(f.cal) }));
+  return pool.filter(c => c.p != null && c.p >= 10 && c.cal != null && c.cal > 0 && c.cal <= 250)
+    .sort((a, b) => (b.p / b.cal) - (a.p / a.cal) || b.p - a.p).slice(0, limit || 4);
+}
+function lowAppetiteHtml(date, pLeft) {
+  const e = entries.find(x => x.date === date); const a = e && e.appetite != null && e.appetite !== '' ? Number(e.appetite) : null;
+  if (!(a >= 1 && a <= 2) || !(pLeft > 0)) return '';
+  const picks = lowAppetitePicks(4);
+  return `<div class="low-app" id="lowAppetiteCard"><div class="low-app-title">🍽️ Low appetite today: small bites, big protein</div><div class="low-app-sub">${pLeft} g of protein to go. ${picks.length ? 'Your picks with the most protein per calorie, tap to add:' : 'Save a few high-protein foods as favorites (shake, Greek yogurt, jerky) and they will show up here.'}</div>${picks.length ? `<div class="low-app-picks">${picks.map((c, i) => `<button type="button" class="low-app-pick" data-lowapp="${i}"><b>${escapeHtml(c.label)}</b><span>${Math.round(c.p)} g P · ${Math.round(c.cal)} cal</span></button>`).join('')}</div>` : ''}</div>`;
+}
+// 6) Food vs weight: this week's weight change, and over the last 12 weeks, weeks at your protein goal vs the rest.
+function weekWeightChange(endDate) {
+  const start = dateStrShift(endDate, -7);
+  const ws = entries.filter(e => e.date >= start && e.date <= endDate && parseFloat(e.weight) > 0).sort((a, b) => a.date.localeCompare(b.date));
+  if (ws.length < 2 || ws[0].date === ws[ws.length - 1].date) return null;
+  return Math.round((parseFloat(ws[ws.length - 1].weight) - parseFloat(ws[0].weight)) * 10) / 10;
+}
+function foodVsWeightInsight(endDate) {
+  const goal = Number(userProteinGoal) || 100; const hit = [], miss = [];
+  for (let k = 0; k < 12; k++) {
+    const end = dateStrShift(endDate, -7 * k), st = foodWeekStats(end), wc = weekWeightChange(end);
+    if (st.logged < 4 || wc == null) continue;
+    (st.protein >= goal ? hit : miss).push(wc);
+  }
+  if (hit.length < 2 || miss.length < 2) return null;
+  const avg = a => Math.round(a.reduce((t, x) => t + x, 0) / a.length * 10) / 10;
+  return { goal, hit: avg(hit), miss: avg(miss), nHit: hit.length, nMiss: miss.length };
+}
+function fmtLbChange(x) { return x < 0 ? `lost ${Math.abs(x).toFixed(1)} lb` : x > 0 ? `gained ${x.toFixed(1)} lb` : 'held steady'; }
 function renderMealList() {
   const list = document.getElementById('mealList');
   if (!list) return;
@@ -20603,7 +20667,7 @@ function renderMealList() {
       const repeatBtn = prev ? `<button type="button" class="repeat-meal-btn" data-repeatmeal="${mt}" data-repeatfrom="${prev.date}" aria-label="Repeat ${dayWordFor(date, prev.date)} ${mt.toLowerCase()}">↻ ${shortDayFor(date, prev.date)}${prevCal != null ? ` · ${fmtThousands(prevCal)} cal` : ''}</button>` : '';
       return `<div class="meal-group-head empty"><span>${mt}</span><span class="meal-group-actions">${repeatBtn}<span class="add-to-meal-row inline" data-addmeal="${mt}" role="button" tabindex="0">＋ Add</span></span></div>`;
     }
-    return `<div class="meal-group-head"><span>${mt}</span><span class="meal-group-tot">${subStr}</span></div>` +
+    return `<div class="meal-group-head"><span>${mt}</span>${mealProteinPillHtml(mt, items)}<span class="meal-group-tot">${subStr}</span></div>` +
       items.map(m => {
         const name = escapeHtml(m.desc || '');
         const macros = [m.protein ? `<span class="p">${m.protein}g P</span>` : '', m.carbs ? `<span class="c">${m.carbs}g C</span>` : '', m.fat ? `<span class="f">${m.fat}g F</span>` : '', (m.fiber != null && m.fiber !== '' && parseFloat(m.fiber) > 0) ? `<span class="fb" style="color:#C9A3FF">${Math.round(parseFloat(m.fiber))}g fiber</span>` : ''].filter(Boolean).join('');
