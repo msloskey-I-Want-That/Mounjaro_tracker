@@ -18,7 +18,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   console.log('=== 1. card order ===');
   const order = [...doc.querySelectorAll('#view-exercise > *')].map(c => c.id || ((c.querySelector('.form-section-title') || {}).textContent || '').trim().replace(/\s+/g, ' ').replace(/ [▶▼]$/, ''));
   // Nov 1: Quick start folded into Exercise, Workout/Activity History moved to the History tab (order as live since Oct).
-  check('order is Workout Plan, This week, Stretch & warm-up, Exercise, AI Coach (date chip on top; Nov 1: plan first); no history cards here', order.join('|') === ['exDateRow', 'workoutPlanCard', 'weekRecapCard', 'recoveryCard', 'exerciseActivityCard', 'aiCoachCard'].join('|'));
+  check('order is Workout Plan, Recovery map (Nov 11), This week, Stretch & warm-up, Exercise, AI Coach (date chip on top; Nov 1: plan first); no history cards here', order.join('|') === ['exDateRow', 'workoutPlanCard', 'muscleMapCard', 'weekRecapCard', 'recoveryCard', 'exerciseActivityCard', 'aiCoachCard'].join('|'));
   check('the Exercise card still has its timer, minutes box and Add button', ['exTimerStartBtn', 'exMin', 'addExBtn'].every(id => $('exerciseActivityCardContent').contains($(id))));
 
   console.log('=== 2. Workout History: latest few, then more ===');

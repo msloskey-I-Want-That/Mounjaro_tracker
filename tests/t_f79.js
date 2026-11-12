@@ -81,7 +81,7 @@ setTimeout(async () => {
   console.log('=== 8. History: your log first ===');
   const hk = [...$('view-history').children];
   const at = id => hk.findIndex(c => c.id === id || c.querySelector('#' + id));
-  check('highlights, search and your log come before Consistency, muscles and Workout History', at('historyHighlights') === 0 && at('historyList') < at('consistencyHeatmap') && at('consistencyHeatmap') < at('muscleMapCard') && at('muscleMapCard') < at('workoutHistoryCard'));
+  check('highlights, search and your log come before Consistency and Workout History', at('historyHighlights') === 0 && at('historyList') < at('consistencyHeatmap') && at('consistencyHeatmap') < at('workoutHistoryCard'));
 
   console.log('=== 9. Charts: Body first ===');
   check('chart sections in order Body, Treatment, Nutrition, Activity, Recovery, Labs, Compare, Weekly summary', ev(`CHART_SECTIONS.map(s => s.name).join()`) === 'Body,Treatment,Nutrition,Activity,Recovery,Labs,Compare,Weekly summary');

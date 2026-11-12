@@ -49,7 +49,7 @@ setTimeout(async () => {
   console.log('=== History tab ===');
   ev(`entries = [{ date: todayStr(), ex: [{ type: 'Strength', min: 50, ts: Date.now(), sets: { 'Lat Pulldown': [{ weight: 95, reps: 12 }] } }, { type: 'Walk', min: 40, dist: '2', ts: Date.now() }] }];`);
   ev(`showView('history')`); await sleep(60);
-  check('Workout History is on the History tab, after the muscle map', !!$('workoutHistoryCard').closest('#view-history') && $('muscleMapCard').compareDocumentPosition($('workoutHistoryCard')) & 4);
+  check('Workout History is on the History tab', !!$('workoutHistoryCard').closest('#view-history'));
   check('Activity History is on the History tab', !!$('activityHistoryList').closest('#view-history'));
   check('opening History fills in Workout History', /Lat Pulldown|Strength|workout/i.test($('workoutHistoryList').textContent));
 

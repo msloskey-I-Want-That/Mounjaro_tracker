@@ -3202,6 +3202,11 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
           <div class="prog-body" id="progressionResults"></div>
         </div>
       </div>
+      <div class="chart-card" id="muscleMapCard">
+        <div class="mm-header" id="muscleMapHeader" role="button" tabindex="0" aria-expanded="false"><div class="chart-title" id="muscleMapTitle" style="margin-bottom:0">Muscles trained · last 7 days</div><span class="mm-chev" id="muscleMapChevron">▶</span></div>
+        <div class="mm-summary" id="muscleMapSummary"></div>
+        <div id="muscleMap" style="display:none;margin-top:10px"></div>
+      </div>
       <div class="form-card" id="weekRecapCard">
         <div class="form-section-title">This week</div>
         <div id="gymPassRow" style="display:none;gap:8px;margin-bottom:12px"><!-- Nov 1: removed at Mike's request (he scans in with the Planet Fitness app); kept hidden so its wiring still runs -->
@@ -3350,11 +3355,6 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
           <span>More logged</span>
           <span style="margin-left:auto">tap a day to open it</span>
         </div>
-      </div>
-      <div class="chart-card" id="muscleMapCard">
-        <div class="mm-header" id="muscleMapHeader" role="button" tabindex="0" aria-expanded="false"><div class="chart-title" id="muscleMapTitle" style="margin-bottom:0">Muscles trained · last 7 days</div><span class="mm-chev" id="muscleMapChevron">▶</span></div>
-        <div class="mm-summary" id="muscleMapSummary"></div>
-        <div id="muscleMap" style="display:none;margin-top:10px"></div>
       </div>
       <div class="form-card" id="workoutHistoryCard">
         <div class="form-section-title" id="workoutHistoryToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
@@ -6683,7 +6683,7 @@ function startListening() {
       }
       if (s.muscleGoals && typeof s.muscleGoals === 'object') {
         muscleGoals = { ...s.muscleGoals };
-        try { renderMuscleMap(); } catch (err) { /* History tab not built yet */ }
+        try { renderMuscleMap(); } catch (err) { /* Exercise tab not built yet */ }
       }
     }
     renderMedications();
