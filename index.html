@@ -12551,6 +12551,7 @@ function gymSaveLink() {
   btn.addEventListener('click', openGymPass); edit.addEventListener('click', openGymSheet);
   document.getElementById('gymPassCloseBtn').addEventListener('click', closeGymPassView);
   document.getElementById('stbStop').addEventListener('click', () => {
+    if (getReady) { getReadyGo(); return; } // "▶ START NOW" while getting ready
     // The big STOP means "I'm finished with this set": record the seconds AND check the set off, exactly as tapping its check button would
     // (PR check, rest timer, next exercise). The small Stop on the row still only fills in the seconds.
     const sw = setStopwatch, ex = sw && sw.exercise, idx = sw && sw.idx;
@@ -12559,7 +12560,7 @@ function gymSaveLink() {
     const st = workoutSessionState[ex] && workoutSessionState[ex][idx], row = stopwatchRow({ exercise: ex, idx });
     if (st && !st.done && row) { const chk = row.querySelector('.set-check-btn'); if (chk) chk.click(); }
   });
-  document.getElementById('stbHide').addEventListener('click', () => { if (setStopwatch) setStopwatch.hidden = true; bigTimerClose(); });
+  document.getElementById('stbHide').addEventListener('click', () => { if (getReady) { getReadyClose(); bigTimerClose(); return; } if (setStopwatch) setStopwatch.hidden = true; bigTimerClose(); });
   document.getElementById('gymPassAppBtn').addEventListener('click', () => { closeGymPassView(); gymGo(gymLink()); });
   sheet.addEventListener('click', e => {
     const b = e.target.closest('[data-gp]'); if (!b) return; const a = b.dataset.gp;
@@ -14262,7 +14263,9 @@ function updateRestTimerDisplay() {
     if (restTimerInterval) { clearInterval(restTimerInterval); restTimerInterval = null; }
     restTimerEndTime = null;
     playRestEndAlert();
-    showRestTimerDone(); showRestInlineDone(); focusNextSetInput();
+    const nextUp = nextOpenSetAfter(restTimerContext);
+    showRestTimerDone(); showRestInlineDone();
+    if (nextUp && isTimedExercise(nextUp.exercise) && !setStopwatch && openGetReady(nextUp)) restTimerContext = null; else focusNextSetInput();
   }
 }
 
@@ -14493,7 +14496,7 @@ function bigTimerClose() { const el = document.getElementById('setTimerBig'); if
 function bigTimerPaint(sw) {
   const el = document.getElementById('setTimerBig'); if (!el || sw.hidden) return;
   const secs = Math.max(0, Math.round((Date.now() - sw.startedAt) / 1000)), tg = stbTarget(sw.exercise);
-  if (el.style.display !== 'flex') { el.style.display = 'flex'; document.getElementById('stbLabel').textContent = `${sw.exercise} · set ${sw.idx + 1}`; }
+  if (el.style.display !== 'flex' || el.classList.contains('stb-ready')) { el.style.display = 'flex'; el.classList.remove('stb-ready'); document.getElementById('stbLabel').textContent = `${sw.exercise} · set ${sw.idx + 1}`; document.getElementById('stbStop').textContent = '■ STOP'; document.getElementById('stbHide').textContent = 'Hide (timer keeps running)'; }
   document.getElementById('stbTime').textContent = stbFormat(secs);
   document.getElementById('stbUnit').textContent = secs < 60 ? 'seconds' : 'minutes : seconds';
   const goal = document.getElementById('stbGoal'), reached = tg && secs >= tg.min, over = tg && secs > tg.max;
@@ -14519,7 +14522,62 @@ function stopSetStopwatch() {
   stopwatchPaint(sw, false);
   try { if (navigator.vibrate) navigator.vibrate(60); } catch (e) {}
 }
+// Hands full at the end of a rest (dumbbells in hand for a farmers carry): when the next set is timed, the big timer opens by itself.
+// Same exercise: "Get ready" 5-4-3-2-1, then it starts. A different exercise: big START, no countdown (you still have to get there).
+const GET_READY_SECONDS = 5;
+let getReady = null; // { exercise, idx, auto, endsAt, tick }
+function isTimedExercise(name) { const m = exerciseMode(name); return m === 'timed' || m === 'timedLoaded'; }
+function nextOpenSetAfter(ctx) {
+  if (!ctx || !workoutSessionState[ctx.exerciseName]) return null;
+  const sets = workoutSessionState[ctx.exerciseName];
+  const i = sets.findIndex((q, k) => k > ctx.setIdx && !q.done);
+  if (i !== -1) return { exercise: ctx.exerciseName, idx: i, same: true };
+  const names = Object.keys(workoutSessionState), from = names.indexOf(ctx.exerciseName);
+  for (let n = from + 1; n < names.length; n++) { const j = workoutSessionState[names[n]].findIndex(q => !q.done); if (j !== -1) return { exercise: names[n], idx: j, same: false }; }
+  return null;
+}
+function getReadyPaint() {
+  const g = getReady, el = document.getElementById('setTimerBig'); if (!g || !el) return;
+  el.style.display = 'flex'; el.classList.add('stb-ready');
+  document.getElementById('stbLabel').textContent = `${g.exercise} · set ${g.idx + 1}`;
+  const tg = stbTarget(g.exercise), goal = document.getElementById('stbGoal');
+  goal.textContent = tg ? `Goal: ${tg.min}${tg.max !== tg.min ? '–' + tg.max : ''} sec` : ''; goal.style.color = 'var(--ink-soft)';
+  const t = document.getElementById('stbTime'), u = document.getElementById('stbUnit');
+  if (g.auto) { const left = Math.max(0, Math.ceil((g.endsAt - Date.now()) / 1000)); t.textContent = String(left); t.style.color = '#FFB020'; u.textContent = 'Get ready… starts by itself'; }
+  else { t.textContent = '▶'; t.style.color = 'var(--teal)'; u.textContent = 'Rest is over · tap START when you have the weights'; }
+  document.getElementById('stbStop').textContent = g.auto ? '▶ START NOW' : '▶ START';
+  document.getElementById('stbHide').textContent = 'Not yet';
+}
+function getReadyClose() {
+  if (getReady && getReady.tick) clearInterval(getReady.tick);
+  getReady = null;
+  const el = document.getElementById('setTimerBig'); if (el) el.classList.remove('stb-ready');
+  const b = document.getElementById('stbStop'), h = document.getElementById('stbHide'); if (b) b.textContent = '■ STOP'; if (h) h.textContent = 'Hide (timer keeps running)';
+}
+function getReadyGo() {
+  const g = getReady; if (!g) return;
+  getReadyClose();
+  if (collapsedExercises.has(g.exercise)) { collapsedExercises.delete(g.exercise); renderWorkoutPlan(); }
+  const st = workoutSessionState[g.exercise] && workoutSessionState[g.exercise][g.idx]; if (!st || st.done) { bigTimerClose(); return; }
+  toggleSetStopwatch(g.exercise, g.idx);
+  try { if (navigator.vibrate) navigator.vibrate(220); } catch (e) { /* not available */ }
+}
+function openGetReady(next) {
+  if (!next || setStopwatch || !isTimedExercise(next.exercise)) return false;
+  getReadyClose();
+  if (collapsedExercises.has(next.exercise)) { collapsedExercises.delete(next.exercise); renderWorkoutPlan(); }
+  const g = { exercise: next.exercise, idx: next.idx, auto: !!next.same, endsAt: Date.now() + GET_READY_SECONDS * 1000, tick: null, last: null };
+  getReady = g; getReadyPaint();
+  if (g.auto) g.tick = setInterval(() => {
+    if (getReady !== g) { clearInterval(g.tick); return; }
+    const left = Math.ceil((g.endsAt - Date.now()) / 1000);
+    if (left !== g.last) { g.last = left; if (left > 0 && left <= 3) { try { if (navigator.vibrate) navigator.vibrate(40); } catch (e) { /* */ } } }
+    if (left <= 0) getReadyGo(); else getReadyPaint();
+  }, 200);
+  return true;
+}
 function toggleSetStopwatch(exerciseName, idx) {
+  if (getReady) getReadyClose();
   if (setStopwatch && setStopwatch.exercise === exerciseName && setStopwatch.idx === idx) { stopSetStopwatch(); return; }
   stopSetStopwatch(); // a different one was running: finish it first
   const sw = { exercise: exerciseName, idx, startedAt: Date.now(), tick: null };
