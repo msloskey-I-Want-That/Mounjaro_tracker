@@ -1460,7 +1460,7 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 /* Settings > Screens > "Workout: bigger current exercise". Layout only: same buttons, same behaviour, bigger on the exercise and set you are on. */
 .big-more-btn { display: none; }
 body.big-current .big-more-btn { display: block; width: 100%; margin: 0 0 10px; padding: 9px; border: 1.5px dashed var(--line); border-radius: 12px; background: none; color: var(--ink-soft); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-body.big-current .ex-current.variants-folded .variant-row { display: none; }
+body.big-current .variants-folded .variant-row { display: none; }
 body.big-current .workout-exercise-block:not(.ex-current):not(.ss-a):not(.ss-b):not(.workout-exercise-done) { border-color: var(--line) !important; opacity: 0.86; }
 body.big-current .workout-exercise-block.ex-current { border-width: 3px !important; box-shadow: 0 0 0 1px rgba(92,230,192,0.25), 0 8px 28px rgba(92,230,192,0.14); }
 body.big-current .ex-current .exercise-card-title { font-size: 21px; }
@@ -14716,7 +14716,7 @@ if (typeof window !== 'undefined' && !window.__fitSetNumbersWired) {
 }
 // "Bigger current exercise" (Settings > Screens): which exercise and set you are on right now. Always marked; only
 // body.big-current makes the marks look different. In progress (some sets done, not all) wins; otherwise the first
-// exercise not finished and not minimized. The equipment picker folds behind "⋯" once a set is done (it is locked then).
+// exercise not finished and not minimized. Every grouped card's equipment picker folds to one "⋯ Machine · 130 lb" line.
 let bigVariantsOpen = new Set();
 function markCurrentExercise() {
   const box = document.getElementById('workoutPlanBody'); if (!box) return;
@@ -14729,13 +14729,21 @@ function markCurrentExercise() {
   if (!cur) return;
   cur.classList.add('ex-current');
   const row = [...cur.querySelectorAll('.set-row')].find(r => !r.classList.contains('done')); if (row) row.classList.add('set-current');
-  const vr = cur.querySelector('.variant-row');
-  if (vr && some(cur) && !bigVariantsOpen.has(cur.dataset.exercise)) {
-    cur.classList.add('variants-folded');
-    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'big-more-btn'; btn.textContent = '⋯ Equipment & options'; btn.setAttribute('aria-label', 'Show equipment options');
-    btn.addEventListener('click', () => { bigVariantsOpen.add(cur.dataset.exercise); cur.classList.remove('variants-folded'); btn.remove(); });
+  foldVariantPickers(box);
+}
+// The "Which one today?" picker folds to one line that names the version you chose; tap it to change.
+// Stays open while an Add / Rename panel is open. Picking a different version re-folds it (the card's name changes).
+function foldVariantPickers(box) {
+  box.querySelectorAll('.workout-exercise-block').forEach(blk => {
+    const vr = blk.querySelector('.variant-row');
+    if (!vr || bigVariantsOpen.has(blk.dataset.exercise) || vr.querySelector('.variant-add-panel, .variant-rename-panel')) return;
+    blk.classList.add('variants-folded');
+    const on = vr.querySelector('.variant-chip.on'), nm = on && on.querySelector('.variant-chip-name'), lb = on && on.querySelector('.variant-chip-last');
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'big-more-btn';
+    btn.textContent = `⋯ ${nm ? nm.textContent.trim() : 'Equipment'}${lb ? ' · ' + lb.textContent.trim() : ''} · tap to change`; btn.setAttribute('aria-label', 'Show equipment options');
+    btn.addEventListener('click', () => { bigVariantsOpen.add(blk.dataset.exercise); blk.classList.remove('variants-folded'); btn.remove(); });
     vr.parentNode.insertBefore(btn, vr);
-  }
+  });
 }
 function renderSetRowHtml(exerciseName, idx, setData, prevData, accent, nextUp) {
   const mode = exerciseMode(exerciseName), hasWeight = mode === 'weighted' || mode === 'timedLoaded', isTimed = mode === 'timed' || mode === 'timedLoaded';

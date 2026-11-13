@@ -53,15 +53,18 @@ setTimeout(async () => {
   check('a grouped card with equipment buttons is on the plan', !!vrow);
   if (vrow) {
     const nm = vrow.closest('.workout-exercise-block').dataset.exercise;
-    check('nothing done yet: the picker stays open so you can choose equipment', !vrow.closest('.workout-exercise-block').classList.contains('variants-folded') && !doc.querySelector('.big-more-btn'));
+    const blk0 = () => doc.querySelector(`.workout-exercise-block[data-exercise="${nm}"]`);
+    check('On: even before any set, the picker is folded to one line', blk0().classList.contains('variants-folded') && !!blk0().querySelector('.big-more-btn'));
+    check('the line names the version you chose and says tap to change', /tap to change/.test(blk0().querySelector('.big-more-btn').textContent) && blk0().querySelector('.big-more-btn').textContent.length > 20);
+    click(blk0().querySelector('.big-more-btn')); await sleep(20);
+    check('tapping it opens the picker again (and the line goes away)', !blk0().classList.contains('variants-folded') && !blk0().querySelector('.big-more-btn'));
     ev(`workoutSessionState['${nm}'][0].weight = '120'; workoutSessionState['${nm}'][0].reps = '10'; renderWorkoutPlan();`); await sleep(20);
+    check('it stays open across re-renders while you are using it', !blk0().classList.contains('variants-folded'));
+    ev(`bigVariantsOpen = new Set(); renderWorkoutPlan();`); await sleep(20);
     click(row(nm, 0).querySelector('.set-check-btn')); await sleep(40);
-    const b2 = doc.querySelector(`.workout-exercise-block[data-exercise="${nm}"]`);
-    check('set done: that card is current, picker folded, ⋯ button shown', b2.classList.contains('ex-current') && b2.classList.contains('variants-folded') && !!b2.querySelector('.big-more-btn'));
-    click(b2.querySelector('.big-more-btn')); await sleep(20);
-    check('tapping ⋯ shows the picker again (and the button goes away)', !b2.classList.contains('variants-folded') && !b2.querySelector('.big-more-btn'));
+    check('a set done: that card is current and its picker is folded', blk0().classList.contains('ex-current') && blk0().classList.contains('variants-folded'));
     click(doc.querySelector('[data-panelpref="bigCurrent"][data-val="0"]')); await sleep(40);
-    check('Off: the picker is never hidden', !doc.querySelector('.workout-exercise-block.variants-folded') || !doc.body.classList.contains('big-current'));
+    check('Off: the picker is shown in full again and the ⋯ line is hidden', !doc.body.classList.contains('big-current') && w.getComputedStyle(blk0().querySelector('.variant-row')).display !== 'none' && (!blk0().querySelector('.big-more-btn') || w.getComputedStyle(blk0().querySelector('.big-more-btn')).display === 'none'));
   }
 
   check('no script errors', errors.length === 0);
