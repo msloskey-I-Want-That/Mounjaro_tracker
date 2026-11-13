@@ -26,7 +26,7 @@ setTimeout(async () => {
 
   console.log('=== Settings > Screens ===');
   const rows = $('panelPrefRows');
-  check('Settings has a Screens section with Show/Hide for both', rows && rows.querySelectorAll('.panel-pref-chip').length === 4);
+  check('Settings has a Screens section with Show/Hide for both, plus the On/Off "bigger current exercise" choice (Nov 12)', rows && rows.querySelectorAll('.panel-pref-chip').length === 6);
   click(rows.querySelector('[data-panelpref="tellMeDay"][data-val="1"]')); await sleep(40);
   check('Show brings "Tell me about your day" back', shown($('tellMeAboutDayCard')));
   check('the choice is saved to your settings (synced)', w.__writes.some(d => d.panelPrefs && d.panelPrefs.tellMeDay === true));

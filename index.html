@@ -1457,6 +1457,29 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 .workout-exercise-block.ss-a { margin-bottom: 0 !important; border-bottom-left-radius: 4px !important; border-bottom-right-radius: 4px !important; }
 .workout-exercise-block.ss-b { margin-top: -2px; border-top-left-radius: 4px !important; border-top-right-radius: 4px !important; }
 .set-row.set-next-up { box-shadow: 0 0 0 2px #B79BE0; border-radius: 12px; }
+/* Settings > Screens > "Workout: bigger current exercise". Layout only: same buttons, same behaviour, bigger on the exercise and set you are on. */
+.big-more-btn { display: none; }
+body.big-current .big-more-btn { display: block; width: 100%; margin: 0 0 10px; padding: 9px; border: 1.5px dashed var(--line); border-radius: 12px; background: none; color: var(--ink-soft); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+body.big-current .ex-current.variants-folded .variant-row { display: none; }
+body.big-current .workout-exercise-block:not(.ex-current):not(.ss-a):not(.ss-b):not(.workout-exercise-done) { border-color: var(--line) !important; opacity: 0.86; }
+body.big-current .workout-exercise-block.ex-current { border-width: 3px !important; box-shadow: 0 0 0 1px rgba(92,230,192,0.25), 0 8px 28px rgba(92,230,192,0.14); }
+body.big-current .ex-current .exercise-card-title { font-size: 21px; }
+body.big-current .ex-current .set-row { padding: 8px 10px 10px; margin-bottom: 9px; border-radius: 16px; }
+body.big-current .ex-current .set-step-btn { height: 46px; font-size: 22px; }
+body.big-current .ex-current .set-field input { height: 46px; font-size: 20px; }
+body.big-current .ex-current .set-check-btn { height: 46px; font-size: 22px; }
+body.big-current .ex-current .set-prev { font-size: 12px; }
+/* the set you are on: weight on its own row, then reps + the big check, so every button is wide enough to hit */
+body.big-current .ex-current .set-row.set-current { border: 3px solid var(--accent); background: rgba(92,230,192,0.10); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 10px 10px 12px; }
+body.big-current .ex-current .set-row.set-current .set-row-main { flex-wrap: wrap; gap: 8px; }
+body.big-current .ex-current .set-row.set-current .set-weight-group { flex: 1 1 100%; gap: 8px; }
+body.big-current .ex-current .set-row.set-current .set-step-btn { width: 52px; height: 62px; font-size: 28px; }
+body.big-current .ex-current .set-row.set-current .set-field input { height: 62px; font-size: 32px; border-width: 2px; border-color: var(--accent); }
+body.big-current .ex-current .set-row.set-current .set-reps-field { flex: 1 1 0; }
+body.big-current .ex-current .set-row.set-current .set-reps-minus { margin-left: 0; }
+body.big-current .ex-current .set-row.set-current .set-check-btn { width: 80px; height: 62px; font-size: 30px; background: var(--accent); border-color: var(--accent); color: #0d0d0f; }
+body.big-current .ex-current .set-row.set-current .set-prev { font-size: 13px; color: var(--ink); font-weight: 700; }
+body.big-current .ex-current .set-row.done:not(.set-current) { opacity: 0.8; }
 .set-next-badge { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; color: #B79BE0; margin-left: 6px; white-space: nowrap; }
 [data-theme="light"] .set-next-badge { color: #6B4C94; }
 .superset-label { color: #B79BE0; border-color: #7A5C9E; }
@@ -4743,7 +4766,8 @@ let weeklyGoal = 3, weeklyGoalStretch = false, weeklyGoalGym = true, gymVisits =
 let panelPrefs = {}; // { tellMeDay: bool, stretchCard: bool } - Settings > Screens. Missing = the default below.
 const PANEL_PREFS = [
   { key: 'tellMeDay', label: 'Log tab: "Tell me about your day"', sub: 'Type a sentence and AI fills in symptoms and exercise.', bodyClass: 'hide-tellme', def: () => false },
-  { key: 'stretchCard', label: 'Exercise tab: Stretch & warm-up', sub: 'Guided stretches, soreness check-in and rest-day tips.', bodyClass: 'hide-stretch', def: () => appMode === 'exercise' }
+  { key: 'stretchCard', label: 'Exercise tab: Stretch & warm-up', sub: 'Guided stretches, soreness check-in and rest-day tips.', bodyClass: 'hide-stretch', def: () => appMode === 'exercise' },
+  { key: 'bigCurrent', label: 'Workout: bigger current exercise', sub: 'The exercise and set you are on get bigger, easier-to-tap controls. All sets stay visible. Turn off for the original layout.', bodyClass: 'big-current', invert: true, def: () => false }
 ];
 let hiddenCards = [];    // array of data-card-key values currently hidden from Home
 let dashSortable = null;
@@ -9381,12 +9405,13 @@ const navItems = document.querySelectorAll('.nav-item');
 
 function panelOn(key) { const p = PANEL_PREFS.find(x => x.key === key); return typeof panelPrefs[key] === 'boolean' ? panelPrefs[key] : (p ? p.def() : true); }
 function applyPanelPrefs() {
-  PANEL_PREFS.forEach(p => document.body.classList.toggle(p.bodyClass, !panelOn(p.key)));
+  PANEL_PREFS.forEach(p => document.body.classList.toggle(p.bodyClass, p.invert ? panelOn(p.key) : !panelOn(p.key)));
   const box = document.getElementById('panelPrefRows'); if (!box) return;
-  box.innerHTML = PANEL_PREFS.map(p => `<div class="settings-row" style="align-items:center;gap:10px"><div style="min-width:0"><div class="settings-row-label">${p.label}</div><div class="settings-row-sub">${p.sub}</div></div><div class="chip-row" style="flex-shrink:0;flex-wrap:nowrap;gap:6px"><div class="chip panel-pref-chip${panelOn(p.key) ? ' on' : ''}" role="button" data-panelpref="${p.key}" data-val="1">Show</div><div class="chip panel-pref-chip${panelOn(p.key) ? '' : ' on'}" role="button" data-panelpref="${p.key}" data-val="0">Hide</div></div></div>`).join('');
+  box.innerHTML = PANEL_PREFS.map(p => `<div class="settings-row" style="align-items:center;gap:10px"><div style="min-width:0"><div class="settings-row-label">${p.label}</div><div class="settings-row-sub">${p.sub}</div></div><div class="chip-row" style="flex-shrink:0;flex-wrap:nowrap;gap:6px"><div class="chip panel-pref-chip${panelOn(p.key) ? ' on' : ''}" role="button" data-panelpref="${p.key}" data-val="1">${p.invert ? 'On' : 'Show'}</div><div class="chip panel-pref-chip${panelOn(p.key) ? '' : ' on'}" role="button" data-panelpref="${p.key}" data-val="0">${p.invert ? 'Off' : 'Hide'}</div></div></div>`).join('');
   box.querySelectorAll('.panel-pref-chip').forEach(c => c.addEventListener('click', async () => {
     panelPrefs = { ...panelPrefs, [c.dataset.panelpref]: c.dataset.val === '1' };
     applyPanelPrefs();
+    if (c.dataset.panelpref === 'bigCurrent') { try { renderWorkoutPlan(); } catch (err) { /* plan not built yet */ } } // number boxes re-fit to the new size
     if (syncId) { try { await setDoc(doc(db, 'trackers', syncId, 'meta', 'settings'), { panelPrefs }, { merge: true }); } catch (err) { console.error('Failed to save screen choices:', err); } }
   }));
 }
@@ -14689,6 +14714,29 @@ if (typeof window !== 'undefined' && !window.__fitSetNumbersWired) {
   window.addEventListener('resize', () => fitSetNumbers());
   document.addEventListener('input', e => { if (e.target && e.target.closest && e.target.closest('.set-field')) fitSetNumber(e.target); }, true);
 }
+// "Bigger current exercise" (Settings > Screens): which exercise and set you are on right now. Always marked; only
+// body.big-current makes the marks look different. In progress (some sets done, not all) wins; otherwise the first
+// exercise not finished and not minimized. The equipment picker folds behind "⋯" once a set is done (it is locked then).
+let bigVariantsOpen = new Set();
+function markCurrentExercise() {
+  const box = document.getElementById('workoutPlanBody'); if (!box) return;
+  box.querySelectorAll('.ex-current, .set-current').forEach(n => n.classList.remove('ex-current', 'set-current'));
+  box.querySelectorAll('.big-more-btn').forEach(n => n.remove());
+  box.querySelectorAll('.variants-folded').forEach(n => n.classList.remove('variants-folded'));
+  const blocks = [...box.querySelectorAll('.workout-exercise-block')].filter(b => !b.classList.contains('workout-exercise-done'));
+  const some = b => b.querySelectorAll('.set-row.done').length > 0;
+  const cur = blocks.find(b => some(b)) || blocks.find(b => !b.querySelector('.exercise-body[data-collapsed="1"]')) || null;
+  if (!cur) return;
+  cur.classList.add('ex-current');
+  const row = [...cur.querySelectorAll('.set-row')].find(r => !r.classList.contains('done')); if (row) row.classList.add('set-current');
+  const vr = cur.querySelector('.variant-row');
+  if (vr && some(cur) && !bigVariantsOpen.has(cur.dataset.exercise)) {
+    cur.classList.add('variants-folded');
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'big-more-btn'; btn.textContent = '⋯ Equipment & options'; btn.setAttribute('aria-label', 'Show equipment options');
+    btn.addEventListener('click', () => { bigVariantsOpen.add(cur.dataset.exercise); cur.classList.remove('variants-folded'); btn.remove(); });
+    vr.parentNode.insertBefore(btn, vr);
+  }
+}
 function renderSetRowHtml(exerciseName, idx, setData, prevData, accent, nextUp) {
   const mode = exerciseMode(exerciseName), hasWeight = mode === 'weighted' || mode === 'timedLoaded', isTimed = mode === 'timed' || mode === 'timedLoaded';
   const prevText = prevData ? `last ${fmtPrevSet(prevData)}${prevData.warmup ? ' (W)' : ''}` : 'no history yet';
@@ -17543,6 +17591,7 @@ function renderWorkoutPlan() {
   if (planTip) planTip.addEventListener('toggle', () => { try { localStorage.setItem(PLAN_TIP_KEY, planTip.open ? '1' : '0'); } catch (err) { /* storage unavailable */ } });
 
   const sfBlock = document.getElementById('workoutStartFinishBlock'); if (sfBlock && box.firstChild !== sfBlock) box.insertBefore(sfBlock, box.firstChild); wireWorkoutPlanEvents(); wireCollapseControls();
+  try { markCurrentExercise(); } catch (err) { console.error('current exercise mark failed:', err); }
   try { fitSetNumbers(box); requestAnimationFrame(() => fitSetNumbers(box)); } catch (err) { /* layout only */ }
   syncRestTimerPresentation();
   updateWorkoutElapsedDisplay(); // avoids a flash back to 0:00 until the next interval tick, since this element is rebuilt fresh on every render
