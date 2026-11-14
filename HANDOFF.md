@@ -1,6 +1,6 @@
 # My Health Tracker (Mounjaro_tracker) — Handoff for Claude
 
-_Last updated: 2026-11-14 (commit after d4ee4bc). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
+_Last updated: 2026-11-14 audit (commit after f20c34d). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
 
 ## 0. What Mike pastes to start a chat
 
@@ -57,7 +57,7 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
    - Hide the Welcome/Sync ID modal: hide `#modalTitle`'s top-level container.
    - Views scroll inside `#app-main`, not the page.
    - Workout: `window.__noPreviewList=true`, `renderWorkoutPlan()`, click `#startPlanBtn`.
-5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f90.**
+5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f93.**
 6. **Full gate (one command, 10-min timeout):**
    ```
    ./run_all_tests.sh 2>&1 | grep -i "^FAIL\|PART\|TIMEOUT\|flaked" ; ./gate_verified.sh && echo GATE_OK
@@ -84,6 +84,12 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
 - **Dates:** local only (see §3). Tests must use local date helpers too.
 
 ## 6. What's shipped (newest first)
+
+**Audit 2026-11-14 (t_f90–t_f92; report: Claude Doc "Health Tracker Audit, Nov 14 2026", https://claude.ai/artifact/CxKJZTJJTtheevxR8tudLd).** 20 findings: 12 fixed, 6 need Mike's decision, 2 won't fix.
+- dd4f17d: food database results, saved foods, old History `food` text and exercise names are escaped with `escapeHtml`; `genUUID` uses `crypto.randomUUID`/`getRandomValues`; `?sync=` is cleared from the URL once read.
+- c7204ac: Batch Log day list was a day behind (wrote to the next day); `detectTypicalRestDay` used yesterday's weekday; all date windows use `lbAddDays`. No `toISOString().slice(0, 10)` is left (t_f91 checks).
+- f20c34d: sw.js (cache v33) caches only its own files, fonts and CDN libraries; food, barcode, AI and ntfy requests go straight to the network. Reduce Motion is respected, the Charts picker has a label, and backup restore skips non-YYYY-MM-DD dates.
+- **Waiting on Mike (not built):** F4 clear stale meal totals when a day's last meal is removed (changes stored data); F5 confirm before a `?sync=` link switches accounts; F6 merge meals/sets by timestamp so two devices can't overwrite each other; F10 confirm published rules, then add size/shape checks; F18 44 px tap areas (Food ×, History search, muscle map header). Seven feature ideas are in the report; add them to §7 only once he approves.
 
 **2026-11-14: Apple Health tiles lost their grey "syncs automatically once your Shortcut is set up" notes (t_f89).** Sync works, so the six `exView*Sub` lines are now empty hidden divs (kept because the tile builder moves them by id). Tiles, pencils and the "Last synced from your iPhone" line are unchanged.
 
