@@ -1,6 +1,6 @@
 # My Health Tracker (Mounjaro_tracker) — Handoff for Claude
 
-_Last updated: 2026-11-14 audit (commit after f20c34d). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
+_Last updated: 2026-11-14 audit batch 4 (commit 8a9066d). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
 
 ## 0. What Mike pastes to start a chat
 
@@ -57,7 +57,7 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
    - Hide the Welcome/Sync ID modal: hide `#modalTitle`'s top-level container.
    - Views scroll inside `#app-main`, not the page.
    - Workout: `window.__noPreviewList=true`, `renderWorkoutPlan()`, click `#startPlanBtn`.
-5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f93.**
+5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f94.**
 6. **Full gate (one command, 10-min timeout):**
    ```
    ./run_all_tests.sh 2>&1 | grep -i "^FAIL\|PART\|TIMEOUT\|flaked" ; ./gate_verified.sh && echo GATE_OK
@@ -84,6 +84,12 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
 - **Dates:** local only (see §3). Tests must use local date helpers too.
 
 ## 6. What's shipped (newest first)
+
+**2026-11-14 audit batch 4 (t_f93, commit 8a9066d).** F4, F5 and F18 done.
+- F4: `writeMeals` clears the saved protein/calories/carbs/fat when a day's LAST meal is removed (only when the day had meals before, so typed-in totals on meal-less days stay).
+- F5: `initSyncId` asks (`confirm`) before a `?sync=` link switches a phone that already has a different Sync ID; same ID (Mike's Shortcut) and fresh phones get no prompt. Cancel keeps the current account.
+- F18: History search row, the Food favorite ✕ (`#favFoods [data-pin-remove]`, 44 px hit area via negative margins, chip layout unchanged) and the muscle-map header are 44 px tall.
+- **Still waiting on Mike:** F6 (merge meals/sets by timestamp across devices; a data-model change, do as its own batch) and F10 (confirm Firestore rules are published in the Firebase console, then add size/shape checks).
 
 **Audit 2026-11-14 (t_f90–t_f92; report: Claude Doc "Health Tracker Audit, Nov 14 2026", https://claude.ai/artifact/CxKJZTJJTtheevxR8tudLd).** 20 findings: 12 fixed, 6 need Mike's decision, 2 won't fix.
 - dd4f17d: food database results, saved foods, old History `food` text and exercise names are escaped with `escapeHtml`; `genUUID` uses `crypto.randomUUID`/`getRandomValues`; `?sync=` is cleared from the URL once read.
