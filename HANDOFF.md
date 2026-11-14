@@ -145,7 +145,19 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
 - Food tab: Add Food pop-up, fiber, This Week card.
 - Exercise tab: plan first, one-line preview, "Last 3", live "lb so far", past activity behind "✎ Log a past activity".
 
-## 7. Open ideas (not built)
+## 7. Next up: F6 (Mike's priority, he adds food from phone AND iPad)
+
+Problem: `writeMeals(date, meals)` saves the day's whole `meals` array with `setDoc(..., {merge:true})`. A device that is offline or stale overwrites meals the other device just added (same risk for `ex[]` workout sets). Mike starts the next chat with: "Read mounjaro-tracker-status.md in the Project, set up from the repo, and do F6."
+
+Plan (confirm against the code first, then keep it small):
+1. Merge meals by `ts` before saving: read the server copy of the day (`getDoc`), union it with the local list, local wins on a matching `ts`.
+2. Removals need a record or merging would bring deleted meals back: store `deletedMealTs: [ts, …]` on the day and drop those on merge. Undo (`deleteMeal`) removes the tombstone.
+3. Apply the same merge when the live listener (`onSnapshot`) delivers a day while local edits are pending, so a stale snapshot never wipes a just-added meal.
+4. Same idea for `ex[]` workouts and sets (by `ts`/id) once meals are proven; ship meals first.
+5. Tests: two simulated devices adding different meals to one day (both survive), one deletes while the other adds (delete sticks, add survives), undo, offline-then-reconnect. Keep t_f93 (F4 clears totals) passing: when the merged list is empty, totals still clear.
+6. Ship in a small batch, tell Mike to close and reopen on BOTH devices, and ask him to try adding from both.
+
+## 8. Open ideas (not built)
 
 - Hint under "Reps left?" ("how many more could you have done?").
 - Plan tomorrow's meals.
