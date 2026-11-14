@@ -5101,7 +5101,7 @@ function renderDoseTimeline() {
 function addDaysToDateStr(dateStr, days) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return ymdOf(d);
 }
 function daysBetweenDateStrs(startStr, endStr) {
   const a = new Date(startStr + 'T00:00:00');
@@ -5495,9 +5495,7 @@ function sessionVolume(exEntry) {
 // Rolling 7-day total, rather than "today" — a Strength-only stat would
 // show zero most days otherwise, since sessions only happen 2-3x/week.
 function weeklyWorkoutVolume() {
-  const cutoff = new Date(todayStr());
-  cutoff.setDate(cutoff.getDate() - 6);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const cutoffStr = lbAddDays(todayStr(), -6);
   const today = todayStr();
   let total = 0;
   entries.filter(e => e.date >= cutoffStr && e.date <= today && e.ex && e.ex.length).forEach(e => {
@@ -5521,20 +5519,12 @@ function weeklyWorkoutVolume() {
 // Date-object day-math on entry dates, so no DST edge cases near a week
 // boundary), just without re-scanning the full history once per week.
 function weeklyVolumeHistory(numWeeks) {
-  const today = new Date(todayStr());
   const weeks = [];
   const dateToWeek = new Map();
   for (let w = 0; w < numWeeks; w++) {
-    const end = new Date(today); end.setDate(end.getDate() - w * 7);
-    const start = new Date(end); start.setDate(start.getDate() - 6);
-    const startStr = start.toISOString().slice(0, 10);
-    const endStr = end.toISOString().slice(0, 10);
+    const endStr = lbAddDays(todayStr(), -w * 7), startStr = lbAddDays(endStr, -6); // local dates, so a DST week never shifts by a day
     weeks.push({ startStr, endStr, volume: 0, sessions: 0 });
-    const cursor = new Date(start);
-    for (let d = 0; d < 7; d++) {
-      dateToWeek.set(cursor.toISOString().slice(0, 10), w);
-      cursor.setDate(cursor.getDate() + 1);
-    }
+    for (let d = 0; d < 7; d++) dateToWeek.set(lbAddDays(startStr, d), w);
   }
   entries.forEach(e => {
     const w = dateToWeek.get(e.date);
@@ -6879,8 +6869,7 @@ function renderWeightSparkline(weightEntries) {
 // would be more than 3 years out (not a useful "ETA" at that point).
 function computeWeightGoalETA(weightEntries) {
   if (weightEntries.length < 3) return null;
-  const cutoff = new Date(todayStr()); cutoff.setDate(cutoff.getDate() - 56);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const cutoffStr = lbAddDays(todayStr(), -56);
   const recent = weightEntries.filter(e => e.date >= cutoffStr);
   const sample = recent.length >= 3 ? recent : weightEntries.slice(-6);
   if (sample.length < 3) return null;
@@ -6914,8 +6903,7 @@ function computeWeightGoalETA(weightEntries) {
 // occurrences so this reflects a real, repeated pattern rather than a
 // one-off meal that happened to get logged.
 function topFrequentFoods(limit) {
-  const cutoff = new Date(todayStr()); cutoff.setDate(cutoff.getDate() - 30);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const cutoffStr = lbAddDays(todayStr(), -30);
   const counts = {};
   entries.filter(e => e.date >= cutoffStr).forEach(e => {
     (e.meals || []).forEach(m => {
@@ -10545,9 +10533,7 @@ const AI_SAFETY_INSTRUCTIONS = `Important constraints: describe only patterns ac
 const AI_DATA_LEGEND = "Field notes: weight is in lbs and dose in mg. glucose_fasting_mgdl is the first-thing-in-the-morning reading and glucose_2hr_post_meal_mgdl is the reading 2 hours after a meal, both in mg/dL; this person's fasting target is under 130, and glucose is usually only checked on some days, so gaps are normal. meals lists what was eaten (calories and grams of protein/carbs/fat). water_oz is ounces. day_status 'sick' or 'rest' marks a deliberate rest day. 'effort' on a workout is the person's own 1-5 rating of how hard it felt (5 = hardest). strength_sets lists each exercise as weightxreps for every working set (in lbs; warm-up sets are left out), with workout_day being the Push/Pull/Legs (or split) day. injection:true marks the day the weekly dose was taken. Bodyweight sets appear as BWxreps and timed holds/carries as seconds (45s, or 25x40s for 25 lb carried 40 seconds).";
 
 function gatherRecentHealthData(days) {
-  const cutoff = new Date(todayStr());
-  cutoff.setDate(cutoff.getDate() - days);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const cutoffStr = lbAddDays(todayStr(), -days);
   const today = todayStr();
   return entries
     .filter(e => e.date >= cutoffStr && e.date <= today)
@@ -11198,9 +11184,7 @@ loadProgression();
 
 document.getElementById('suggestProgressionBtn').addEventListener('click', async () => {
   if (!anthropicKey) { setProgressionStatus('Add your Anthropic API key in Settings first to use this.'); return; }
-  const cutoff = new Date(todayStr());
-  cutoff.setDate(cutoff.getDate() - 30);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const cutoffStr = lbAddDays(todayStr(), -30);
   const today = todayStr();
   const recentWorkouts = [];
   entries.filter(e => e.date >= cutoffStr && e.date <= today && e.ex && e.ex.length).forEach(e => {
@@ -13151,9 +13135,7 @@ function nextPPLDay() {
 // makes that visible rather than letting it pass unnoticed as
 // accidental extra volume on an already-worked pattern.
 function pplCategoryCountThisWeek() {
-  const cutoff = new Date(todayStr());
-  cutoff.setDate(cutoff.getDate() - 6);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const cutoffStr = lbAddDays(todayStr(), -6);
   const today = todayStr();
   const counts = { Push: 0, Pull: 0, Legs: 0 };
   entries.filter(e => e.date >= cutoffStr && e.date <= today).forEach(e => {
@@ -16821,12 +16803,11 @@ function renderWorkoutVolumeSparkline() {
 // Requires at least 4 occurrences of today's specific weekday within the
 // window before drawing any conclusion from it.
 function detectTypicalRestDay() {
-  const today = new Date(todayStr());
+  const today = lbParse(todayStr()); // local midnight (new Date('YYYY-MM-DD') is UTC, i.e. yesterday evening in the US)
   const todayDow = today.getDay();
   const counts = [0,0,0,0,0,0,0];
   const totals = [0,0,0,0,0,0,0];
-  const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - 8 * 7);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const cutoffStr = lbAddDays(todayStr(), -8 * 7), cutoff = lbParse(cutoffStr);
   let totalSessions = 0;
   entries.filter(e => e.date >= cutoffStr && e.date < todayStr()).forEach(e => {
     const dow = new Date(e.date + 'T00:00:00').getDay();
@@ -19125,10 +19106,8 @@ function renderFavorites() {
       ...pinnedFavorites.map((f, i) => `<option value="fav:${i}">${escapeHtml(f.desc)}</option>`),
       ...foodCombos.map((c, i) => `<option value="combo:${i}">${escapeHtml(c.name)} (combo, ${c.items.length} items)</option>`)
     ].join('');
-    const today = new Date(todayStr());
     const dayOptions = Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(today); d.setDate(d.getDate() + i);
-      const dateStr = d.toISOString().slice(0, 10);
+      const dateStr = lbAddDays(todayStr(), i), d = lbParse(dateStr); // local dates: the label and the day written always match
       const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
       return `<label style="display:flex;align-items:center;gap:8px;font-size:13px">
         <input type="checkbox" class="batch-day-checkbox" data-date="${dateStr}">
@@ -21196,7 +21175,7 @@ function computeNextDoseCountdown() {
   const cycleStart = new Date(TREATMENT_START);
   cycleStart.setDate(cycleStart.getDate() + Math.floor(diff / 7) * 7);
   const lookback = new Date(cycleStart); lookback.setDate(lookback.getDate() - 2);
-  const lookbackStr = lookback.toISOString().slice(0, 10);
+  const lookbackStr = ymdOf(lookback);
   const injectedThisCycle = entries.some(e => e.injection && e.date >= lookbackStr);
   const daysLate = diff % 7;
   if (!injectedThisCycle || daysLate === 0) return null;
