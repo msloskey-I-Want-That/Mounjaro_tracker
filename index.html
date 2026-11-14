@@ -4347,8 +4347,12 @@ function isValidHealthSyncValue(field, raw) {
 let urlProvidedSyncId = null;
 try {
 (function captureUrlSyncId() {
-  const syncParam = new URLSearchParams(location.search).get('sync');
-  if (syncParam) urlProvidedSyncId = syncParam;
+  const sp = new URLSearchParams(location.search), syncParam = sp.get('sync');
+  if (syncParam) {
+    urlProvidedSyncId = syncParam;
+    sp.delete('sync'); // the ID works like a password: don't leave it in the address bar or history (health numbers, if any, are read and cleared just below)
+    try { history.replaceState({}, '', location.pathname + (sp.toString() ? '?' + sp.toString() : '')); } catch (err) { /* ignore */ }
+  }
 })();
 } catch (err) { console.error('captureUrlSyncId failed:', err); }
 
@@ -6451,8 +6455,11 @@ function closeBadgeSheet() {
 
 // ── UTILS ──
 function genUUID() {
+  const cr = (typeof window !== 'undefined') && (window.crypto || window.msCrypto); // the sync ID is the only password: use the secure generator
+  if (cr && cr.randomUUID) return cr.randomUUID();
+  const rb = cr && cr.getRandomValues ? cr.getRandomValues(new Uint8Array(32)) : null; let ri = 0;
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
+    const r = rb ? rb[ri++] & 15 : Math.random() * 16 | 0;
     return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
   });
 }
@@ -8030,7 +8037,7 @@ function historyCardHtml(e, sumBy) {
   if (open) {
     const lifts = sm && sm.exercises && sm.exercises.length ? `<div class="hist-lifts">${sm.exercises.map(x => `<div style="color:var(--ink-soft)">${x.setCount} × ${escapeHtml(x.name)}</div><div class="n">${x.bestWeight != null ? `${x.bestWeight} lb × ${x.bestReps}${x.pr ? ' 🏆' : ''}` : '—'}</div>`).join('')}</div>` : '';
     details = `${lifts}
-      ${e.meals && e.meals.length ? `<div class="entry-notes">${MEAL_ORDER.filter(mt => e.meals.some(m => (m.mt||'Other') === mt)).map(mt => `<strong>${mt}:</strong> ` + e.meals.filter(m => (m.mt||'Other') === mt).map(m => m.desc + (m.protein ? ` (${m.protein}g)` : '')).join(' · ')).join('<br>')}</div>` : (e.food ? `<div class="entry-notes"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 2v6a2 2 0 0 0 4 0V2"/><line x1="9" y1="8" x2="9" y2="22"/><path d="M17 2c-2 2-2 6 0 8v12"/></svg> ${e.food}</div>` : '')}
+      ${e.meals && e.meals.length ? `<div class="entry-notes">${MEAL_ORDER.filter(mt => e.meals.some(m => (m.mt||'Other') === mt)).map(mt => `<strong>${mt}:</strong> ` + e.meals.filter(m => (m.mt||'Other') === mt).map(m => m.desc + (m.protein ? ` (${m.protein}g)` : '')).join(' · ')).join('<br>')}</div>` : (e.food ? `<div class="entry-notes"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 2v6a2 2 0 0 0 4 0V2"/><line x1="9" y1="8" x2="9" y2="22"/><path d="M17 2c-2 2-2 6 0 8v12"/></svg> ${escapeHtml(e.food)}</div>` : '')}
       ${e.notes ? `<div class="entry-notes">${escapeHtml(e.notes)}</div>` : ''}
       <div style="margin-top:8px"><button type="button" class="hist-more-btn hist-less-btn">Show less</button></div>`;
   } else if (e.notes) {
@@ -9825,7 +9832,7 @@ function renderMyFoodMatches() {
     <div class="chip-row" style="margin-bottom:10px">` +
     matches.map((f, i) => `
       <div class="chip" style="display:inline-flex;align-items:center;gap:6px">
-        <span data-match="${i}">${f.desc}${f.protein ? ` · ${f.protein}g` : ''}</span>
+        <span data-match="${i}">${escapeHtml(f.desc)}${f.protein ? ` · ${escapeHtml(f.protein)}g` : ''}</span>
         <span data-match-scale="${i}" role="button" tabindex="0" aria-label="Adjust portion before adding" title="Adjust portion" style="opacity:0.6;font-size:11px">⚖️</span>
       </div>`).join('') +
     `</div>`;
@@ -9856,8 +9863,8 @@ function renderLookupResults(foods, note) {
   box.innerHTML = header + (note ? `<div class="lookup-status">${note}</div>` : '') + foods.map((f, i) => `
     <div class="lookup-result" data-idx="${i}">
       <div>
-        <div class="lr-name">${f.name}</div>
-        ${f.brand || f.source ? `<div class="lr-brand">${[f.brand, f.source].filter(Boolean).join(' · ')}</div>` : ''}
+        <div class="lr-name">${escapeHtml(f.name || '')}</div>
+        ${f.brand || f.source ? `<div class="lr-brand">${escapeHtml([f.brand, f.source].filter(Boolean).join(' · '))}</div>` : ''}
       </div>
       <div class="lr-macros">${f.protein100 != null ? `<b>${f.protein100.toFixed(1)}g</b> P` : ''}${f.carbs100 != null ? ' · ' + Math.round(f.carbs100) + 'g C' : ''}${f.cal100 != null ? ' · ' + Math.round(f.cal100) + ' cal' : ''}<div class="lr-brand" style="text-align:right">${f.fixedAmount ? `per ${f.fixedLabel} — tap to add` : 'per 100g'}</div></div>
     </div>`).join('') +
@@ -14753,7 +14760,7 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent, nextUp) 
   const isPR = !!(setData.done && setData.prBadge);
   const flash = isPR && lastPRSetKey === `${exerciseName}:${idx}`;
   return `
-    <div class="set-row${setData.done ? ' done' : ''}${hasWeight ? '' : ' no-weight'}${isPR ? ' set-pr' : ''}${flash ? ' set-pr-flash' : ''}${nextUp ? ' set-next-up' : ''}" data-exercise="${exerciseName}" data-set-idx="${idx}" style="--accent:${accent || '#5CE6C0'}">
+    <div class="set-row${setData.done ? ' done' : ''}${hasWeight ? '' : ' no-weight'}${isPR ? ' set-pr' : ''}${flash ? ' set-pr-flash' : ''}${nextUp ? ' set-next-up' : ''}" data-exercise="${escapeHtml(exerciseName)}" data-set-idx="${idx}" style="--accent:${accent || '#5CE6C0'}">
       <div class="set-row-top">
         <button type="button" class="set-number-toggle${setData.warmup ? ' warmup' : ''}" title="Tap to mark as a warm-up set">${numberDisplay}</button>
         <span class="set-prev">${prevText}</span>
@@ -14763,7 +14770,7 @@ function renderSetRowHtml(exerciseName, idx, setData, prevData, accent, nextUp) 
         ${setData.done && setData.rir != null && setData.rir !== '' && rirEligible(exerciseName, setData) ? `<button type="button" class="set-rir-badge${Number(setData.rir) === 0 ? ' fail' : ''}" title="Change reps left" aria-label="Reps left: ${rirLabel(setData.rir)}. Tap to change">${rirLabel(setData.rir)}</button>` : ''}
         ${(() => { if (setData.done || isTimed) return ''; const src = sameAgainSourceFor(exerciseName, idx); return src ? `<button type="button" class="set-same-btn" aria-label="Log the same as set ${src.i + 1}">↻ Same again</button>` : ''; })()}
         ${isTimed && !setData.done ? (() => { const run = setStopwatch && setStopwatch.exercise === exerciseName && setStopwatch.idx === idx; return `<button type="button" class="set-timer-btn${run ? ' running' : ''}" aria-label="${run ? 'Stop timer' : 'Start timer'}" title="${run ? 'Stop timer' : 'Start timer'}">${run ? '■ Stop' : '▶ Start'}</button>`; })() : ''}
-        <button type="button" class="set-remove-btn" data-exercise="${exerciseName}" data-set-idx="${idx}" aria-label="Remove this set">✕</button>
+        <button type="button" class="set-remove-btn" data-exercise="${escapeHtml(exerciseName)}" data-set-idx="${idx}" aria-label="Remove this set">✕</button>
       </div>
       <div class="set-row-main">
         ${hasWeight ? `        <div class="set-weight-group">
@@ -17434,15 +17441,16 @@ function renderWorkoutPlan() {
       const ssPK = currentPlanKey(), ssPn = supersetPartnerFor(ssPK, ex.name), ssPi = ssPn ? visiblePlan.findIndex(p => p.name === ssPn) : -1;
       const ssRole = ssPi === -1 ? '' : (ssPi > exIndex ? 'a' : 'b'); // 'a' = first of the pair, 'b' = second
       const ssNextIdx = ssRole ? supersetNextUp(ssPK, ex.name, ssRole === 'a') : -1;
+      const exH = escapeHtml(ex.name); // names are cleaned when typed, but older or imported ones may not be
       if (reorderingExercises) {
         // Compact row: just the drag handle and name, sets/inputs hidden
         // — smaller cards mean less scrolling to see the whole list
         // while actually dragging one into place.
         return `
-        <div class="workout-exercise-block" data-exercise="${ex.name}" style="margin-bottom:10px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;background:var(--card)">
+        <div class="workout-exercise-block" data-exercise="${exH}" style="margin-bottom:10px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;background:var(--card)">
           <div class="exercise-drag-handle" style="cursor:grab;color:var(--ink-soft);font-size:20px;line-height:1;flex-shrink:0">⠿</div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:800;font-size:14px">${ex.name}</div>
+            <div style="font-weight:800;font-size:14px">${exH}</div>
             <div style="font-size:11px;color:var(--ink-soft)">${ex.sets}</div>
           </div>
         </div>`;
@@ -17454,18 +17462,18 @@ function renderWorkoutPlan() {
       const planKey = currentPlanKey();
       const partnerName = supersetPartnerFor(planKey, ex.name);
       const supersetControl = partnerName
-        ? `<span class="superset-label exercise-state-chip" data-exercise="${ex.name}"><span class="chip-text">⚡ ${escapeHtml(partnerName)}</span><button type="button" class="superset-unpair-btn" data-exercise="${ex.name}" title="Unpair superset" aria-label="Unpair superset">✕</button></span>`
-        : `<button type="button" class="exercise-action-btn superset-pair-toggle-btn" data-exercise="${ex.name}" title="Pair as superset" aria-label="Pair as superset">🔗</button>`;
-      const supersetSelect = partnerName ? '' : `<select class="superset-pair-select" data-exercise="${ex.name}" style="display:none;margin-bottom:8px;width:100%;padding:8px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;background:var(--input-bg);color:var(--ink)">
+        ? `<span class="superset-label exercise-state-chip" data-exercise="${exH}"><span class="chip-text">⚡ ${escapeHtml(partnerName)}</span><button type="button" class="superset-unpair-btn" data-exercise="${exH}" title="Unpair superset" aria-label="Unpair superset">✕</button></span>`
+        : `<button type="button" class="exercise-action-btn superset-pair-toggle-btn" data-exercise="${exH}" title="Pair as superset" aria-label="Pair as superset">🔗</button>`;
+      const supersetSelect = partnerName ? '' : `<select class="superset-pair-select" data-exercise="${exH}" style="display:none;margin-bottom:8px;width:100%;padding:8px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;background:var(--input-bg);color:var(--ink)">
             <option value="">Choose partner exercise…</option>
             ${plan.filter(p => p.name !== ex.name).map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('')}
           </select>`;
       const swapSuggestions = ex.swappedFrom ? [] : suggestSwapsFor(ex.name, plan.map(p => p.name));
       const swapControl = ex.swappedFrom
-        ? `<span class="swap-label exercise-state-chip" data-exercise="${ex.name}"><span class="chip-text">🔄 was ${escapeHtml(ex.swappedFrom)}</span><button type="button" class="swap-revert-btn" data-original="${escapeHtml(ex.swappedFrom)}" title="Revert swap" aria-label="Revert swap">✕</button></span>`
-        : (swapSuggestions.length ? `<button type="button" class="exercise-action-btn swap-toggle-btn" data-exercise="${ex.name}" title="Machine busy? Swap" aria-label="Machine busy? Swap">🔄</button>` : '');
-      const skipControl = doneCount === 0 ? `<button type="button" class="btn btn-ghost btn-sm skip-today-btn" data-exercise="${ex.name}" title="Skip today only" aria-label="Skip ${ex.name} today" style="flex:0 0 auto;margin-top:2px;border-style:dashed;font-size:12px;padding:9px 12px">Skip today</button>` : '';
-      const swapSelect = swapSuggestions.length ? `<select class="swap-select" data-exercise="${ex.name}" style="display:none;margin-bottom:8px;width:100%;padding:8px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;background:var(--input-bg);color:var(--ink)">
+        ? `<span class="swap-label exercise-state-chip" data-exercise="${exH}"><span class="chip-text">🔄 was ${escapeHtml(ex.swappedFrom)}</span><button type="button" class="swap-revert-btn" data-original="${escapeHtml(ex.swappedFrom)}" title="Revert swap" aria-label="Revert swap">✕</button></span>`
+        : (swapSuggestions.length ? `<button type="button" class="exercise-action-btn swap-toggle-btn" data-exercise="${exH}" title="Machine busy? Swap" aria-label="Machine busy? Swap">🔄</button>` : '');
+      const skipControl = doneCount === 0 ? `<button type="button" class="btn btn-ghost btn-sm skip-today-btn" data-exercise="${exH}" title="Skip today only" aria-label="Skip ${exH} today" style="flex:0 0 auto;margin-top:2px;border-style:dashed;font-size:12px;padding:9px 12px">Skip today</button>` : '';
+      const swapSelect = swapSuggestions.length ? `<select class="swap-select" data-exercise="${exH}" style="display:none;margin-bottom:8px;width:100%;padding:8px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;background:var(--input-bg);color:var(--ink)">
             <option value="">Choose an alternative…</option>
             ${swapSuggestions.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`).join('')}
           </select>` : '';
@@ -17473,15 +17481,15 @@ function renderWorkoutPlan() {
       const vSelected = vcfg ? workoutVariationState[ex.name] : null;
       const vLast = vcfg ? lastVariationFor(ex.name) : null;
       const variationControl = vcfg
-        ? `<button type="button" class="exercise-action-btn variation-toggle-btn${vSelected ? ' on' : ''}" data-exercise="${ex.name}" title="${vcfg.label}" aria-label="${vcfg.label}"><span>${vcfg.icon}</span><span style="font-size:9px;opacity:0.7">▾</span></button>`
+        ? `<button type="button" class="exercise-action-btn variation-toggle-btn${vSelected ? ' on' : ''}" data-exercise="${exH}" title="${vcfg.label}" aria-label="${vcfg.label}"><span>${vcfg.icon}</span><span style="font-size:9px;opacity:0.7">▾</span></button>`
         : '';
-      const variationPanel = vcfg ? `<div class="exercise-variation-panel" data-exercise="${ex.name}" style="display:none;margin-bottom:8px">
+      const variationPanel = vcfg ? `<div class="exercise-variation-panel" data-exercise="${exH}" style="display:none;margin-bottom:8px">
             <div class="chip-row" style="gap:6px">
-              ${Object.entries(vcfg.options).map(([key, info]) => `<div class="chip exercise-variation-chip${vSelected === key ? ' on' : ''}" data-exercise="${ex.name}" data-option="${key}" style="font-size:12px;padding:7px 11px">${info.label}</div>`).join('')}
+              ${Object.entries(vcfg.options).map(([key, info]) => `<div class="chip exercise-variation-chip${vSelected === key ? ' on' : ''}" data-exercise="${exH}" data-option="${key}" style="font-size:12px;padding:7px 11px">${info.label}</div>`).join('')}
             </div>
             <div style="font-size:11px;color:var(--ink-soft);margin-top:6px">${vSelected && vcfg.options[vSelected] ? `Targets: ${vcfg.options[vSelected].targets}` : `${vcfg.icon} ${vcfg.label} — tap one to log it`}</div>
           </div>` : '';
-      const noteControl = `<button type="button" class="exercise-action-btn exercise-note-toggle-btn${workoutNotesState[ex.name] ? ' on' : ''}" data-exercise="${ex.name}" title="${workoutNotesState[ex.name] ? 'Edit note' : 'Add note'}" aria-label="${workoutNotesState[ex.name] ? 'Edit note' : 'Add note'}">📝</button>`;
+      const noteControl = `<button type="button" class="exercise-action-btn exercise-note-toggle-btn${workoutNotesState[ex.name] ? ' on' : ''}" data-exercise="${exH}" title="${workoutNotesState[ex.name] ? 'Edit note' : 'Add note'}" aria-label="${workoutNotesState[ex.name] ? 'Edit note' : 'Add note'}">📝</button>`;
       // The action row stays icon-only so it never wraps. What you did last
       // time (a nudge to rotate) rides along as plain text beside the sets
       // target; once something IS chosen, it gets its own caption line instead,
@@ -17492,19 +17500,19 @@ function renderWorkoutPlan() {
       const isCollapsed = !isZoomed && collapsedExercises.has(ex.name);
       const topDone = setState.filter(q => q.done && !q.warmup && parseFloat(q.weight) > 0).sort((a, b) => parseFloat(b.weight) - parseFloat(a.weight))[0];
       const collapsedSummary = isCollapsed ? (doneCount === 0 ? `<div class="exercise-collapsed-summary">${escapeHtml(String(ex.sets || ''))}${(() => { const p = (previousSetsFor(ex.name) || []).filter(q => q && !q.warmup && parseFloat(q.weight) > 0); return p.length ? ` · last ${Math.max(...p.map(q => parseFloat(q.weight)))} lb` : ''; })()} · tap to open</div>` : `<div class="exercise-collapsed-summary">${doneCount}/${setState.length} sets${topDone ? ` · top ${topDone.weight} × ${topDone.reps}` : ''}${allDone ? ' ✓' : ''}</div>`) : '';
-      const collapseBtn = isZoomed ? '' : `<button type="button" class="exercise-collapse-btn" data-exercise="${ex.name}" aria-expanded="${!isCollapsed}" aria-label="${isCollapsed ? 'Expand' : 'Minimize'} ${ex.name}" title="${isCollapsed ? 'Expand' : 'Minimize'}"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${isCollapsed ? '<polyline points="6 9 12 15 18 9"/>' : '<polyline points="18 15 12 9 6 15"/>'}</svg></button>`;
+      const collapseBtn = isZoomed ? '' : `<button type="button" class="exercise-collapse-btn" data-exercise="${exH}" aria-expanded="${!isCollapsed}" aria-label="${isCollapsed ? 'Expand' : 'Minimize'} ${exH}" title="${isCollapsed ? 'Expand' : 'Minimize'}"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${isCollapsed ? '<polyline points="6 9 12 15 18 9"/>' : '<polyline points="18 15 12 9 6 15"/>'}</svg></button>`;
       const segHtml = `<div class="progress-segs${setState.length > 7 ? ' many' : ''}" role="img" aria-label="${doneCount} of ${setState.length} sets done" title="${doneCount}/${setState.length} sets done" style="--seg-color:${cardColor}">${setState.map(s => `<span class="progress-seg${s.done ? ' on' : ''}"></span>`).join('')}</div>`;
       return `${ssRole === 'a' ? `<div class="ss-tag">⚡ Superset · ${escapeHtml(ex.name)} + ${escapeHtml(ssPn)} · one set of each, then rest</div>` : ''}
-      <div class="workout-exercise-block${allDone ? ' workout-exercise-done' : ''}${ssRole ? ' ss-' + ssRole : ''}" data-exercise="${ex.name}" data-sets="${escapeHtml(String(ex.sets || ''))}" style="margin-bottom:18px;padding:16px 16px 12px;border:2px solid ${cardColor};border-radius:16px;background:${allDone ? 'var(--success-tint)' : 'transparent'};box-shadow:${allDone ? '0 0 22px -4px var(--sage)' : 'none'};transition:box-shadow 0.3s ease">
+      <div class="workout-exercise-block${allDone ? ' workout-exercise-done' : ''}${ssRole ? ' ss-' + ssRole : ''}" data-exercise="${exH}" data-sets="${escapeHtml(String(ex.sets || ''))}" style="margin-bottom:18px;padding:16px 16px 12px;border:2px solid ${cardColor};border-radius:16px;background:${allDone ? 'var(--success-tint)' : 'transparent'};box-shadow:${allDone ? '0 0 22px -4px var(--sage)' : 'none'};transition:box-shadow 0.3s ease">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-          <div class="exercise-zoom-btn" data-exercise="${ex.name}" style="font-family:var(--font-text);font-weight:800;font-size:17px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 4px;margin:-8px 0">
+          <div class="exercise-zoom-btn" data-exercise="${exH}" style="font-family:var(--font-text);font-weight:800;font-size:17px;text-transform:uppercase;letter-spacing:0.02em;cursor:pointer;flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 4px;margin:-8px 0">
             <span class="exercise-card-title">${ex.variantGroup ? escapeHtml(ex.variantGroup) : ex.name}</span>
             <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-soft);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
-          ${exerciseGuide(ex.name) ? `<button type="button" class="exercise-info-btn" data-exercise="${ex.name}" title="How to do this" aria-label="How to do ${ex.name}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:4px;flex-shrink:0;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>` : ''}
-          <button type="button" class="exercise-history-btn" data-exercise="${ex.name}" title="View history for ${ex.name}" aria-label="View history for ${ex.name}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:4px;flex-shrink:0;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></button>
+          ${exerciseGuide(ex.name) ? `<button type="button" class="exercise-info-btn" data-exercise="${exH}" title="How to do this" aria-label="How to do ${exH}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:4px;flex-shrink:0;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>` : ''}
+          <button type="button" class="exercise-history-btn" data-exercise="${exH}" title="View history for ${exH}" aria-label="View history for ${exH}" style="background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:4px;flex-shrink:0;display:flex"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></button>
           ${collapseBtn}
-          <button type="button" class="remove-exercise-btn" data-exercise="${ex.name}" title="Remove from today's list" aria-label="Remove ${ex.name}" style="background:none;border:none;color:var(--ink-soft);font-size:17px;line-height:1;cursor:pointer;padding:4px;margin-left:2px;flex-shrink:0">✕</button>
+          <button type="button" class="remove-exercise-btn" data-exercise="${exH}" title="Remove from today's list" aria-label="Remove ${exH}" style="background:none;border:none;color:var(--ink-soft);font-size:17px;line-height:1;cursor:pointer;padding:4px;margin-left:2px;flex-shrink:0">✕</button>
         </div>
         ${segHtml}
         ${exPace ? `<div class="ex-pace ${exPace.delta > 0 ? 'up' : exPace.delta < 0 ? 'down' : ''}">${paceText(exPace.delta)} <span>(${exPace.sets} set${exPace.sets === 1 ? '' : 's'} in)</span></div>` : ''}
@@ -17518,16 +17526,16 @@ function renderWorkoutPlan() {
         </div>
         ${variationCaption}
         ${supersetSelect}${swapSelect}${variationPanel}
-        <div class="exercise-note-wrap" data-exercise="${ex.name}" style="display:${workoutNotesState[ex.name] ? '' : 'none'};margin-bottom:8px">
-          <textarea class="exercise-note-input" data-exercise="${ex.name}" placeholder="e.g. left shoulder felt off today" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;background:var(--input-bg);color:var(--ink);resize:vertical">${escapeHtml(workoutNotesState[ex.name] || '')}</textarea>
+        <div class="exercise-note-wrap" data-exercise="${exH}" style="display:${workoutNotesState[ex.name] ? '' : 'none'};margin-bottom:8px">
+          <textarea class="exercise-note-input" data-exercise="${exH}" placeholder="e.g. left shoulder felt off today" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:13px;background:var(--input-bg);color:var(--ink);resize:vertical">${escapeHtml(workoutNotesState[ex.name] || '')}</textarea>
         </div>
         ${(() => { const t = todayTargetFor(ex.name, ex.sets); return t && doneCount < setState.length ? `<div class="ex-today-target">${escapeHtml(t)}</div>` : ''; })()}
-        ${(showStep || warmOffer) ? `<div class="coach-chips">${showStep ? `<button type="button" class="coach-chip next-step-chip" data-exercise="${ex.name}" data-sets="${ex.sets}">⬆ ${nextStep.text}</button>` : ''}${warmOffer ? `<button type="button" class="coach-chip warmup-chip" data-exercise="${ex.name}">🔥 ${warmOffer.text}</button>` : ''}</div>` : ''}
-        ${stall ? `<div class="stall-box"><div class="stall-title">${escapeHtml(stall.text)}</div>${stallResetApplied(ex.name, stall) ? `<div class="stall-sub">✓ Reset set: ${stall.reset} lb × ${stall.reps}. Add weight again once every set hits ${stall.reps}.</div>` : `<div class="stall-sub">Pick a fix:</div><div class="stall-actions"><button type="button" class="stall-reset-btn" data-exercise="${ex.name}" data-sets="${escapeHtml(String(ex.sets || ''))}">↓ Reset to ${stall.reset} lb × ${stall.reps}</button>${swapSuggestions.length && !ex.swappedFrom ? `<button type="button" class="stall-swap-btn" data-exercise="${ex.name}">🔄 Swap exercise</button>` : ''}</div>`}</div>` : ''}
-        <div class="set-rows-container" data-exercise-name="${ex.name}">
+        ${(showStep || warmOffer) ? `<div class="coach-chips">${showStep ? `<button type="button" class="coach-chip next-step-chip" data-exercise="${exH}" data-sets="${ex.sets}">⬆ ${nextStep.text}</button>` : ''}${warmOffer ? `<button type="button" class="coach-chip warmup-chip" data-exercise="${exH}">🔥 ${warmOffer.text}</button>` : ''}</div>` : ''}
+        ${stall ? `<div class="stall-box"><div class="stall-title">${escapeHtml(stall.text)}</div>${stallResetApplied(ex.name, stall) ? `<div class="stall-sub">✓ Reset set: ${stall.reset} lb × ${stall.reps}. Add weight again once every set hits ${stall.reps}.</div>` : `<div class="stall-sub">Pick a fix:</div><div class="stall-actions"><button type="button" class="stall-reset-btn" data-exercise="${exH}" data-sets="${escapeHtml(String(ex.sets || ''))}">↓ Reset to ${stall.reset} lb × ${stall.reps}</button>${swapSuggestions.length && !ex.swappedFrom ? `<button type="button" class="stall-swap-btn" data-exercise="${exH}">🔄 Swap exercise</button>` : ''}</div>`}</div>` : ''}
+        <div class="set-rows-container" data-exercise-name="${exH}">
           ${setState.map((s, i) => renderSetRowHtml(ex.name, i, s, prevSetAligned(setState, prevSets, i), accent, i === ssNextIdx)).join('')}
         </div>
-        <div style="display:flex;gap:8px"><button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${ex.name}" style="flex:1;min-width:0;margin-top:2px;border-style:dashed;font-size:12px;padding:9px">+ Add set</button>${skipControl}</div>
+        <div style="display:flex;gap:8px"><button type="button" class="btn btn-ghost btn-sm add-set-btn" data-exercise="${exH}" style="flex:1;min-width:0;margin-top:2px;border-style:dashed;font-size:12px;padding:9px">+ Add set</button>${skipControl}</div>
         </div>
       </div>`;
     }), visiblePlan, currentPlanKey(), isZoomed || reorderingExercises)}
@@ -19022,8 +19030,8 @@ function renderFavorites() {
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M4 12h16v2a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M8 12V8a4 4 0 0 1 8 0v4"/><line x1="2" y1="12" x2="22" y2="12"/></svg> Recipes</div>
     <div class="chip-row" style="margin-bottom:12px">` +
       pinnedRecipes.map((r, i) => `
-        <div class="chip" data-recipe="${i}" data-desc="${r.name}" style="display:inline-flex;align-items:center;gap:6px">
-          <span data-recipe-add="${i}">${r.name}${r.protein ? ` · ${r.protein}g` : ''}${r.servings > 1 ? ` (${r.servings} servings)` : ''}</span>
+        <div class="chip" data-recipe="${i}" data-desc="${escapeHtml(r.name)}" style="display:inline-flex;align-items:center;gap:6px">
+          <span data-recipe-add="${i}">${escapeHtml(r.name)}${r.protein ? ` · ${escapeHtml(r.protein)}g` : ''}${r.servings > 1 ? ` (${r.servings} servings)` : ''}</span>
           <span data-recipe-remove="${i}" role="button" tabindex="0" aria-label="Remove recipe" style="opacity:0.6;font-size:11px">✕</span>
         </div>`).join('') +
       `</div>`;
@@ -19065,8 +19073,8 @@ function renderFavorites() {
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px">⭐ Favorites</div>
     <div class="chip-row" style="margin-bottom:12px">` +
       pinnedFavorites.map((f, i) => `
-        <div class="chip" data-pin="${i}" data-desc="${f.desc}" style="display:inline-flex;align-items:center;gap:6px">
-          <span data-pin-add="${i}">${f.desc}${f.protein ? ` · ${f.protein}g` : ''}</span>
+        <div class="chip" data-pin="${i}" data-desc="${escapeHtml(f.desc)}" style="display:inline-flex;align-items:center;gap:6px">
+          <span data-pin-add="${i}">${escapeHtml(f.desc)}${f.protein ? ` · ${escapeHtml(f.protein)}g` : ''}</span>
           <span data-pin-scale="${i}" role="button" tabindex="0" aria-label="Adjust portion before adding" title="Adjust portion" style="opacity:0.6;font-size:11px">⚖️</span>
           <span data-pin-remove="${i}" role="button" tabindex="0" aria-label="Remove favorite" style="opacity:0.6;font-size:11px">✕</span>
         </div>`).join('') +
@@ -19079,8 +19087,8 @@ function renderFavorites() {
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:6px">Quick add — your usuals</div>
     <div class="chip-row" style="margin-bottom:12px">` +
       favs.map((f, i) => `
-        <div class="chip" data-fav="${i}" data-desc="${f.desc}" style="display:inline-flex;align-items:center;gap:6px">
-          <span data-fav-add="${i}">${f.desc}${f.protein ? ` · ${f.protein}g` : ''}</span>
+        <div class="chip" data-fav="${i}" data-desc="${escapeHtml(f.desc)}" style="display:inline-flex;align-items:center;gap:6px">
+          <span data-fav-add="${i}">${escapeHtml(f.desc)}${f.protein ? ` · ${escapeHtml(f.protein)}g` : ''}</span>
           <span data-fav-scale="${i}" role="button" tabindex="0" aria-label="Adjust portion before adding" title="Adjust portion" style="opacity:0.6;font-size:11px">⚖️</span>
           <span data-fav-pin="${i}" role="button" tabindex="0" aria-label="Pin to favorites" style="opacity:0.6;font-size:11px" title="Pin to Favorites"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 9.5 16.5 14 18 21 12 17 6 21 7.5 14 2 9.5 9 9"/></svg></span>
         </div>`).join('') +
@@ -19768,15 +19776,15 @@ function renderIngredientResults(i, personal, usda, note) {
   let html = note ? `<div class="lookup-status">${note}</div>` : '';
   if (personal.length) {
     html += `<div class="chip-row" style="margin-bottom:6px">` +
-      personal.map((f, pi) => `<div class="chip" data-ring-personal="${i}:${pi}">${f.desc}${f.protein ? ` · ${f.protein}g` : ''}</div>`).join('') +
+      personal.map((f, pi) => `<div class="chip" data-ring-personal="${i}:${pi}">${escapeHtml(f.desc)}${f.protein ? ` · ${escapeHtml(f.protein)}g` : ''}</div>`).join('') +
       `</div>`;
   }
   if (usda.length) {
     html += usda.map((f, ui) => `
       <div class="lookup-result" data-ring-usda="${i}:${ui}">
         <div>
-          <div class="lr-name">${f.name}</div>
-          ${f.brand ? `<div class="lr-brand">${f.brand}</div>` : ''}
+          <div class="lr-name">${escapeHtml(f.name || '')}</div>
+          ${f.brand ? `<div class="lr-brand">${escapeHtml(f.brand)}</div>` : ''}
         </div>
         <div class="lr-macros">${f.protein100 != null ? f.protein100.toFixed(1) + 'g P' : ''}${f.carbs100 != null ? ' · ' + Math.round(f.carbs100) + 'g C' : ''}${f.cal100 != null ? ' · ' + Math.round(f.cal100) + ' cal' : ''}<div class="lr-brand" style="text-align:right">per 100g</div></div>
       </div>`).join('');
