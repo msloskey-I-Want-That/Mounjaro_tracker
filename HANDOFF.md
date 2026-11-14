@@ -1,6 +1,6 @@
 # My Health Tracker (Mounjaro_tracker) — Handoff for Claude
 
-_Last updated: 2026-11-12 (commit after 1428757). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
+_Last updated: 2026-11-14 (commit after d4ee4bc). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
 
 ## 0. What Mike pastes to start a chat
 
@@ -57,7 +57,7 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
    - Hide the Welcome/Sync ID modal: hide `#modalTitle`'s top-level container.
    - Views scroll inside `#app-main`, not the page.
    - Workout: `window.__noPreviewList=true`, `renderWorkoutPlan()`, click `#startPlanBtn`.
-5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f89.**
+5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f90.**
 6. **Full gate (one command, 10-min timeout):**
    ```
    ./run_all_tests.sh 2>&1 | grep -i "^FAIL\|PART\|TIMEOUT\|flaked" ; ./gate_verified.sh && echo GATE_OK
@@ -84,6 +84,8 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
 - **Dates:** local only (see §3). Tests must use local date helpers too.
 
 ## 6. What's shipped (newest first)
+
+**2026-11-14: Apple Health tiles lost their grey "syncs automatically once your Shortcut is set up" notes (t_f89).** Sync works, so the six `exView*Sub` lines are now empty hidden divs (kept because the tile builder moves them by id). Tiles, pencils and the "Last synced from your iPhone" line are unchanged.
 
 **2026-11-12: "Bigger current exercise" workout layout (t_f88).** Settings > Screens > "Workout: bigger current exercise" (On/Off, default Off, stored as `panelPrefs.bigCurrent`; PANEL_PREFS entries with `invert: true` add their body class when ON). `markCurrentExercise()` runs at the end of `renderWorkoutPlan()` and tags `.ex-current` (in-progress exercise wins, else first unfinished non-minimized one) and `.set-current` (its first undone set); all visual changes are CSS under `body.big-current`. All sets stay visible; the current set stacks weight above reps + a wide check. Every grouped card's "Which one today?" picker folds to one `.big-more-btn` line naming the chosen version ("⋯ Machine · 130 lb · tap to change"; `foldVariantPickers()`; open state in `bigVariantsOpen`, keyed by the card's current exercise name so picking another version re-folds it). Off = the original layout, untouched. Mike asked for it so he can flip back and forth.
 
