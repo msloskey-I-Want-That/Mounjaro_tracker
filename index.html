@@ -1459,6 +1459,10 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 .set-row.set-next-up { box-shadow: 0 0 0 2px #B79BE0; border-radius: 12px; }
 /* Settings > Screens > "Workout: bigger current exercise". Layout only: same buttons, same behaviour, bigger on the exercise and set you are on. */
 .big-more-btn { display: none; }
+/* iPhone Settings > Accessibility > Motion > Reduce Motion: no sliding, pulsing or confetti (nothing changes for anyone else) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
 body.big-current .big-more-btn { display: block; width: 100%; margin: 0 0 10px; padding: 9px; border: 1.5px dashed var(--line); border-radius: 12px; background: none; color: var(--ink-soft); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 body.big-current .variants-folded .variant-row { display: none; }
 body.big-current .workout-exercise-block:not(.ex-current):not(.ss-a):not(.ss-b):not(.workout-exercise-done) { border-color: var(--line) !important; opacity: 0.86; }
@@ -3549,7 +3553,7 @@ body.big-current .ex-current .set-row.done:not(.set-current) { opacity: 0.8; }
       <div class="chart-card">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
           <div class="chart-title" style="margin-bottom:0">Exercise Weight Progress</div>
-          <select id="weightProgressExercisePicker" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:11px;background:var(--input-bg);color:var(--ink);max-width:150px;font-weight:700"></select>
+          <select id="weightProgressExercisePicker" aria-label="Exercise to chart" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:11px;background:var(--input-bg);color:var(--ink);max-width:150px;font-weight:700"></select>
         </div>
         <div id="weightProgressEmptyMsg" style="display:none;text-align:center;padding:20px 4px;color:var(--ink-soft);font-size:12px">Log a few sessions with weights to see progress here.</div>
         <div class="chart-wrap"><canvas id="weightProgressChart"></canvas></div>
@@ -21801,11 +21805,11 @@ document.getElementById('restoreJsonInput').addEventListener('change', async (e)
   }
   statusEl.textContent = 'Restoring…';
   try {
-    await Promise.all(backup.entries.filter(e => e && e.date).map(e =>
+    await Promise.all(backup.entries.filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date))).map(e => // only real YYYY-MM-DD days become documents
       setDoc(doc(db, 'trackers', syncId, 'entries', e.date), e, { merge: true })
     ));
     if (Array.isArray(backup.labs)) {
-      await Promise.all(backup.labs.filter(l => l && l.date).map(l =>
+      await Promise.all(backup.labs.filter(l => l && /^\d{4}-\d{2}-\d{2}$/.test(String(l.date))).map(l =>
         setDoc(doc(db, 'trackers', syncId, 'labs', l.date), l, { merge: true })
       ));
     }

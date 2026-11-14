@@ -1,4 +1,4 @@
-const CACHE = 'mounjaro-v32';
+const CACHE = 'mounjaro-v33'; // v33: old caches held food-search and barcode answers (some with API keys in the URL); activate deletes them
 const SHELL = [
   './',
   './manifest.json',
@@ -47,7 +47,13 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Static assets (fonts, Chart.js, icons): cache first for speed
+  // Static assets (this app's own files, fonts, Chart.js and other CDN libraries): cache first for speed.
+  // Everything else (food databases, barcode lookups, AI, ntfy) goes straight to the network and is never stored:
+  // a cached "not found" for a barcode would otherwise stick forever, and some of those URLs carry API keys.
+  if (e.request.method !== 'GET') return;
+  let host = '';
+  try { const u = new URL(e.request.url); host = u.origin === self.location.origin ? 'self' : u.hostname; } catch (err) { return; }
+  if (!['self', 'fonts.googleapis.com', 'fonts.gstatic.com', 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'].includes(host)) return;
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
       if (res && res.status === 200 && e.request.method === 'GET') {
