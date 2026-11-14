@@ -1,0 +1,9 @@
+Audit batch 4: stale meal totals, sync-link confirm, 44 px tap areas
+
+- Removing a day's last meal now clears its old protein/calorie/carb/fat totals (days with typed-in totals and no meals are untouched)
+- A ?sync= link that points at a different account now asks before switching this phone; your own Shortcut link (same account) works without a prompt
+- History search row, Food favorite remove button and muscle-map header now have 44 px tap areas
+- New suite t_f93
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01DwAFzc9Pbp9peYrfMpvs3Z

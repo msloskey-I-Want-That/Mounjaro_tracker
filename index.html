@@ -710,6 +710,8 @@ body {
   flex: 1; border: none; background: none;
   font-family:var(--font-num);
   font-size: 14px; color: var(--ink);font-weight:700}
+.history-search { min-height: 44px; box-sizing: border-box; }
+.history-search input { min-height: 24px; }
 .history-search input:focus { outline: none; }
 .entry-card {
   background: var(--card);
@@ -1320,6 +1322,7 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 .app-label small { font-size: 10px; margin-top: 2px; }
 .app-insight { margin-top: 6px; line-height: 1.45; }
 .app-insight b { color: var(--ink); font-family: var(--font-num); font-weight: 800; }
+#favFoods [data-pin-remove] { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin: -14px -14px -14px -12px; box-sizing: border-box; }
 #favFoods [data-pin-scale], #favFoods [data-fav-scale], #favFoods [data-pin-remove], #favFoods [data-fav-pin], #favFoods [data-recipe-remove], #favFoods [data-combo-remove] { font-size: 14px !important; opacity: .8 !important; padding: 4px 3px; }
 /* What fits? — one line per suggestion instead of two */
 .fits-text { display: flex !important; align-items: center; justify-content: space-between; gap: 10px; }
@@ -1403,7 +1406,7 @@ body.hide-tellme #tellMeAboutDayCard, body.hide-stretch #recoveryCard { display:
 .mm-info { margin-top: 10px; font-size: 11px; color: var(--ink-soft); }
 .mm-info summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
 .mm-info div { margin-top: 4px; line-height: 1.5; }
-.mm-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; }
+.mm-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; min-height: 44px; }
 .mm-chev { font-size: 11px; color: var(--ink-soft); flex-shrink: 0; }
 .mm-summary { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
 .mm-summary b { color: var(--ink); font-family: var(--font-num); font-weight: 800; }
@@ -6525,6 +6528,13 @@ function wipeAccountLocalState() {
 }
 function reloadApp() { if (window.__reloadHook) return window.__reloadHook(); location.reload(); } // the hook exists only so tests can observe it
 function initSyncId() {
+  if (urlProvidedSyncId) {
+    let existingId = null; try { existingId = localStorage.getItem('mounjaro-sync-id'); } catch (err) { /* ignore */ }
+    if (existingId && existingId !== urlProvidedSyncId) {
+      let ok = false; try { ok = confirm('This link wants to switch this phone to a different account.\n\nOK = switch accounts\nCancel = keep your current account'); } catch (err) { /* ignore */ }
+      if (!ok) urlProvidedSyncId = null;
+    }
+  }
   if (urlProvidedSyncId) {
     try { localStorage.setItem('mounjaro-sync-id', urlProvidedSyncId); } catch (err) { /* localStorage unavailable — falls through to the normal check below */ }
   }
@@ -19935,6 +19945,11 @@ async function writeMeals(date, meals) {
   if (totals.calories != null) payload.calories = String(totals.calories);
   if (totals.carbs != null)    payload.carbs    = String(totals.carbs);
   if (totals.fat != null)      payload.fat      = String(totals.fat);
+  // Last meal of the day removed: clear the old totals so they don't linger (only then, so typed-in totals on days without meals are untouched).
+  { const prev = entries.find(x => x.date === date);
+    if (!meals.length && prev && prev.meals && prev.meals.length) {
+      ['protein', 'calories', 'carbs', 'fat'].forEach(k => { if (payload[k] == null) payload[k] = ''; });
+    } }
   // Instant local update
   upsertLocalEntry(date, e => Object.assign(e, payload));
   renderMealList();
