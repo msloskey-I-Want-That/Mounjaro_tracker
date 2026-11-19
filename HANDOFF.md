@@ -85,7 +85,7 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
 
 ## 6. What's shipped (newest first)
 
-**2026-11-19: Kettlebell exercises (t_f94).** Seven added to the exercise picker (`LIBRARY_EXERCISES`) with how-to cards (`EXERCISE_GUIDES`; the t_f34 length limit is ~230 characters per part): Kettlebell Swing (Hamstrings), Goblet Squat (Quads), Romanian Deadlift (Hamstrings), Single-Arm Row (Back), Overhead Press (Shoulders), Turkish Get-Up (Core), Suitcase Carry (Forearms, `timedLoaded`). Not added to any Push/Pull/Legs day; Mike picks them per day. t_f36 (leaderboard PRs) was date-fragile near month ends; it now passes when no week ends later in the PR's month.
+**2026-11-19: Kettlebell exercises (t_f94).** Eight added (Kettlebell Halo, Core, added later the same day) to the exercise picker (`LIBRARY_EXERCISES`) with how-to cards (`EXERCISE_GUIDES`; the t_f34 length limit is ~230 characters per part): Kettlebell Swing (Hamstrings), Goblet Squat (Quads), Romanian Deadlift (Hamstrings), Single-Arm Row (Back), Overhead Press (Shoulders), Turkish Get-Up (Core), Kettlebell Halo (Core), Suitcase Carry (Forearms, `timedLoaded`). Not added to any Push/Pull/Legs day; Mike picks them per day. t_f36 (leaderboard PRs) was date-fragile near month ends; it now passes when no week ends later in the PR's month.
 
 **2026-11-14 audit batch 4 (t_f93, commit 8a9066d).** F4, F5 and F18 done.
 - F4: `writeMeals` clears the saved protein/calories/carbs/fat when a day's LAST meal is removed (only when the day had meals before, so typed-in totals on meal-less days stay).

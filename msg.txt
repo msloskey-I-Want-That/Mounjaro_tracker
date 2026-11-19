@@ -1,8 +1,7 @@
-Add kettlebell exercises
+Add Kettlebell Halo (core)
 
-- Seven kettlebell exercises in the exercise picker with how-to cards (swing, goblet squat, Romanian deadlift, single-arm row, overhead press, Turkish get-up, suitcase carry)
-- t_f94 covers them; t_f36 no longer fails on weeks near a month end
-- HANDOFF.md updated
+- Halo in the exercise picker under Core, with a how-to card
+- t_f94 covers it; HANDOFF.md updated
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01DwAFzc9Pbp9peYrfMpvs3Z

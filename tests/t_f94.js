@@ -8,7 +8,7 @@ const errors = []; dom.window.addEventListener('error', e => errors.push(e.messa
 setTimeout(() => {
   const w = dom.window, ev = s => w.eval(s);
   const want = { 'Kettlebell Swing': 'Hamstrings', 'Kettlebell Goblet Squat': 'Quads', 'Kettlebell Romanian Deadlift': 'Hamstrings', 'Kettlebell Single-Arm Row': 'Back',
-    'Kettlebell Overhead Press': 'Shoulders', 'Turkish Get-Up': 'Core', 'Kettlebell Suitcase Carry': 'Forearms' };
+    'Kettlebell Overhead Press': 'Shoulders', 'Turkish Get-Up': 'Core', 'Kettlebell Halo': 'Core', 'Kettlebell Suitcase Carry': 'Forearms' };
   const lib = ev(`exerciseLibrary()`);
   Object.entries(want).forEach(([n, g]) => {
     const e = lib.find(x => x.name === n);
