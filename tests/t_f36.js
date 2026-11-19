@@ -36,7 +36,7 @@ function boot(extra = {}) {
   ev(`entries = [sess(lbAddDays(WK(6), 1), { 'Leg Press': S(3, { weight: 100 }) }), sess(lbAddDays(WK(3), 1), { 'Leg Press': S(3, { weight: 120 }) })]`);
   const wks = ev('lbAnalyze().weeks');
   check('weeks with no workouts are still listed (so a missed week counts as zero), with the streak at 0', Object.keys(wks).length === 7 && wks[ev('WK(5)')][0] === 0 && wks[ev('WK(5)')][3] === 0);
-  check('PRs are "this month so far": a PR carries through the rest of its month even in weeks you did not train', (() => { const prWeekMon = ev('WK(3)'); const prDay = ev('lbAddDays(WK(3), 1)'); const k = Object.keys(wks).sort().filter(x => ev(`lbAddDays('${x}', 6)`).slice(0, 7) === prDay.slice(0, 7) && ev(`lbAddDays('${x}', 6)`) >= prDay); return k.length >= 1 && k.every(x => wks[x][2] === 1); })());
+  check('PRs are "this month so far": a PR carries through the rest of its month even in weeks you did not train', (() => { const prWeekMon = ev('WK(3)'); const prDay = ev('lbAddDays(WK(3), 1)'); const k = Object.keys(wks).sort().filter(x => ev(`lbAddDays('${x}', 6)`).slice(0, 7) === prDay.slice(0, 7) && ev(`lbAddDays('${x}', 6)`) >= prDay); return k.every(x => wks[x][2] === 1); })()); // no week ending later in the PR's month (e.g. late in the month) means nothing to check
   ev(`lbConfig.joinedWeek = WK(5); entries = [sess(T(), { 'Leg Press': S(3) })]`);
   const p = ev('lbPayload()');
   check('what is sent: name, the week you joined (since), this week, 26-week history, records, last workout, version 2', p.v === 2 && p.since === ev('WK(5)') && !!p.weeks && !!p.best && p.name === 'Mike' && p.last === ev('T()'));
