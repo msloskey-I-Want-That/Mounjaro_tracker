@@ -981,6 +981,8 @@ body.mode-exercise .nav-item[data-view="log"], body.mode-exercise .nav-item[data
 .re-create-row { display: flex; gap: 8px; margin-top: 8px; } .re-create-row .btn { flex: 1; }
 .re-pick:disabled { opacity: 1; cursor: default; }
 .eg-overlay { z-index: 1400; }
+.cs-text { white-space: pre-wrap; font-size: 15px; line-height: 1.55; }
+.cs-busy { color: var(--ink-soft); }
 .eg-overlay .re-sheet { height: auto; max-height: 88vh; }
 .eg-works { font-size: 13px; color: var(--ink-soft); margin-bottom: 4px; } .eg-works b { color: var(--ink); }
 .eg-variant { font-size: 12px; background: var(--input-bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; margin: 8px 0 2px; }
@@ -1774,6 +1776,7 @@ body.big-current .ex-current .set-row.done:not(.set-current) { opacity: 0.8; }
 <!-- ── REST TIMER POPUP (workout sets) ── -->
 <div id="entryPopupBackdrop" style="display:none;position:fixed;inset:0;background:rgba(20,23,31,0.4);z-index:500"></div><div id="lbSheet" class="re-overlay" style="display:none"></div>
 <div id="exGuide" class="re-overlay eg-overlay" style="display:none"></div>
+<div id="coachSheet" class="re-overlay eg-overlay" style="display:none"></div>
 <div id="exPicker" class="re-overlay" style="display:none"></div>
 <div id="routineManager" class="re-overlay" style="display:none"></div>
 <div id="routineEditor" class="re-overlay" style="display:none"></div>
@@ -11250,18 +11253,41 @@ function aiCoachShow(msg, meta) {
   const out = document.getElementById('aiCoachOut'); if (!out) return;
   out.style.display = ''; document.getElementById('aiCoachText').textContent = msg; document.getElementById('aiCoachMeta').textContent = meta || '';
 }
-function aiCoachRender() {
+// The answer opens in a pop-up sheet so it can't land out of sight below the buttons. The copy under the buttons stays.
+let coachRunId = 0, coachDismissedId = -1;
+function coachSheetOpen() { const el = document.getElementById('coachSheet'); return !!el && el.style.display !== 'none'; }
+function closeCoachSheet() { const el = document.getElementById('coachSheet'); if (el) el.style.display = 'none'; coachDismissedId = coachRunId; }
+function coachSheetShow(title, text, meta, busy) {
+  const el = document.getElementById('coachSheet'); if (!el) return;
+  if (!el.dataset.ready) {
+    el.dataset.ready = '1';
+    el.addEventListener('click', e => { if (e.target === el || e.target.closest('#csDone')) closeCoachSheet(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && coachSheetOpen()) { e.stopImmediatePropagation(); e.preventDefault(); closeCoachSheet(); } }, true);
+  }
+  el.innerHTML = `<div class="re-sheet" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
+      <div class="re-top"><div class="re-title">${escapeHtml(title)}</div><button type="button" class="re-done" id="csDone">Done</button></div>
+      <div class="re-body">${meta ? `<div class="eg-works">${escapeHtml(meta)}</div>` : ''}<div class="cs-text${busy ? ' cs-busy' : ''}" id="csText">${escapeHtml(text)}</div><div class="eg-foot">Based on your logged lifts only. For pain or an injury, see a doctor or physical therapist.</div></div>
+    </div>`;
+  el.style.display = 'flex';
+}
+// Shows the sheet for run `id` unless the person closed it while this run was still working.
+function coachPop(id, title, text, meta, busy) { if (id == null || coachDismissedId === id) return; coachSheetShow(title, text, meta, busy); }
+function coachTitle(kind) { return kind === 'ask' ? 'Your question' : kind === 'workout' ? 'Suggested workout' : 'Training analysis'; }
+function aiCoachRender(popId) {
   const out = document.getElementById('aiCoachOut'); if (!out) return;
   if (!aiCoachState) { out.style.display = 'none'; return; }
-  aiCoachShow(aiCoachState.text, `${aiCoachState.kind === 'ask' ? `You asked: ${String(aiCoachState.q || '').slice(0, 80)}` : aiCoachState.kind === 'workout' ? 'Suggested workout' : 'Training analysis'} \u00b7 ${progAgeLabel(aiCoachState.ts)}`);
+  const meta = `${aiCoachState.kind === 'ask' ? `You asked: ${String(aiCoachState.q || '').slice(0, 80)}` : aiCoachState.kind === 'workout' ? 'Suggested workout' : 'Training analysis'} \u00b7 ${progAgeLabel(aiCoachState.ts)}`;
+  aiCoachShow(aiCoachState.text, meta);
+  if (popId != null) coachPop(popId, coachTitle(aiCoachState.kind), aiCoachState.text, meta, false);
 }
 async function runAiCoach(kind) {
-  if (!anthropicKey) { aiCoachShow('Add your Anthropic API key in Settings, under AI Coach, first.', ''); return; }
+  const myId = ++coachRunId, say = (msg, busy) => { aiCoachShow(msg, ''); coachPop(myId, coachTitle(kind), msg, '', busy); };
+  if (!anthropicKey) { say('Add your Anthropic API key in Settings, under AI Coach, first.'); return; }
   const sum = strengthSummaryForAI(56);
   const askQ = kind === 'ask' ? String((document.getElementById('askCoachInput') || {}).value || '').replace(/["`<>\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 300) : '';
   if (kind === 'ask' && askQ.length < 3) { aiCoachShow('Type your question first.', ''); return; }
-  if (sum.sessions < (kind === 'ask' ? 1 : 3)) { aiCoachShow('Log at least a few strength workouts first. The coach needs some history to work with.', ''); return; }
-  aiCoachShow(kind === 'ask' ? 'Thinking about your question\u2026' : kind === 'workout' ? 'Planning your next workout\u2026' : 'Reviewing your last 8 weeks\u2026', '');
+  if (sum.sessions < (kind === 'ask' ? 1 : 3)) { say('Log at least a few strength workouts first. The coach needs some history to work with.'); return; }
+  say(kind === 'ask' ? 'Thinking about your question\u2026' : kind === 'workout' ? 'Planning your next workout\u2026' : 'Reviewing your last 8 weeks\u2026', true);
   const plan = (() => { try { return describeWorkoutPlanForAI(); } catch (err) { return ''; } })();
   const base = `You are a friendly, practical strength coach. Here is a person's logged strength training (weights in pounds).\n${plan ? `Their routine: ${plan}\n` : ''}\n${sum.text}\n\n`;
   const ask = kind === 'ask'
@@ -11271,10 +11297,10 @@ async function runAiCoach(kind) {
     : `Analyze their training. Give: (1) what is going well, 2 short bullets; (2) what is stalled or neglected: muscle groups with few sets and lifts that have not progressed; (3) three specific changes for the next two weeks with real numbers in lb. Only use the data above, do not invent anything. If soreness is reported, factor it in (for example, lighter volume for sore muscles); if they rarely stretch, you may suggest the app's stretch routines. Plain text, no markdown, no medical advice, under 220 words.`;
   try {
     const result = await callClaudeText(base + ask, 600);
-    if (!result.ok) { aiCoachShow(`Failed (HTTP ${result.status}). Check your Anthropic API key in Settings, under AI Coach.`, ''); return; }
-    if (!result.text) { aiCoachShow('No response. Try again.', ''); return; }
-    aiCoachState = { kind, text: result.text.trim(), ts: Date.now(), ...(kind === 'ask' ? { q: askQ } : {}) }; aiCoachSave(); aiCoachRender();
-  } catch (err) { console.error(err); aiCoachShow('Failed. Check your connection and API key.', ''); }
+    if (!result.ok) { say(`Failed (HTTP ${result.status}). Check your Anthropic API key in Settings, under AI Coach.`); return; }
+    if (!result.text) { say('No response. Try again.'); return; }
+    aiCoachState = { kind, text: result.text.trim(), ts: Date.now(), ...(kind === 'ask' ? { q: askQ } : {}) }; aiCoachSave(); aiCoachRender(myId);
+  } catch (err) { console.error(err); say('Failed. Check your connection and API key.'); }
 }
 document.getElementById('aiAnalyzeBtn').addEventListener('click', () => runAiCoach('analyze'));
 document.getElementById('aiWorkoutBtn').addEventListener('click', () => runAiCoach('workout'));

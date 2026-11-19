@@ -1,7 +1,8 @@
-Add Kettlebell Halo (core)
+AI Coach answers open in a pop-up
 
-- Halo in the exercise picker under Core, with a how-to card
-- t_f94 covers it; HANDOFF.md updated
+- Analyze my training, Suggest a workout and Ask the Coach now open a pop-up sheet with a working message, then the answer, so it can't land out of sight below the buttons
+- The copy under the buttons stays; reopening the app does not pop up the saved answer
+- New suite t_f95; HANDOFF.md updated
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01DwAFzc9Pbp9peYrfMpvs3Z

@@ -1,0 +1,45 @@
+// AI Coach: Analyze / Suggest a workout / Ask now open the answer in a pop-up sheet (it used to land out of sight below the buttons).
+const { JSDOM } = require('jsdom'); const fs = require('fs');
+const html = fs.readFileSync('/home/claude/live_five.html', 'utf-8');
+let fails = 0; const check = (l, c) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + l); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: 'https://example.com/', pretendToBeVisual: true,
+    beforeParse(w) { w.matchMedia = () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }); w.confirm = () => true; w.alert = () => {}; w.__noPreviewList = true;
+      w.localStorage.setItem('mounjaro-sync-id', 'x'); w.__settingsData = {}; w.HTMLElement.prototype.scrollIntoView = () => {}; w.scrollTo = () => {};
+      w.localStorage.setItem('fit-aicoach', JSON.stringify({ kind: 'analyze', text: 'Saved answer from before', ts: Date.now() - 864e5 })); } });
+  const errors = []; dom.window.addEventListener('error', e => errors.push(e.message)); await sleep(2300);
+  const w = dom.window, doc = w.document, ev = s => w.eval(s), $ = id => doc.getElementById(id);
+  const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  const open = () => $('coachSheet').style.display !== 'none';
+  ev(`syncId = 'x'; window.__setDocImpl = () => Promise.resolve(); anthropicKey = 'sk-ant-test';
+      entries = []; for (let i = 30; i >= 0; i -= 3) entries.push({ date: lbAddDays(todayStr(), -i), ex: [{ type: 'Strength', ts: Date.now() - i * 864e5, min: 40, sets: { 'Chest Press (machine)': [{ weight: 50, reps: 10 }, { weight: 50, reps: 9 }] } }] });
+      window.__reply = 'WHAT IS GOING WELL\\nChest is up.'; window.__delay = 250; window.__calls = 0;
+      window.callClaudeText = async () => { window.__calls++; await new Promise(r => setTimeout(r, window.__delay)); return { ok: true, status: 200, text: window.__reply }; };`);
+  check('reopening the app does NOT pop up the saved answer', !open() && /Saved answer/.test($('aiCoachText').textContent));
+  click($('aiAnalyzeBtn')); await sleep(60);
+  check('Analyze opens the pop-up right away with a working message', open() && /Reviewing your last 8 weeks/.test($('csText').textContent));
+  await sleep(400);
+  check('the answer arrives inside the pop-up, titled Training analysis', open() && /Chest is up/.test($('csText').textContent) && /Training analysis/.test(doc.querySelector('#coachSheet .re-title').textContent));
+  check('the copy under the buttons has it too', /Chest is up/.test($('aiCoachText').textContent));
+  click($('csDone')); await sleep(30);
+  check('Done closes the pop-up', !open());
+  ev(`window.__reply = 'Lat Pulldown - 3 x 10 - 80 lb'`);
+  click($('aiWorkoutBtn')); await sleep(400);
+  check('Suggest a workout shows in the pop-up too, titled Suggested workout', open() && /Lat Pulldown/.test($('csText').textContent) && /Suggested workout/.test(doc.querySelector('#coachSheet .re-title').textContent));
+  doc.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(30);
+  check('Escape closes it', !open());
+  click($('aiAnalyzeBtn')); await sleep(60); click($('csDone')); await sleep(450);
+  check('closing the pop-up while it is still working does not reopen it, but the answer still lands underneath', !open() && /Lat Pulldown/.test($('aiCoachText').textContent));
+  ev(`entries = []`);
+  click($('aiAnalyzeBtn')); await sleep(60);
+  check('too little history: the pop-up says so (and nothing is sent)', open() && /Log at least a few/.test($('csText').textContent));
+  click($('csDone'));
+  ev(`anthropicKey = ''`);
+  click($('aiAnalyzeBtn')); await sleep(60);
+  check('no API key: the pop-up says so', open() && /Add your Anthropic API key/.test($('csText').textContent));
+  click($('coachSheet')); await sleep(30);
+  check('tapping outside the sheet closes it', !open());
+  check('no script errors', errors.length === 0);
+  console.log(fails ? `${fails} FAILED` : 'ALL PASSED'); process.exit(fails ? 1 : 0);
+})();
