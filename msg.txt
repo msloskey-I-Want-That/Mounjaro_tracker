@@ -1,7 +1,7 @@
-Add End quick workout button to the card header
+Fix End quick workout button being hidden by CSS
 
-- Quick workout now shows an obvious "End quick workout" button at the top of the Workout Plan card (the old link was only at the very bottom)
-- New suite t_f96; HANDOFF.md updated
+- The button sat in .plan-day-head, which the Workout Plan card hides; moved it to its own .quick-end-bar row
+- Confirmed visible in a Chromium screenshot; t_f96 updated
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01DwAFzc9Pbp9peYrfMpvs3Z

@@ -17168,7 +17168,7 @@ function renderWorkoutPlan() {
     plan = [];
     const hasAny = (customWorkoutExercises[QUICK_KEY] || []).some(e => !(hiddenWorkoutExercises[QUICK_KEY] || []).includes(e.name));
     headerHtml = `
-      <div class="plan-day-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="quick-end-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">⚡ Quick workout</div>
         <button type="button" class="btn btn-secondary btn-sm quick-end-btn quick-end-top" style="padding:7px 12px;font-size:12px;font-weight:800">✕ End quick workout</button>
       </div>

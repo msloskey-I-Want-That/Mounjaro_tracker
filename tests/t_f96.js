@@ -15,7 +15,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await ev(`startQuickWorkout()`); await sleep(100);
   const top = doc.querySelector('#workoutPlanBody .quick-end-top');
   check('quick workout shows the End button in the card header', !!top && /End quick workout/.test(top.textContent));
-  check('the header button comes before the exercise list', !!top && !!doc.querySelector('#workoutPlanBody .plan-day-head .quick-end-top'));
+  check('the header button comes before the exercise list', !!top && !!doc.querySelector('#workoutPlanBody .quick-end-bar .quick-end-top'));
   check('the title says Quick workout', /Quick workout/.test($('workoutPlanTitle').textContent));
   click(top); await sleep(150);
   check('tapping End returns to the PPL plan', !ev('quickWorkoutOn()') && /PPL/.test($('workoutPlanTitle').textContent) && !doc.querySelector('#workoutPlanBody .quick-end-top'));
