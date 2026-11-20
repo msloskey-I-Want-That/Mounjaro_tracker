@@ -1,6 +1,6 @@
 # My Health Tracker (Mounjaro_tracker) — Handoff for Claude
 
-_Last updated: 2026-11-19 AI Coach pop-up (t_f95). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
+_Last updated: 2026-11-19 End quick workout button (t_f96). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
 
 ## 0. What Mike pastes to start a chat
 
@@ -57,7 +57,7 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
    - Hide the Welcome/Sync ID modal: hide `#modalTitle`'s top-level container.
    - Views scroll inside `#app-main`, not the page.
    - Workout: `window.__noPreviewList=true`, `renderWorkoutPlan()`, click `#startPlanBtn`.
-5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f96.**
+5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f97.**
 6. **Full gate (one command, 10-min timeout):**
    ```
    ./run_all_tests.sh 2>&1 | grep -i "^FAIL\|PART\|TIMEOUT\|flaked" ; ./gate_verified.sh && echo GATE_OK
@@ -84,6 +84,8 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
 - **Dates:** local only (see §3). Tests must use local date helpers too.
 
 ## 6. What's shipped (newest first)
+
+**2026-11-19: "✕ End quick workout" button in the card header (t_f96).** Mike got stuck in Quick workout and couldn't find the old "End quick workout" link, which is only in the plan-tip footer at the very bottom of the Workout Plan card. The same `.quick-end-btn` (wired by `wireRoutineButtons`, asks before discarding progress) now also sits in the header row (`.quick-end-top`), replacing the "not part of a routine" label. Quick workout lives for the day (`QUICK_LS`) until logged or ended.
 
 **2026-11-19: AI Coach answers open in a pop-up (t_f95).** Analyze my training / Suggest a workout / Ask the Coach now open a bottom sheet (`#coachSheet`, reuses `.re-overlay eg-overlay`, z-index 1400) that first says "Reviewing your last 8 weeks…" and then shows the answer, titled Training analysis / Suggested workout / Your question. `runAiCoach` uses `say(msg, busy)` for every message; `coachPop(id, …)` shows the sheet unless the person closed it while that run was still working (`coachDismissedId`); in that case the answer still lands in the copy under the buttons. The saved answer does not pop up when the app reopens. Mike's complaint: the answer used to land below the buttons where he couldn't see it.
 

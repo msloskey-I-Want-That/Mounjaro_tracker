@@ -1,8 +1,7 @@
-AI Coach answers open in a pop-up
+Add End quick workout button to the card header
 
-- Analyze my training, Suggest a workout and Ask the Coach now open a pop-up sheet with a working message, then the answer, so it can't land out of sight below the buttons
-- The copy under the buttons stays; reopening the app does not pop up the saved answer
-- New suite t_f95; HANDOFF.md updated
+- Quick workout now shows an obvious "End quick workout" button at the top of the Workout Plan card (the old link was only at the very bottom)
+- New suite t_f96; HANDOFF.md updated
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01DwAFzc9Pbp9peYrfMpvs3Z

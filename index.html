@@ -17170,7 +17170,7 @@ function renderWorkoutPlan() {
     headerHtml = `
       <div class="plan-day-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-family:var(--font-num);font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5CE6C0">⚡ Quick workout</div>
-        <div style="font-size:11px;color:var(--ink-soft)">not part of a routine</div>
+        <button type="button" class="btn btn-secondary btn-sm quick-end-btn quick-end-top" style="padding:7px 12px;font-size:12px;font-weight:800">✕ End quick workout</button>
       </div>
       ${hasAny ? '' : `<div class="quick-empty-hint" style="font-size:13px;color:var(--ink-soft);margin-bottom:12px">Add the exercises as you go. Tap <b>+ Add Exercise</b> below and pick from the library, or type your own.</div>`}`;
     footerHtml = `Check off each set as you finish it. A rest timer starts automatically. Log it as <b>Strength</b> below (or use the timer) when you are done. Changed your mind? <button type="button" class="routine-edit-link quick-end-btn">End quick workout</button>`;
