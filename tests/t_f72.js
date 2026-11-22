@@ -18,7 +18,7 @@ setTimeout(async () => {
   check('Quads, Hamstrings and Calves show as recovering', ['Quads', 'Hamstrings', 'Calves'].every(g => st[g].recovery.state === 'recovering'));
   check('about a day of recovery for 3 miles (~25h total, ~23h left)', Math.round(st.Quads.recovery.recH) === 25 && st.Quads.recovery.hoursLeft > 22 && st.Quads.recovery.hoursLeft < 24);
   check('upper body is untouched', ['Chest', 'Back', 'Biceps', 'Core'].every(g => st[g].recovery.state === 'none'));
-  check('weekly sets stay at 0 (a walk is not sets)', st.Quads.sets === 0 && st.Calves.weeks.every(v => v === 0));
+  check('a walk earns 1 credit set, not real sets', st.Quads.sets === 1 && st.Quads.walkCredit === 1 && st.Calves.weeks[0] === 1 && st.Calves.weeks.slice(1).every(v => v === 0));
   check('balance / volume counts ignore walks', ev(`muscleSetsLastDays(7).counts.Quads`) === 0);
   const det = ev(`muscleDetailHtml(muscleStats(Date.now()).Quads, 'recovery')`);
   check('tapping Quads shows the walk ("🚶 Walk · 3.2 mi · 62 min")', det.includes('🚶 Walk · 3.2 mi · 62 min') && /until recovered/.test(det));
@@ -67,7 +67,7 @@ setTimeout(async () => {
   console.log('=== lifting still wins when it is longer ===');
   set([{ date: day(0), ex: [{ type: 'Strength', min: 60, ts: now - H, sets: { 'Leg Press': [{ weight: 200, reps: 10 }, { weight: 200, reps: 10 }, { weight: 200, reps: 10 }, { weight: 200, reps: 10 }] } }, { type: 'Walk', min: 40, dist: '2', ts: now - H }] }]);
   st = stats();
-  check('leg day + a 2 mile walk: the longer lifting window is shown', st.Quads.recovery.recH >= 48 && st.Quads.sets === 4);
+  check('leg day + a 2 mile walk: the longer lifting window is shown', st.Quads.recovery.recH >= 48 && st.Quads.sets === 5);
   check('Calves (walk only) still show the walk', st.Calves.recovery.state === 'recovering' && st.Calves.recovery.recH === 20);
 
   console.log('=== Errors ==='); console.log(errors.length ? errors.join('\n') : '(none)');

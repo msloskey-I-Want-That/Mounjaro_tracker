@@ -1,6 +1,6 @@
 # My Health Tracker (Mounjaro_tracker) — Handoff for Claude
 
-_Last updated: 2026-11-19 End quick workout button (t_f96). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
+_Last updated: 2026-11-22 walk credit on the muscle map (t_f97). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
 
 ## 0. What Mike pastes to start a chat
 
@@ -57,7 +57,7 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
    - Hide the Welcome/Sync ID modal: hide `#modalTitle`'s top-level container.
    - Views scroll inside `#app-main`, not the page.
    - Workout: `window.__noPreviewList=true`, `renderWorkoutPlan()`, click `#startPlanBtn`.
-5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f97.**
+5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f98.**
 6. **Full gate (one command, 10-min timeout):**
    ```
    ./run_all_tests.sh 2>&1 | grep -i "^FAIL\|PART\|TIMEOUT\|flaked" ; ./gate_verified.sh && echo GATE_OK
@@ -84,6 +84,8 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
 - **Dates:** local only (see §3). Tests must use local date helpers too.
 
 ## 6. What's shipped (newest first)
+
+**2026-11-22: walks earn muscle-map credit (t_f97).** Mike asked whether a 3-mile walk counts as a leg workout (it only counted for recovery). Now each day with a counted walk/hike/treadmill/bike session (or an Apple Health walking day) adds `WALK_SET_CREDIT` (1) set to Quads, Hamstrings and Calves in `muscleStats()` (one per day per muscle, all 4 weeks; `walkCredit` field), so it counts toward the weekly goal and the "N of 11 on goal" headline. It is NOT a real set: `muscleSetsLastDays` (balance flags), weekly volume and the leaderboard stay strength-only. Apple Health walking days with no walk logged now count from 2 miles (`HEALTH_WALK_MIN_MI`, was 3). t_f72 updated (walk = 1 credit set).
 
 **2026-11-19: "✕ End quick workout" button in the card header (t_f96).** Mike got stuck in Quick workout and couldn't find the old "End quick workout" link, which is only in the plan-tip footer at the very bottom of the Workout Plan card. The same `.quick-end-btn` (wired by `wireRoutineButtons`, asks before discarding progress) now also sits in a top row (`.quick-end-bar`, NOT `.plan-day-head`: CSS line ~1122 hides `#workoutPlanCard .plan-day-head`, so the first version of this button was invisible; jsdom tests don't catch hidden-by-CSS, check with a Chromium screenshot). The row replaces the "not part of a routine" label. Quick workout lives for the day (`QUICK_LS`) until logged or ended.
 

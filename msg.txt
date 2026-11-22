@@ -1,7 +1,8 @@
-Fix End quick workout button being hidden by CSS
+Walks earn 1 muscle-map set per day; Apple Health walks count from 2 miles
 
-- The button sat in .plan-day-head, which the Workout Plan card hides; moved it to its own .quick-end-bar row
-- Confirmed visible in a Chromium screenshot; t_f96 updated
+- Quads/Hamstrings/Calves get 1 credit set per walking day toward weekly goals (not real sets; volume, balance and leaderboard unchanged)
+- HEALTH_WALK_MIN_MI 3 -> 2
+- New suite t_f97; t_f72 updated; HANDOFF.md updated
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01DwAFzc9Pbp9peYrfMpvs3Z

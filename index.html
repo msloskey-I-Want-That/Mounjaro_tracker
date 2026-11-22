@@ -7380,13 +7380,15 @@ function muscleSessionIndex() {
   MUSCLE_MAP_GROUPS.forEach(g => idx[g].sort((a, b) => a.t - b.t));
   return idx;
 }
-// ── Walks count as leg work (recovery, details, stretch picks) — never as sets, so weekly volume,
-// set goals, balance flags and the leaderboard stay strength-only. Short strolls don't count.
+// ── Walks count as leg work (recovery, details, stretch picks). A counted walk day also earns the muscle map
+// WALK_SET_CREDIT set toward each leg muscle's weekly goal. It is never a real set, so weekly volume, balance flags
+// and the leaderboard stay strength-only. Short strolls don't count.
 const CARDIO_MUSCLES = { 'Walk': ['Quads', 'Hamstrings', 'Calves'], 'Dog Walk': ['Quads', 'Hamstrings', 'Calves'], 'Hiking': ['Quads', 'Hamstrings', 'Calves'], 'Treadmill': ['Quads', 'Hamstrings', 'Calves'], 'Bike': ['Quads', 'Calves'] };
 const CARDIO_ICONS = { 'Walk': '🚶', 'Dog Walk': '🐕', 'Hiking': '🥾', 'Treadmill': '🚶', 'Bike': '🚴', 'Health': '🚶' };
-const HEALTH_WALK_MIN_MI = 3; // Apple Health's daily distance counts on a walking day with no walk logged
+const HEALTH_WALK_MIN_MI = 2; // Apple Health's daily distance counts on a walking day with no walk logged
 const HEALTH_BIG_STEPS = 20000; // a 20k-step day always counts (even with a shorter walk logged)
 const STEPS_PER_MILE = 2100;
+const WALK_SET_CREDIT = 1; // sets credited per walking day to each leg muscle on the muscle map
 function cardioMiles(c) { const d = parseFloat(c.dist), m = parseFloat(c.min); return d > 0 ? d : (m > 0 ? m / 20 : 0); } // ~3 mph when only minutes
 function cardioCounts(c) { const d = parseFloat(c.dist), m = parseFloat(c.min); return (d >= 1) || (!(d > 0) && m >= 20); }
 function cardioRecoveryHours(c) { // ~24h for 3 miles, up to 48h for a long hike
@@ -7410,7 +7412,7 @@ function muscleCardioIndex() {
       if (!cardioCounts(c)) return;
       groups.forEach(g => idx[g].push({ t, date: e.date, cardio: c, recH: cardioRecoveryHours(c) }));
     });
-    // Apple Health: 3+ miles with no walk logged, or a 20k-step day that went well beyond the walks you logged.
+    // Apple Health: 2+ miles with no walk logged, or a 20k-step day that went well beyond the walks you logged.
     const hd = parseFloat(e.distanceMi), steps = parseFloat(e.steps);
     const hMi = hd > 0 ? hd : (steps > 0 ? steps / STEPS_PER_MILE : 0);
     const big = steps >= HEALTH_BIG_STEPS && hMi > walkedMi + 1;
@@ -7618,7 +7620,10 @@ function muscleStats(now) {
       if (d >= 0 && d < 28) weeks[Math.floor(d / 7)] += x.sets;
       if (d >= 0 && d < 7) x.ex.forEach(e => { exWeek[e.name] = (exWeek[e.name] || 0) + e.sets; });
     });
-    out[g] = { group: g, sets: weeks[0], goal, zone: muscleZone(weeks[0], goal), weeks,
+    let walkCredit = 0;
+    const walkDays = new Set((cidx[g] || []).map(x => x.date));
+    walkDays.forEach(dt => { const d = daysAgoFor(dt); if (d >= 0 && d < 28) { weeks[Math.floor(d / 7)] += WALK_SET_CREDIT; if (d < 7) walkCredit += WALK_SET_CREDIT; } });
+    out[g] = { group: g, sets: weeks[0], walkCredit, goal, zone: muscleZone(weeks[0], goal), weeks,
       exercises: Object.entries(exWeek).map(([name, sets]) => ({ name, sets })).sort((a, b) => b.sets - a.sets),
       last: s.length ? s[s.length - 1] : null, recovery: withCardioRecovery(muscleRecovery(s, now), cidx[g], now), effort: muscleEffortFor(s), progress: prog[g],
       walks: (cidx[g] || []).filter(x => { const d = daysAgoFor(x.date); return d >= 0 && d < 7; }).reverse() };
