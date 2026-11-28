@@ -4038,6 +4038,15 @@ body.big-current .ex-current .set-row.done:not(.set-current) { opacity: 0.8; }
               <option value="any">Any day</option><option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option>
             </select>
           </div>
+          <div class="settings-row" id="injectionDayRow">
+            <div>
+              <div class="settings-row-label">Injection day</div>
+              <div class="settings-row-sub">The weekday your weekly dose is due (reminders and the countdown follow it)</div>
+            </div>
+            <select id="setInjectionDay" style="width:110px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font-num);font-size:12px;background:var(--input-bg);color:var(--ink);font-weight:700">
+              <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -4629,6 +4638,7 @@ let userAge = 0;             // years — 0 means not yet set
 let userSex = 'male';
 let userActivityLevel = 'moderate';
 let userLossRate = 1;        // lbs/week
+let injectionDay = '6';       // weekday number '0'-'6' (Sun-Sat) of the weekly shot; the schedule started on a Saturday
 let weighInDay = 'any';       // 'any' or a weekday number '0'-'6' (Sun-Sat): the day the weight box shows in Quick Log
 let userProteinGoal = 100;   // grams/day — default 100; changeable in Settings
 let calGoalOverride = 0, carbGoalOverride = 0, fatGoalOverride = 0; // typed-in daily goals; 0 = use the calculated number
@@ -6507,6 +6517,10 @@ function fmtDateFull(s) {
   return d.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
 }
 
+// The weekly shot schedule starts on TREATMENT_START (a Saturday) and shifts by the chosen weekday.
+function injShiftDays() { const n = parseInt(injectionDay, 10); return (n >= 0 && n <= 6) ? (n - 6 + 7) % 7 : 0; }
+function doseDiff() { return daysSinceStart() - injShiftDays(); }
+function doseAnchor() { const d = new Date(TREATMENT_START); d.setDate(d.getDate() + injShiftDays()); return d; }
 function daysSinceStart() {
   const now  = new Date(); now.setHours(0,0,0,0);
   const start = new Date(TREATMENT_START); start.setHours(0,0,0,0);
@@ -6674,6 +6688,7 @@ function startListening() {
       if (s.activityLevel)          userActivityLevel = s.activityLevel;
       if (s.lossRate)               userLossRate   = parseFloat(s.lossRate) || 1;
       if (s.weighInDay != null)     weighInDay = String(s.weighInDay);
+      if (s.injectionDay != null && /^[0-6]$/.test(String(s.injectionDay))) injectionDay = String(s.injectionDay);
       if (s.proteinGoal)            userProteinGoal = (parseInt(s.proteinGoal) >= 30 && parseInt(s.proteinGoal) <= 300) ? parseInt(s.proteinGoal) : 100;
       if (s.calGoal != null)        calGoalOverride  = (parseInt(s.calGoal) >= 1000 && parseInt(s.calGoal) <= 6000) ? parseInt(s.calGoal) : 0;
       if (s.carbGoal != null)       carbGoalOverride = (parseInt(s.carbGoal) >= 1 && parseInt(s.carbGoal) <= 800) ? parseInt(s.carbGoal) : 0;
@@ -6764,6 +6779,7 @@ function syncSettingsInputs() {
   const pgEl = document.getElementById('setProteinGoal'); if (pgEl && document.activeElement !== pgEl) pgEl.value = userProteinGoal;
   try { fillMacroGoalInputs(); } catch (err) { console.error(err); }
   const wdEl = document.getElementById('setWeighInDay'); if (wdEl) wdEl.value = weighInDay;
+  const ijEl = document.getElementById('setInjectionDay'); if (ijEl) ijEl.value = injectionDay;
   const wpmEl = document.getElementById('setWorkoutPlanMode');
   if (wpmEl) wpmEl.value = workoutPlanMode;
   const sg = document.getElementById('setStepGoal');
@@ -18585,12 +18601,12 @@ function updateInjBanner() {
   const banner = document.getElementById('injBanner');
   banner.className = 'inj-banner';
   banner.onclick = null;
-  const diff = daysSinceStart();
+  const diff = doseDiff();
   if (diff < 0) return; // treatment hasn't started
 
   // Most recent scheduled injection date (weekly from start — this is
   // also weigh-in day, since both were set to fall on the same day)
-  const cycleStart = new Date(TREATMENT_START);
+  const cycleStart = doseAnchor();
   cycleStart.setDate(cycleStart.getDate() + Math.floor(diff / 7) * 7);
   const dueStr = `${cycleStart.getFullYear()}-${String(cycleStart.getMonth()+1).padStart(2,'0')}-${String(cycleStart.getDate()).padStart(2,'0')}`;
 
@@ -21231,9 +21247,9 @@ function hydrationPaceCheck(tOz) {
 // what's due right now, not what's still ahead, but a mid-week glance at
 // the countdown is still genuinely useful on its own.
 function computeNextDoseCountdown() {
-  const diff = daysSinceStart();
+  const diff = doseDiff();
   if (diff < 0) return null;
-  const cycleStart = new Date(TREATMENT_START);
+  const cycleStart = doseAnchor();
   cycleStart.setDate(cycleStart.getDate() + Math.floor(diff / 7) * 7);
   const lookback = new Date(cycleStart); lookback.setDate(lookback.getDate() - 2);
   const lookbackStr = ymdOf(lookback);
@@ -21297,9 +21313,9 @@ function computeDueTodayItems() {
 // Descriptive only: counts and numbers, never advice.
 function todayDoseStatus() {
   if (appMode === 'fitness') return null; // no medication in this mode
-  const diff = daysSinceStart();
+  const diff = doseDiff();
   if (diff < 0) return null;
-  const cycleStart = new Date(TREATMENT_START);
+  const cycleStart = doseAnchor();
   cycleStart.setDate(cycleStart.getDate() + Math.floor(diff / 7) * 7);
   const lb = new Date(cycleStart); lb.setDate(lb.getDate() - 2);
   const lookbackStr = lbFmt(lb);
@@ -21791,6 +21807,7 @@ document.getElementById('exportJsonBtn').addEventListener('click', () => {
       lossRate: userLossRate,
       proteinGoal: userProteinGoal,
       weighInDay,
+      injectionDay,
       workoutPlanMode,
       stepGoal: stepGoalOverride,
       theme: themeOverride,
@@ -21916,6 +21933,7 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async () =>
   payload.activityLevel = document.getElementById('setActivityLevel').value;
   payload.lossRate = parseFloat(document.getElementById('setLossRate').value) || 1;
   payload.weighInDay = document.getElementById('setWeighInDay').value || 'any';
+  { const ij = document.getElementById('setInjectionDay'); if (ij && /^[0-6]$/.test(ij.value)) { payload.injectionDay = ij.value; injectionDay = ij.value; } }
   const pgVal = parseInt(document.getElementById('setProteinGoal').value);
   if (pgVal >= 30 && pgVal <= 300) payload.proteinGoal = pgVal; // anything outside a sane range is ignored, the old goal stays
   // Daily goals typed in Settings: blank = back to the calculated number; a number outside a sane range is ignored and the old goal stays.

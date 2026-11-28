@@ -1,6 +1,6 @@
 # My Health Tracker (Mounjaro_tracker) — Handoff for Claude
 
-_Last updated: 2026-11-22 walk credit on the muscle map (t_f97). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
+_Last updated: 2026-11-27 Injection day setting (t_f98). Read this whole file before touching the app. It is everything needed to edit, test and ship changes on your own. The same text lives in the claude.ai Project "Home Projects" as `claude/mounjaro-tracker-status.md`, and in the repo as `HANDOFF.md`. When you ship, update BOTH (Project doc via `project_write`, repo file in the same commit)._
 
 ## 0. What Mike pastes to start a chat
 
@@ -57,7 +57,7 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
    - Hide the Welcome/Sync ID modal: hide `#modalTitle`'s top-level container.
    - Views scroll inside `#app-main`, not the page.
    - Workout: `window.__noPreviewList=true`, `renderWorkoutPlan()`, click `#startPlanBtn`.
-5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f98.**
+5. **Write a new jsdom suite** `t_fNN.js`: copy the header of the newest one (`t_f86.js`). It loads `/home/claude/live_five.html` and waits 2.5 s. In `beforeParse` set `w.__noPreviewList = true` and stub `matchMedia`/`confirm`/`alert`. Use `check(label, cond)` and end with `ALL PASSED`. Run it alone first: `timeout 120 node t_fNN.js`. **Next free number: t_f99.**
 6. **Full gate (one command, 10-min timeout):**
    ```
    ./run_all_tests.sh 2>&1 | grep -i "^FAIL\|PART\|TIMEOUT\|flaked" ; ./gate_verified.sh && echo GATE_OK
@@ -84,6 +84,8 @@ Do steps 1–2 below in your first reply, report in one or two lines ("Set up on
 - **Dates:** local only (see §3). Tests must use local date helpers too.
 
 ## 6. What's shipped (newest first)
+
+**2026-11-27: Injection day is a setting (t_f98).** Mike wanted weigh-in and injection on Sundays. Weigh-in day already had a setting (`weighInDay`). The weekly dose schedule was fixed to Saturdays (anchored on `TREATMENT_START`, 2026-07-18). New Settings row "Injection day" (`#setInjectionDay`, saved as `injectionDay`, default '6' = Saturday). `injShiftDays()`, `doseDiff()` and `doseAnchor()` shift the schedule; `updateInjBanner`, `computeNextDoseCountdown` and `todayDoseStatus` use them. Treatment day count, milestones and week buckets still use the real `TREATMENT_START`. A shot logged up to 2 days before a due day counts for that cycle (so a Saturday shot satisfies a Sunday cycle). Mike must also set Weigh-in day to Sunday himself.
 
 **2026-11-22: walks earn muscle-map credit (t_f97).** Mike asked whether a 3-mile walk counts as a leg workout (it only counted for recovery). Now each day with a counted walk/hike/treadmill/bike session (or an Apple Health walking day) adds `WALK_SET_CREDIT` (1) set to Quads, Hamstrings and Calves in `muscleStats()` (one per day per muscle, all 4 weeks; `walkCredit` field), so it counts toward the weekly goal and the "N of 11 on goal" headline. It is NOT a real set: `muscleSetsLastDays` (balance flags), weekly volume and the leaderboard stay strength-only. Apple Health walking days with no walk logged now count from 2 miles (`HEALTH_WALK_MIN_MI`, was 3). t_f72 updated (walk = 1 credit set).
 

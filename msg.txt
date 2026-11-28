@@ -1,8 +1,7 @@
-Walks earn 1 muscle-map set per day; Apple Health walks count from 2 miles
+Add Injection day setting (choose the weekday of the weekly dose)
 
-- Quads/Hamstrings/Calves get 1 credit set per walking day toward weekly goals (not real sets; volume, balance and leaderboard unchanged)
-- HEALTH_WALK_MIN_MI 3 -> 2
-- New suite t_f97; t_f72 updated; HANDOFF.md updated
+- Settings > Injection day (default Saturday); banner, countdown and due/overdue follow it
+- New suite t_f98; HANDOFF.md updated
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01DwAFzc9Pbp9peYrfMpvs3Z
